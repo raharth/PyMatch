@@ -1,7 +1,7 @@
 import torch
 
 
-class BaysianEnsemble:
+class Ensemble:
 
     def __init__(self, trainer_factory, n_model, trainer_args={}):
         self.trainers = []
