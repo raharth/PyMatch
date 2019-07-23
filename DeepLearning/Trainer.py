@@ -60,9 +60,10 @@ class Trainer(ABC):
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
         for epoch in range(epochs):
+            self.epochs_run += 1
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
-                print('epoch: {}{}'.format(epoch + 1, name))
+                print('epoch: {}{}'.format(self.epochs_run, name))
 
             self.train_epoch(device)
 
@@ -81,7 +82,7 @@ class Trainer(ABC):
                 if verbose == 1:
                     print('validation loss: {}\n'.format(performance))
 
-        self.epochs_run += epochs
+
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.epochs_run, self.checkpoint_path)
