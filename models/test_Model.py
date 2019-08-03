@@ -13,6 +13,7 @@ class Model(nn.Module):
         self.fc1 = nn.Linear(16 * 28 * 28, 500)
         self.bn3 = nn.BatchNorm1d(500)
         self.fc2 = nn.Linear(500, n_classes)
+        self.ankered_layers = [self.fc1, self.fc2]
 
     def forward(self, X, train=True, device='cpu'):
         if train:

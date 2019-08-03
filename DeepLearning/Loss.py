@@ -1,5 +1,6 @@
 from torch.nn.modules.loss import _Loss
 import torch
+from torch.distributions import normal
 
 
 class L2Loss(_Loss):
@@ -20,22 +21,29 @@ class L2Loss(_Loss):
         return loss
 
 
-class AnkerLoss(_Loss):
+class AnkerLossClassification(_Loss):
 
-    def __init__(self, crit, model, C):
-        super(AnkerLoss, self).__init__()
+    def __init__(self, crit, model, C, device, H):
+        super(AnkerLossClassification, self).__init__()
         self.crit = crit
         self.model = model
         self.C = C
-        self.anker = [params.clone().detach() for params in model.parameters()]
+        self.anker = []
+        for layer in model.ankered_layers:
+            params = layer._parameters['weight']
+            # H = params.shape[0]     # is that actually correct? I understood it as the number of hidden nodes of a layer
+            m = normal.Normal(.0, 1. / H)
+            self.anker += [m.sample(sample_shape=params.shape).to(device)]
+
 
     def forward(self, input, target):
         loss = self.crit(input, target)
         device = loss.get_device() if loss.is_cuda else 'cpu'
         l2_reg = torch.tensor(0., device=device)
-        for param, anker in zip(self.model.parameters(), self.anker):
+        for layer, anker in zip(self.model.ankered_layers, self.anker):
+            param = layer._parameters['weight']
             l2_reg += torch.norm(param - anker)
-        loss += self.C * l2_reg
+        loss += self.C / target.shape[0] * l2_reg   # C / N * L_2
         return loss
 
 
