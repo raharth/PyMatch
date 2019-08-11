@@ -5,7 +5,7 @@ from tqdm import tqdm
 from abc import ABC, abstractmethod
 
 
-class Trainer(ABC):
+class Learner(ABC):
 
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
                  name=''):
@@ -100,12 +100,12 @@ class Trainer(ABC):
         raise NotImplementedError
 
 
-class ClassificationTrainer(Trainer):
+class ClassificationLearner(Learner):
 
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
                  name=''):
-        super(ClassificationTrainer, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
-                                                     load_checkpoint, name)
+        super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
+                                                    load_checkpoint, name)
         pass
 
     def train_epoch(self, device, verbose=1):

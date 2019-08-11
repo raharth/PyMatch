@@ -3,7 +3,7 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
-from DeepLearning.Trainer import ClassificationTrainer
+from DeepLearning.Trainer import ClassificationLearner
 from models.test_Model import Model
 
 # training the model
@@ -35,7 +35,7 @@ loss_test = []
 accuracy = []
 
 
-trainer = ClassificationTrainer(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
+trainer = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
                                 val_loader=test_loader, name='class_test', load_checkpoint=False)
 
 trainer.train(epochs, device=device)

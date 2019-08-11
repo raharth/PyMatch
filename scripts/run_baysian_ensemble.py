@@ -4,7 +4,7 @@ import torch.optim as optim
 import torchvision as tv
 
 from DeepLearning.Ensemble import BaysianEnsemble
-from DeepLearning.Trainer import ClassificationTrainer
+from DeepLearning.Trainer import ClassificationLearner
 from DeepLearning.Loss import L2Loss, AnkerLossClassification
 from models.test_Model import Model
 
@@ -45,7 +45,7 @@ def trainer_factory(train_loader, val_loader, device, lr, momentum, name, n_clas
     model = Model(n_classes=n_classes).to(device)
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
     crit = AnkerLossClassification(crit=nn.CrossEntropyLoss(), model=model, C=C, device=device, H=H)
-    trainer = ClassificationTrainer(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
+    trainer = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
                                     val_loader=val_loader, name=name)
     return trainer
 

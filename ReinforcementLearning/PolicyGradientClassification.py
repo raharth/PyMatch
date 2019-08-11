@@ -16,7 +16,6 @@ class PolicyGradientClassification:
     def __init__(self, agent, optimizer, train_loader, n_classes, crit, exclusion_reward=0., val_loader=None,
                  grad_clip=None, load_checkpoint=False):
         """
-
         Args:
             agent (nn.Module): neural network
             optimizer (torch.optim): Optimizer
