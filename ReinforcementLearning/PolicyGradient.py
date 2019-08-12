@@ -5,12 +5,13 @@ from tqdm import tqdm
 # torch imports
 import torch
 import torch.nn as nn
+from torch.distributions import Categorical
 
 # own imports
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
 
 
-class PolicyGradientClassification(ReinforcementLearner):
+class PolicyGradient(ReinforcementLearner):
 
     def __init__(self, agent, optimizer, env, crit, grad_clip=None, load_checkpoint=False):
         """
@@ -21,13 +22,10 @@ class PolicyGradientClassification(ReinforcementLearner):
             env(any): environment to interact with
             crit (any): loss function
         """
-        super(PolicyGradientClassification, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip,
-                                                           load_checkpoint=load_checkpoint)
-
-
-
+        super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
 
     def train_epoch(self, device, verbose=1):
+        # @todo check
         accuracies = []
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
@@ -50,6 +48,7 @@ class PolicyGradientClassification(ReinforcementLearner):
         return accuracy
 
     def validate(self, device, verbose=0):
+        # @todo check
         self.agent.eval()
 
         with torch.no_grad():
@@ -67,6 +66,7 @@ class PolicyGradientClassification(ReinforcementLearner):
             return correct / total
 
     def predict(self, data_loader, device, prob=False):
+        # @todo check
         self.agent.eval()
         with torch.no_grad():
             predictions = []
@@ -78,3 +78,8 @@ class PolicyGradientClassification(ReinforcementLearner):
                 actions = torch.max(action_probs.data, 1)[1].numpy()
                 predictions += [actions]
             return np.concatenate(predictions)
+
+    def chose_action(self, observation):
+        probs = self.agent(observation)
+        dist = Categorical(probs)
+        return dist.sample()
