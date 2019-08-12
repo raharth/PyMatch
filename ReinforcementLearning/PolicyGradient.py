@@ -24,9 +24,9 @@ class PolicyGradient(ReinforcementLearner):
         """
         super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
 
-    def train_epoch(self, device, verbose=1):
+    def replay_memory(self, device, verbose=1):
         # @todo check
-        accuracies = []
+        observation_sample, action_sample, reward_sample = self.memory.sample(20)
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
             labels = labels.to(device)
@@ -35,14 +35,13 @@ class PolicyGradient(ReinforcementLearner):
             actions, log_probs = self.agent.sample(action_probs, device=device)
 
             accuracy, rewards = self.get_rewards(actions, labels)
-            accuracies += [accuracy]
 
             loss = self.crit(log_probs, rewards)
 
             self.losses += [loss]
 
             self.backward(loss)
-        self.accuracy += [np.mean(accuracies)]
+
         if verbose:
             print('accuracy: {:.4f} \n'.format(np.mean(accuracy)))
         return accuracy
@@ -81,5 +80,5 @@ class PolicyGradient(ReinforcementLearner):
 
     def chose_action(self, observation):
         probs = self.agent(observation)
-        dist = Categorical(probs)
-        return dist.sample()
+        dist = Categorical(probs.squeeze())
+        return dist.sample().item()

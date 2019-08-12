@@ -39,17 +39,17 @@ class ReinforcementLearner:
             print('episode: {}'.format(episode))
             
             self.play_episode()
-            self.train_epoch(device)
+            self.replay_memory(device)
             self.episodes_run += 1
             
             if episode % checkpoint_int == 0:
                 self.dump_checkpoint(self.epochs_run + episode)
             if episode % validation_int == 0:
                 performance = self.validate(device=device)
-                self.val_losses += [[performance, self.epochs_run + epoch]]
+                self.val_losses += [[performance, self.episodes_run]]
                 if performance < self.best_performance:
                     self.best_performance = performance
-                    self.dump_checkpoint(epoch=self.epochs_run + epoch, path=self.early_stopping_path)
+                    self.dump_checkpoint(epoch=self.episodes_run, path=self.early_stopping_path)
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path)
@@ -78,8 +78,8 @@ class ReinforcementLearner:
             action = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
 
-            if self.reward_transform is not None:
-                reward = self.reward_transform(reward, new_observation, done)
+            # if self.reward_transform is not None:
+            #     reward = self.reward_transform(reward, new_observation, done)
 
             episode_reward += reward
             self.memory.memorize(observation, action, reward)
@@ -93,7 +93,7 @@ class ReinforcementLearner:
 
         if episode_reward > self.best_performance:
             self.best_performance = episode_reward
-            self.dump_checkpoint(self.epochs_run, self.early_stopping_path)
+            self.dump_checkpoint(self.episodes_run, self.early_stopping_path)
 
         return episode_reward
 
@@ -149,7 +149,7 @@ class Memory:
     def memorize(self, observation, action, reward):
         # @todo data types
         self.memory_observations += [list(observation)]
-        a = torch.zeros(self.action_space, dtype=torch.int)
+        a = torch.zeros(self.action_space.n, dtype=torch.int)
         a[action] = 1
         self.memory_actions += [list(a)]
         self.memory_rewards += [reward]
