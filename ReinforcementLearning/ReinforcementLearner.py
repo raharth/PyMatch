@@ -12,7 +12,7 @@ class ReinforcementLearner:
         self.crit = crit
         self.env = env
 
-        self.memory = Memory(env.action_space, buffer_size)
+        self.memory = Memory(['log_prob', 'reward'], buffer_size)
 
         self.losses = []
         self.rewards = []
@@ -75,14 +75,14 @@ class ReinforcementLearner:
 
         while not terminate:
             step_counter += 1
-            action = self.chose_action(observation)
+            action, log_prob = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
 
             # if self.reward_transform is not None:
             #     reward = self.reward_transform(reward, new_observation, done)
 
             episode_reward += reward
-            self.memory.memorize(observation, action, reward)
+            self.memory.memorize(log_prob, reward)
             observation = new_observation
             terminate = done or (episode_length is not None and step_counter >= episode_length)
 
@@ -132,48 +132,60 @@ class ReinforcementLearner:
 
 class Memory:
 
-    def __init__(self, action_space, buffer_size=None):
+    def __init__(self, memory_cells, buffer_size=None):
         """
         Memory class for RL algorithm.
 
         Args:
-            action_space (int):
             buffer_size (int): max buffer size
         """
-        self.memory_observations = []
-        self.memory_actions = []
-        self.memory_rewards = []
-        self.action_space = action_space
+        # self.memory_observations = []
+        # self.memory_actions = []
+        # self.memory_rewards = []
+        self.memory = {}
+        for cell in memory_cells:
+            self.memory[cell] = []
+        # self.action_space = action_space
         self.buffer_size = buffer_size
 
-    def memorize(self, observation, action, reward):
+    def memorize(self, values, cell_name):
         # @todo data types
-        self.memory_observations += [list(observation)]
-        a = torch.zeros(self.action_space.n, dtype=torch.int)
-        a[action] = 1
-        self.memory_actions += [list(a)]
-        self.memory_rewards += [reward]
+        # self.memory_observations += [list(observation)]
+        # a = torch.zeros(self.action_space.n, dtype=torch.int)
+        # a[action] = 1
+        # self.memory_actions += [list(a)]
+        # self.memory_rewards += [reward]
+        for val, cell in zip(values, cell_name):
+            self.memory[cell] += [val]
 
         self._reduce_buffer()
         return
 
     def memory_reset(self):
         # @todo data types
-        self.memory_observations = []
-        self.memory_actions = []
-        self.memory_rewards = []
+        for key in self.memory:
+            self.memory[key] = []
+        # self.memory_observations = []
+        # self.memory_actions = []
+        # self.memory_rewards = []
         return
 
     def _reduce_buffer(self):
         if self.buffer_size is not None:
-            self.memory_observations = self.memory_observations[-self.buffer_size:]
-            self.memory_actions = self.memory_actions[-self.buffer_size:]
-            self.memory_rewards = self.memory_rewards[-self.buffer_size:]
+            for key in self.memory:
+                self.memory[key] = self.memory[key][-self.buffer_size:]
+            # self.memory_observations = self.memory_observations[-self.buffer_size:]
+            # self.memory_actions = self.memory_actions[-self.buffer_size:]
+            # self.memory_rewards = self.memory_rewards[-self.buffer_size:]
         return
 
     def sample(self, n):
         mask = np.random.choice(range(len(self.memory_actions)), n)
-        observation_sample = torch.tensor(self.memory_observations)[mask]
-        action_sample = torch.tensor(self.memory_actions)[mask]
-        reward_sample = torch.tensor(self.memory_rewards)[mask]
-        return observation_sample, action_sample, reward_sample
+        result = []
+        for key in self.memory:
+            result += [self.memory[key][mask]]
+
+        # observation_sample = torch.tensor(self.memory_observations)[mask]
+        # action_sample = torch.tensor(self.memory_actions)[mask]
+        # reward_sample = torch.tensor(self.memory_rewards)[mask]
+        return result

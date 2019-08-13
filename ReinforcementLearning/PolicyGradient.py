@@ -9,6 +9,7 @@ from torch.distributions import Categorical
 
 # own imports
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
+from ReinforcementLearning.Loss import REINFORCELoss
 
 
 class PolicyGradient(ReinforcementLearner):
@@ -27,6 +28,8 @@ class PolicyGradient(ReinforcementLearner):
     def replay_memory(self, device, verbose=1):
         # @todo check
         observation_sample, action_sample, reward_sample = self.memory.sample(20)
+        loss = self.crit()
+        crit = REINFORCELoss
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
             labels = labels.to(device)
@@ -81,4 +84,6 @@ class PolicyGradient(ReinforcementLearner):
     def chose_action(self, observation):
         probs = self.agent(observation)
         dist = Categorical(probs.squeeze())
-        return dist.sample().item()
+        action = dist.sample()
+        log_prob = dist.log_prob(action)
+        return action.item(), log_prob
