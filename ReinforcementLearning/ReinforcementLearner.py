@@ -4,6 +4,8 @@ import torch.nn as nn
 import os
 import numpy as np
 
+from ReinforcementLearning.Memory import Memory
+
 class ReinforcementLearner:
 
     def __init__(self, agent, optimizer, env, crit, grad_clip=0., buffer_size=None, checkpoint_root=None, load_checkpoint=False):
@@ -78,11 +80,8 @@ class ReinforcementLearner:
             action, log_prob = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
 
-            # if self.reward_transform is not None:
-            #     reward = self.reward_transform(reward, new_observation, done)
-
             episode_reward += reward
-            self.memory.memorize(log_prob, reward)
+            self.memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
             observation = new_observation
             terminate = done or (episode_length is not None and step_counter >= episode_length)
 
@@ -129,63 +128,3 @@ class ReinforcementLearner:
         self.best_performance = checkpoint['best_performance']
         self.memory = checkpoint['memory']
 
-
-class Memory:
-
-    def __init__(self, memory_cells, buffer_size=None):
-        """
-        Memory class for RL algorithm.
-
-        Args:
-            buffer_size (int): max buffer size
-        """
-        # self.memory_observations = []
-        # self.memory_actions = []
-        # self.memory_rewards = []
-        self.memory = {}
-        for cell in memory_cells:
-            self.memory[cell] = []
-        # self.action_space = action_space
-        self.buffer_size = buffer_size
-
-    def memorize(self, values, cell_name):
-        # @todo data types
-        # self.memory_observations += [list(observation)]
-        # a = torch.zeros(self.action_space.n, dtype=torch.int)
-        # a[action] = 1
-        # self.memory_actions += [list(a)]
-        # self.memory_rewards += [reward]
-        for val, cell in zip(values, cell_name):
-            self.memory[cell] += [val]
-
-        self._reduce_buffer()
-        return
-
-    def memory_reset(self):
-        # @todo data types
-        for key in self.memory:
-            self.memory[key] = []
-        # self.memory_observations = []
-        # self.memory_actions = []
-        # self.memory_rewards = []
-        return
-
-    def _reduce_buffer(self):
-        if self.buffer_size is not None:
-            for key in self.memory:
-                self.memory[key] = self.memory[key][-self.buffer_size:]
-            # self.memory_observations = self.memory_observations[-self.buffer_size:]
-            # self.memory_actions = self.memory_actions[-self.buffer_size:]
-            # self.memory_rewards = self.memory_rewards[-self.buffer_size:]
-        return
-
-    def sample(self, n):
-        mask = np.random.choice(range(len(self.memory_actions)), n)
-        result = []
-        for key in self.memory:
-            result += [self.memory[key][mask]]
-
-        # observation_sample = torch.tensor(self.memory_observations)[mask]
-        # action_sample = torch.tensor(self.memory_actions)[mask]
-        # reward_sample = torch.tensor(self.memory_rewards)[mask]
-        return result
