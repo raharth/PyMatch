@@ -1,33 +1,21 @@
-# general imports
-import numpy as np
-from tqdm import tqdm
-
-# torch imports
 import torch
 import torch.nn as nn
-from torch.distributions import Categorical
+import torch.nn.functional as F
 
-# own imports
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from ReinforcementLearning.Loss import REINFORCELoss
 from ReinforcementLearning.Memory import Memory
 
 
-class PolicyGradient(ReinforcementLearner):
+class Q_Learner(ReinforcementLearner):
 
-    def __init__(self, agent, optimizer, env, crit, grad_clip=0., load_checkpoint=False):
-        """
-
-        Args:
-            agent (nn.Module): neural network
-            optimizer (torch.optim): Optimizer
-            env(any): environment to interact with
-            crit (any): loss function
-        """
-        super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
-        self.memory = Memory(['log_prob', 'reward'], buffer_size=None)
+    def __init__(self, agent, optimizer, env, selection_policy, grad_clip=0., load_checkpoint=False):
+        crit = nn.L1Loss()
+        super(Q_Learner, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
+        self.memory = Memory(['state', 'action', 'reward', 'next_state'], buffer_size=2000)
+        self.selection_policy = selection_policy
 
     def play_episode(self, episode_length=None, render=False):
+        # @todo PG code
         """
         Plays a single episode.
         This might need to be changed when using a non openAI gym environment.
@@ -43,15 +31,14 @@ class PolicyGradient(ReinforcementLearner):
         episode_reward = 0
         step_counter = 0
         terminate = False
-        episode_memory = Memory(['log_prob', 'reward'])
 
         while not terminate:
             step_counter += 1
-            action, log_prob = self.chose_action(observation)
+            action = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
+            self.memory.memorize((observation, action, reward, new_observation), ['state', 'action', 'reward', 'next_state'])
 
             episode_reward += reward
-            episode_memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
             observation = new_observation
             terminate = done or (episode_length is not None and step_counter >= episode_length)
 
@@ -60,8 +47,6 @@ class PolicyGradient(ReinforcementLearner):
             if done:
                 break
 
-        episode_memory.cumul_reward()
-        self.memory.memorize(episode_memory, episode_memory.memory_cells)
         self.rewards += [episode_reward]
 
         if episode_reward > self.best_performance:
@@ -71,16 +56,24 @@ class PolicyGradient(ReinforcementLearner):
         return episode_reward
 
     def replay_memory(self, device, verbose=1):
-        log_prob, reward = self.memory.sample(None)
-        log_prob, reward = log_prob.to(device), reward.to(device)
-        loss = self.crit(log_prob, reward)
+        # @todo PG code
+        state, action, reward, next_state = self.memory.sample(None)
+        state, reward, next_state = state.to(device), reward.to(device), next_state.to(device)
+        prediction = self.agent(state)
+        with torch.no_grad():
+            self.agent.eval()
+            max_next = self.agent(next_state).max(dim=1)
+        target = prediction.detach()
+
+        # batch TD
+        for t, a, r, m in zip(target, action, reward, max_next):
+            t[a] += self.alpha * (r + self.gamma * m - t[a])
+
+        loss = self.crit(prediction, target)
         self.losses += [loss]
         self.backward(loss)
-        self.memory.memory_reset()
 
     def chose_action(self, observation):
-        probs = self.agent(observation)
-        dist = Categorical(probs.squeeze())
-        action = dist.sample()
-        log_prob = dist.log_prob(action)
-        return action.item(), log_prob
+        q_values = self.agent(observation)
+        action = self.selection_policy.choose(q_values)
+        return action.item()

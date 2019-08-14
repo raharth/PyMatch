@@ -4,18 +4,19 @@ import torch.nn as nn
 import os
 import numpy as np
 from tqdm import tqdm
+from abc import ABC
 
 from ReinforcementLearning.Memory import Memory
 
-class ReinforcementLearner:
+class ReinforcementLearner(ABC):
 
-    def __init__(self, agent, optimizer, env, crit, grad_clip=0., buffer_size=None, checkpoint_root=None, load_checkpoint=False):
+    def __init__(self, agent, optimizer, env, crit, grad_clip=0., checkpoint_root=None, load_checkpoint=False):
         self.agent = agent
         self.optimizer = optimizer
         self.crit = crit
         self.env = env
 
-        self.memory = Memory(['log_prob', 'reward'], buffer_size)
+        self.memory = None  # depends on learning algorithm
 
         self.losses = []
         self.rewards = []
@@ -39,7 +40,7 @@ class ReinforcementLearner:
         self.agent.train()
 
         for episode in tqdm(range(episodes)):
-            # print('episode: {}'.format(episode))
+            print('episode: {}'.format(episode))
             
             reward = self.play_episode(render=render)
             self.replay_memory(device)
@@ -64,6 +65,7 @@ class ReinforcementLearner:
         self.optimizer.step()
         return
 
+    # @abstractmethod
     def chose_action(self, observation):
         raise NotImplementedError
 
@@ -75,7 +77,8 @@ class ReinforcementLearner:
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'loss': self.losses,
                     'best_performance': self.best_performance,
-                    'memory': self.memory
+                    'memory': self.memory,
+                    'rewards': self.rewards
                     },
                    path)
 
@@ -87,4 +90,5 @@ class ReinforcementLearner:
         self.losses = checkpoint['loss']
         self.best_performance = checkpoint['best_performance']
         self.memory = checkpoint['memory']
+        self.rewards = checkpoint['rewards']
 

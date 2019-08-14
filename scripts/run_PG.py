@@ -10,16 +10,17 @@ from ReinforcementLearning.TorchEnv import TorchEnv
 
 model = Model(4, 2)
 env = TorchEnv('CartPole-v1')
-optim = torch.optim.SGD(model.parameters(), lr=.001, momentum=.7)
+optim = torch.optim.SGD(model.parameters(), lr=.001, momentum=.1)
 crit = REINFORCELoss()
 
 learner = PolicyGradient(agent=model,
                          optimizer=optim,
                          env=env,
                          crit=crit,
-                         grad_clip=20.)
+                         grad_clip=20.,
+                         load_checkpoint=False)
 
-learner.train(1, 'cpu', render=True)
+learner.train(1000, 'cpu', checkpoint_int=100, render=False)
 
 plt.plot(learner.rewards)
 plt.show()
