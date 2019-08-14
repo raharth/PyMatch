@@ -1,6 +1,7 @@
 import gym
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 
 from ReinforcementLearning.PolicyGradient import PolicyGradient
 from ReinforcementLearning.Loss import REINFORCELoss
@@ -9,18 +10,16 @@ from ReinforcementLearning.TorchEnv import TorchEnv
 
 model = Model(4, 2)
 env = TorchEnv('CartPole-v1')
-optim = torch.optim.SGD(model.parameters(), lr=.01)
+optim = torch.optim.SGD(model.parameters(), lr=.001, momentum=.7)
 crit = REINFORCELoss()
 
 learner = PolicyGradient(agent=model,
-                       optimizer=optim,
-                       env=env,
-                       crit=crit)
+                         optimizer=optim,
+                         env=env,
+                         crit=crit,
+                         grad_clip=20.)
 
-learner.train(1, 'cpu')
+learner.train(1, 'cpu', render=True)
 
-
-env.step(0)
-
-
-env.action_space
+plt.plot(learner.rewards)
+plt.show()

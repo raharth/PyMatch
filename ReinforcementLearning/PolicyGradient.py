@@ -10,11 +10,12 @@ from torch.distributions import Categorical
 # own imports
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
 from ReinforcementLearning.Loss import REINFORCELoss
+from ReinforcementLearning.Memory import Memory
 
 
 class PolicyGradient(ReinforcementLearner):
 
-    def __init__(self, agent, optimizer, env, crit, grad_clip=None, load_checkpoint=False):
+    def __init__(self, agent, optimizer, env, crit, grad_clip=0., load_checkpoint=False):
         """
 
         Args:
@@ -24,62 +25,58 @@ class PolicyGradient(ReinforcementLearner):
             crit (any): loss function
         """
         super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
+        self.episode_memory = Memory(['log_prob', 'reward'])
+
+    def play_episode(self, episode_length=None, render=False):
+        """
+        Plays a single episode.
+        This might need to be changed when using a non openAI gym environment.
+
+        Args:
+            episode_length (int): max length of an episode
+            render (bool): render environment
+
+        Returns:
+            episode reward
+        """
+        observation = self.env.reset().detach()
+        episode_reward = 0
+        step_counter = 0
+        terminate = False
+        episode_memory = Memory(['log_prob', 'reward'])
+
+        while not terminate:
+            step_counter += 1
+            action, log_prob = self.chose_action(observation)
+            new_observation, reward, done, _ = self.env.step(action)
+
+            episode_reward += reward
+            episode_memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
+            observation = new_observation
+            terminate = done or (episode_length is not None and step_counter >= episode_length)
+
+            if render:
+                self.env.render()
+            if done:
+                break
+
+        episode_memory.cumul_reward()
+        self.memory.memorize(episode_memory, episode_memory.memory_cells)
+        self.rewards += [episode_reward]
+
+        if episode_reward > self.best_performance:
+            self.best_performance = episode_reward
+            self.dump_checkpoint(self.episodes_run, self.early_stopping_path)
+
+        return episode_reward
 
     def replay_memory(self, device, verbose=1):
-        # @todo check
-        observation_sample, action_sample, reward_sample = self.memory.sample(20)
-        loss = self.crit()
-        crit = REINFORCELoss
-        for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
-            data = data.to(device)
-            labels = labels.to(device)
-            action_probs = self.agent.forward(data, device=device)
-
-            actions, log_probs = self.agent.sample(action_probs, device=device)
-
-            accuracy, rewards = self.get_rewards(actions, labels)
-
-            loss = self.crit(log_probs, rewards)
-
+        if self.memory.get_size() > 20:
+            log_prob, reward = self.memory.sample(None)
+            loss = self.crit(log_prob, reward)
             self.losses += [loss]
-
             self.backward(loss)
-
-        if verbose:
-            print('accuracy: {:.4f} \n'.format(np.mean(accuracy)))
-        return accuracy
-
-    def validate(self, device, verbose=0):
-        # @todo check
-        self.agent.eval()
-
-        with torch.no_grad():
-            correct = 0.
-            total = 0.
-            for data, y in self.val_loader:
-                action_probs = self.agent(data, device=device).to('cpu')
-                _, predicted = torch.max(action_probs.data, 1)
-                y = y[predicted != self.n_classes]
-                predicted = predicted[predicted != self.n_classes]
-                total += y.size(0)
-                correct += (predicted == y).sum().item()
-            if verbose == 1:
-                print('accuracy: {:.4f}'.format(correct / total))
-            return correct / total
-
-    def predict(self, data_loader, device, prob=False):
-        # @todo check
-        self.agent.eval()
-        with torch.no_grad():
-            predictions = []
-            for batch, (data, _) in tqdm(enumerate(data_loader)):
-                data = data.to(device)
-                action_probs = self.agent.forward(data, device=device).to('cpu')
-                if prob:
-                    return action_probs.numpy()
-                actions = torch.max(action_probs.data, 1)[1].numpy()
-                predictions += [actions]
-            return np.concatenate(predictions)
+            self.memory.memory_reset()
 
     def chose_action(self, observation):
         probs = self.agent(observation)

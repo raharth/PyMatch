@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import os
 import numpy as np
+from tqdm import tqdm
 
 from ReinforcementLearning.Memory import Memory
 
@@ -34,67 +35,26 @@ class ReinforcementLearner:
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path)
 
-    def train(self, episodes, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False):
+    def train(self, episodes, device, checkpoint_int=10, restore_early_stopping=False, render=False):
         self.agent.train()
 
-        for episode in range(episodes):
-            print('episode: {}'.format(episode))
+        for episode in tqdm(range(episodes)):
+            # print('episode: {}'.format(episode))
             
-            self.play_episode()
+            reward = self.play_episode(render=render)
             self.replay_memory(device)
             self.episodes_run += 1
             
             if episode % checkpoint_int == 0:
-                self.dump_checkpoint(self.epochs_run + episode)
-            if episode % validation_int == 0:
-                performance = self.validate(device=device)
-                self.val_losses += [[performance, self.episodes_run]]
-                if performance < self.best_performance:
-                    self.best_performance = performance
-                    self.dump_checkpoint(epoch=self.episodes_run, path=self.early_stopping_path)
+                self.dump_checkpoint(self.episodes_run + episode)
+            if reward > self.best_performance:
+                self.best_performance = reward
+                self.dump_checkpoint(epoch=self.episodes_run, path=self.early_stopping_path)
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path)
-        self.dump_checkpoint(self.epochs_run, self.checkpoint_path)
+        self.dump_checkpoint(self.episodes_run, self.checkpoint_path)
         return
-
-    def play_episode(self, episode_length=None, render=False):
-        """
-        Plays a single episode.
-        This might need to be changed when using a non openAI gym environment.
-
-        Args:
-            episode_length (int): max length of an episode
-            render (bool): render environment
-
-        Returns:
-            episode reward
-        """
-        observation = torch.tensor(self.env.reset())
-        episode_reward = 0
-        step_counter = 0
-        terminate = False
-
-        while not terminate:
-            step_counter += 1
-            action, log_prob = self.chose_action(observation)
-            new_observation, reward, done, _ = self.env.step(action)
-
-            episode_reward += reward
-            self.memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
-            observation = new_observation
-            terminate = done or (episode_length is not None and step_counter >= episode_length)
-
-            if render:
-                self.env.render()
-
-        self.rewards += [episode_reward]
-
-        if episode_reward > self.best_performance:
-            self.best_performance = episode_reward
-            self.dump_checkpoint(self.episodes_run, self.early_stopping_path)
-
-        return episode_reward
 
     def backward(self, loss):
         self.optimizer.zero_grad()

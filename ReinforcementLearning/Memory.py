@@ -17,16 +17,21 @@ class Memory:
         self.memory = {}
         self.memory_reset()
 
-    def memorize(self, values: list, cell_name: list):
+    def memorize(self, values, cell_name: list):
         """
         Memorizes a list of torch tensors to the memory cells provided by the cell_name list.
 
         Args:
-            values (list): list of torch tensors to memorize
+            values (list)/(Memory): list of torch tensors to memorize
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
+        if isinstance(values, Memory):  # create list of values from memory
+            values = [values.memory[key] for key in values.memory_cells]
+
         for val, cell in zip(values, cell_name):
+            if len(val.shape) == 0:
+                val = val.unsqueeze(0)
             self.memory[cell] = torch.cat((self.memory[cell], val))
         self._reduce_buffer()
 
@@ -59,7 +64,7 @@ class Memory:
         Returns:
             a list of all sampled memory elements as torch.tensors
         """
-        curr_size = len(self.memory[list(self.memory.keys())[0]])
+        curr_size = self.get_size()
         if n is None:
             n = curr_size - 1   # first element is a default element
             replace = False
@@ -68,3 +73,26 @@ class Memory:
         for key in self.memory:
             result += [self.memory[key][mask]]
         return result
+
+    def cumul_reward(self, cell_name='reward', gamma=.95):
+        """
+        Computes the cumulative reward of the memory.
+
+        Args:
+            cell_name (str): name of the reward memory cell.
+
+        Returns:
+            None
+
+        """
+        reward = self.memory[cell_name]
+        Reward = []
+        R = 0
+        for r in reward.flip(0):
+            R = R * gamma + r.item()
+            Reward.insert(0, R)
+        self.memory[cell_name] = torch.tensor(Reward)
+
+    def get_size(self):
+        return len(self.memory[list(self.memory.keys())[0]])
+
