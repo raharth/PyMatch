@@ -10,7 +10,7 @@ from torch.distributions import Categorical
 # own imports
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
 from ReinforcementLearning.Loss import REINFORCELoss
-from ReinforcementLearning.Memory import Memory
+from ReinforcementLearning.Memory import PGMemory
 
 
 class PolicyGradient(ReinforcementLearner):
@@ -25,7 +25,7 @@ class PolicyGradient(ReinforcementLearner):
             crit (any): loss function
         """
         super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
-        self.memory = Memory(['log_prob', 'reward'], buffer_size=None)
+        self.memory = PGMemory(['log_prob', 'reward'], buffer_size=None)
 
     def play_episode(self, episode_length=None, render=False):
         """
@@ -43,7 +43,7 @@ class PolicyGradient(ReinforcementLearner):
         episode_reward = 0
         step_counter = 0
         terminate = False
-        episode_memory = Memory(['log_prob', 'reward'])
+        episode_memory = PGMemory(['log_prob', 'reward'])
 
         while not terminate:
             step_counter += 1
@@ -61,7 +61,7 @@ class PolicyGradient(ReinforcementLearner):
                 break
 
         episode_memory.cumul_reward()
-        self.memory.memorize(episode_memory, episode_memory.memory_cells)
+        self.memory.memorize(episode_memory, episode_memory.memory_cell_names)
         self.rewards += [episode_reward]
 
         if episode_reward > self.best_performance:

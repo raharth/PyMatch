@@ -4,7 +4,7 @@ import numpy as np
 
 class Memory:
 
-    def __init__(self, memory_cells, buffer_size=None):
+    def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
         """
         Memory class for RL algorithm.
 
@@ -12,7 +12,10 @@ class Memory:
             buffer_size (int): max buffer size
 
         """
-        self.memory_cells = memory_cells
+        if memory_cell_space is None:
+            memory_cell_space = [1 for _ in range(len(memory_cell_names))]
+        self.memory_cell_space = memory_cell_space
+        self.memory_cell_names = memory_cell_names
         self.buffer_size = buffer_size
         self.memory = {}
         self.memory_reset()
@@ -27,10 +30,10 @@ class Memory:
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            values = [values.memory[key] for key in values.memory_cells]
+            values = [values.memory[key] for key in values.memory_cell_names]
 
         for val, cell in zip(values, cell_name):
-            if len(val.shape) == 0:
+            if len(val.shape) == 0:     # maybe delete
                 val = val.unsqueeze(0)
             self.memory[cell] = torch.cat((self.memory[cell], val))
         self._reduce_buffer()
@@ -40,9 +43,10 @@ class Memory:
         Resets the memory to an empty one.
         The first element of each memory cell is always a default element.
         """
-        self.memory = {}
-        for key in self.memory_cells:
-            self.memory[key] = torch.tensor([0.])
+        raise NotImplementedError
+        # self.memory = {}
+        # for key, space in zip(self.memory_cell_names, self. memory_cell_space):
+        #     self.memory[key] = torch.zeros(1, space)
 
     def _reduce_buffer(self):
         """
@@ -74,6 +78,24 @@ class Memory:
             result += [self.memory[key][mask]]
         return result
 
+    def get_size(self):
+        return len(self.memory[list(self.memory.keys())[0]])
+
+
+class PGMemory(Memory):
+
+    def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
+        super(PGMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
+
+    def memory_reset(self):
+        """
+        Resets the memory to an empty one.
+        The first element of each memory cell is always a default element.
+        """
+        self.memory = {}
+        for key, space in zip(self.memory_cell_names, self. memory_cell_space):
+            self.memory[key] = torch.zeros(space)
+
     def cumul_reward(self, cell_name='reward', gamma=.95):
         """
         Computes the cumulative reward of the memory.
@@ -93,6 +115,17 @@ class Memory:
             Reward.insert(0, R)
         self.memory[cell_name] = torch.tensor(Reward)
 
-    def get_size(self):
-        return len(self.memory[list(self.memory.keys())[0]])
 
+class QMemory(Memory):
+
+    def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
+        super(QMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
+
+    def memory_reset(self):
+        """
+        Resets the memory to an empty one.
+        The first element of each memory cell is always a default element.
+        """
+        self.memory = {}
+        for key, space in zip(self.memory_cell_names, self. memory_cell_space):
+            self.memory[key] = torch.zeros(1, space)

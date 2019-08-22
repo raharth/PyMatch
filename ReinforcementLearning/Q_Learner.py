@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.tensor as tt
 
 from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
 from ReinforcementLearning.Memory import Memory
@@ -11,7 +12,7 @@ class Q_Learner(ReinforcementLearner):
     def __init__(self, agent, optimizer, env, selection_policy, grad_clip=0., load_checkpoint=False):
         crit = nn.L1Loss()
         super(Q_Learner, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
-        self.memory = Memory(['state', 'action', 'reward', 'next_state'], buffer_size=2000)
+        self.memory = Memory(['state', 'action', 'reward', 'next_state'], [4, 1, 1, 4], buffer_size=2000)
         self.selection_policy = selection_policy
 
     def play_episode(self, episode_length=None, render=False):
@@ -36,7 +37,8 @@ class Q_Learner(ReinforcementLearner):
             step_counter += 1
             action = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
-            self.memory.memorize((observation, action, reward, new_observation), ['state', 'action', 'reward', 'next_state'])
+            self.memory.memorize((observation, tt(action).float(), tt(reward), new_observation), ['state', 'action', 'reward', 'next_state'])
+            # self.memory.memorize((observation.squeeze(), tt(action), tt(reward), new_observation.squeeze()), ['state', 'action', 'reward', 'next_state'])
 
             episode_reward += reward
             observation = new_observation

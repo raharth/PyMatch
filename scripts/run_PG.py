@@ -2,12 +2,14 @@ import gym
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from my_utils import sliding_mean
 
 from ReinforcementLearning.PolicyGradient import PolicyGradient
 from ReinforcementLearning.Loss import REINFORCELoss
 from models.PG1 import Model
 from ReinforcementLearning.TorchEnv import TorchEnv
+
+from my_utils import sliding_mean
+
 
 model = Model(4, 2)
 env = TorchEnv('CartPole-v1')
