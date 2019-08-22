@@ -1,5 +1,9 @@
 # PyTorch files
 .idea
+*__pycache__*
 
 # tmp output folder
 tmp
+
+# test files
+test.py
