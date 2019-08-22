@@ -30,23 +30,27 @@ class Memory:
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            values = [values.memory[key] for key in values.memory_cell_names]
-
-        for val, cell in zip(values, cell_name):
-            if len(val.shape) == 0:     # maybe delete
-                val = val.unsqueeze(0)
-            self.memory[cell] = torch.cat((self.memory[cell], val))
+            self._merge_memory(values, cell_name)
+        else:
+            self._memorize_values(values, cell_name)
         self._reduce_buffer()
+
+    def _memorize_values(self, values, cell_name: list):
+        for val, cell in zip(values, cell_name):
+            self.memory[cell] += [val]
+
+    def _merge_memory(self, values, cell_name):
+        for key in cell_name:
+            self.memory[key] += values.memory[key]
 
     def memory_reset(self):
         """
         Resets the memory to an empty one.
         The first element of each memory cell is always a default element.
         """
-        raise NotImplementedError
-        # self.memory = {}
-        # for key, space in zip(self.memory_cell_names, self. memory_cell_space):
-        #     self.memory[key] = torch.zeros(1, space)
+        self.memory = {}
+        for key in zip(self.memory_cell_names):
+            self.memory[key] = []
 
     def _reduce_buffer(self):
         """
@@ -70,16 +74,49 @@ class Memory:
         """
         curr_size = self.get_size()
         if n is None:
-            n = curr_size - 1   # first element is a default element
+            n = curr_size   # first element is a default element
             replace = False
-        mask = np.random.choice(range(1, curr_size), n, replace=replace)
+        mask = np.random.choice(range(curr_size), n, replace=replace)
         result = []
+
+        memory = {}
         for key in self.memory:
-            result += [self.memory[key][mask]]
+            memory[key] = torch.stack(self.memory[key])
+
+        for key in memory:
+            result += [memory[key][mask]]
         return result
 
     def get_size(self):
         return len(self.memory[list(self.memory.keys())[0]])
+
+    def memory_reset(self):
+        """
+        Resets the memory to an empty one.
+        The first element of each memory cell is always a default element.
+        """
+        self.memory = {}
+        for key in self.memory_cell_names:
+            self.memory[key] = []
+
+    def cumul_reward(self, cell_name='reward', gamma=.95):
+        """
+        Computes the cumulative reward of the memory.
+
+        Args:
+            cell_name (str): name of the reward memory cell.
+
+        Returns:
+            None
+
+        """
+        reward = torch.stack(self.memory[cell_name])
+        Reward = []
+        R = 0
+        for r in reward.flip(0):
+            R = R * gamma + r.item()
+            Reward.insert(0, torch.tensor(R))
+        self.memory[cell_name] = Reward
 
 
 class PGMemory(Memory):
