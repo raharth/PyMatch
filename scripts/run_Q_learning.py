@@ -14,7 +14,7 @@ from my_utils import sliding_mean
 model = Model(4, 2)
 env = TorchEnv('CartPole-v1')
 selection_policy = Softmax_Selection(.1)
-optim = torch.optim.SGD(model.parameters(), lr=.0001, momentum=.9)
+optim = torch.optim.SGD(model.parameters(), lr=.0001, momentum=.1)
 
 learner = Q_Learner(agent=model,
                     optimizer=optim,
