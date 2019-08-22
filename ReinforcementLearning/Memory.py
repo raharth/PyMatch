@@ -119,50 +119,50 @@ class Memory:
         self.memory[cell_name] = Reward
 
 
-class PGMemory(Memory):
+# class PGMemory(Memory):
+#
+#     def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
+#         super(PGMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
+#
+#     def memory_reset(self):
+#         """
+#         Resets the memory to an empty one.
+#         The first element of each memory cell is always a default element.
+#         """
+#         self.memory = {}
+#         for key, space in zip(self.memory_cell_names, self. memory_cell_space):
+#             self.memory[key] = torch.zeros(space)
+#
+#     def cumul_reward(self, cell_name='reward', gamma=.95):
+#         """
+#         Computes the cumulative reward of the memory.
+#
+#         Args:
+#             cell_name (str): name of the reward memory cell.
+#
+#         Returns:
+#             None
+#
+#         """
+#         reward = self.memory[cell_name]
+#         Reward = []
+#         R = 0
+#         for r in reward.flip(0):
+#             R = R * gamma + r.item()
+#             Reward.insert(0, R)
+#         self.memory[cell_name] = torch.tensor(Reward)
 
-    def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
-        super(PGMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
 
-    def memory_reset(self):
-        """
-        Resets the memory to an empty one.
-        The first element of each memory cell is always a default element.
-        """
-        self.memory = {}
-        for key, space in zip(self.memory_cell_names, self. memory_cell_space):
-            self.memory[key] = torch.zeros(space)
-
-    def cumul_reward(self, cell_name='reward', gamma=.95):
-        """
-        Computes the cumulative reward of the memory.
-
-        Args:
-            cell_name (str): name of the reward memory cell.
-
-        Returns:
-            None
-
-        """
-        reward = self.memory[cell_name]
-        Reward = []
-        R = 0
-        for r in reward.flip(0):
-            R = R * gamma + r.item()
-            Reward.insert(0, R)
-        self.memory[cell_name] = torch.tensor(Reward)
-
-
-class QMemory(Memory):
-
-    def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
-        super(QMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
-
-    def memory_reset(self):
-        """
-        Resets the memory to an empty one.
-        The first element of each memory cell is always a default element.
-        """
-        self.memory = {}
-        for key, space in zip(self.memory_cell_names, self. memory_cell_space):
-            self.memory[key] = torch.zeros(1, space)
+# class QMemory(Memory):
+#
+#     def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):
+#         super(QMemory, self).__init__(memory_cell_names, memory_cell_space=memory_cell_space, buffer_size=buffer_size)
+#
+#     def memory_reset(self):
+#         """
+#         Resets the memory to an empty one.
+#         The first element of each memory cell is always a default element.
+#         """
+#         self.memory = {}
+#         for key, space in zip(self.memory_cell_names, self. memory_cell_space):
+#             self.memory[key] = torch.zeros(1, space)

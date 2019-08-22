@@ -12,11 +12,10 @@ class Q_Learner(ReinforcementLearner):
     def __init__(self, agent, optimizer, env, selection_policy, grad_clip=0., load_checkpoint=False):
         crit = nn.L1Loss()
         super(Q_Learner, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
-        self.memory = Memory(['state', 'action', 'reward', 'next_state'], [4, 1, 1, 4], buffer_size=2000)
+        self.memory = Memory(['state', 'action', 'reward', 'next_state'], [4, 1, 1, 4], buffer_size=10000)
         self.selection_policy = selection_policy
 
     def play_episode(self, episode_length=None, render=False):
-        # @todo PG code
         """
         Plays a single episode.
         This might need to be changed when using a non openAI gym environment.
@@ -37,8 +36,7 @@ class Q_Learner(ReinforcementLearner):
             step_counter += 1
             action = self.chose_action(observation)
             new_observation, reward, done, _ = self.env.step(action)
-            self.memory.memorize((observation, tt(action).float(), tt(reward), new_observation), ['state', 'action', 'reward', 'next_state'])
-            # self.memory.memorize((observation.squeeze(), tt(action), tt(reward), new_observation.squeeze()), ['state', 'action', 'reward', 'next_state'])
+            self.memory.memorize((observation.squeeze(), tt(action), tt(reward), new_observation.squeeze()), ['state', 'action', 'reward', 'next_state'])
 
             episode_reward += reward
             observation = new_observation
@@ -57,22 +55,21 @@ class Q_Learner(ReinforcementLearner):
 
         return episode_reward
 
-    def replay_memory(self, device, verbose=1):
-        # @todo PG code
-        state, action, reward, next_state = self.memory.sample(None)
+    def replay_memory(self, device, batch_size=128, verbose=1):
+        state, action, reward, next_state = self.memory.sample(batch_size)
         state, reward, next_state = state.to(device), reward.to(device), next_state.to(device)
         prediction = self.agent(state)
         with torch.no_grad():
             self.agent.eval()
-            max_next = self.agent(next_state).max(dim=1)
-        target = prediction.detach()
+            max_next = self.agent(next_state).max(dim=1)[0]
+        target = prediction.clone().detach()
 
         # batch TD
         for t, a, r, m in zip(target, action, reward, max_next):
-            t[a] += self.alpha * (r + self.gamma * m - t[a])
+            t[a] += r + self.gamma * m - t[a]
 
         loss = self.crit(prediction, target)
-        self.losses += [loss]
+        self.losses += [loss.item()]
         self.backward(loss)
 
     def chose_action(self, observation):

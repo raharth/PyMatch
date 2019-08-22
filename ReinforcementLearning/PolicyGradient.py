@@ -60,7 +60,7 @@ class PolicyGradient(ReinforcementLearner):
             if done:
                 break
 
-        episode_memory.cumul_reward()
+        episode_memory.cumul_reward(gamma=self.gamma)
         self.memory.memorize(episode_memory, episode_memory.memory_cell_names)
         self.rewards += [episode_reward]
 

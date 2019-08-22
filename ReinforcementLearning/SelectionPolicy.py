@@ -16,7 +16,7 @@ class Softmax_Selection(SelectionPolicy):
         self.temperature = temperature
 
     def choose(self, q_values):
-        p = F.softmax(q_values * self.temperature, dim=1)
+        p = F.softmax(q_values / self.temperature, dim=1)
         dist = Categorical(p.squeeze())
         return dist.sample()
 

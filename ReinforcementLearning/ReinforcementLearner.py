@@ -10,11 +10,12 @@ from ReinforcementLearning.Memory import Memory
 
 class ReinforcementLearner(ABC):
 
-    def __init__(self, agent, optimizer, env, crit, grad_clip=0., checkpoint_root=None, load_checkpoint=False):
+    def __init__(self, agent, optimizer, env, crit, gamma=.95, grad_clip=0., checkpoint_root=None, load_checkpoint=False):
         self.agent = agent
         self.optimizer = optimizer
         self.crit = crit
         self.env = env
+        self.gamma = gamma  # reward discount
 
         self.memory = None  # depends on learning algorithm
 
