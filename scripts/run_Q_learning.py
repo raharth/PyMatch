@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ReinforcementLearning.Q_Learner import Q_Learner
-from models.PG1 import Model
+from models.DQN1 import Model
 from ReinforcementLearning.TorchEnv import TorchEnv
 from ReinforcementLearning.SelectionPolicy import Softmax_Selection
 
@@ -23,7 +23,7 @@ learner = Q_Learner(agent=model,
                     grad_clip=10.,
                     load_checkpoint=False)
 
-learner.train(10000, 'cpu', checkpoint_int=100, render=False, verbose=False)
+learner.train(1000, 'cpu', checkpoint_int=100, render=False, verbose=False)
 
 plt.plot(sliding_mean(learner.rewards, 50))
 plt.show()
