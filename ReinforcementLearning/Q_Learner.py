@@ -56,6 +56,8 @@ class Q_Learner(ReinforcementLearner):
         return episode_reward
 
     def replay_memory(self, device, batch_size=128, verbose=1):
+        if batch_size > self.memory.get_size():
+            return
         state, action, reward, next_state = self.memory.sample(batch_size)
         state, reward, next_state = state.to(device), reward.to(device), next_state.to(device)
         prediction = self.agent(state)
@@ -66,7 +68,7 @@ class Q_Learner(ReinforcementLearner):
 
         # batch TD
         for t, a, r, m in zip(target, action, reward, max_next):
-            t[a] += r + self.gamma * m - t[a]
+            t[a] += 1. * (r + self.gamma * m - t[a])
 
         loss = self.crit(prediction, target)
         self.losses += [loss.item()]

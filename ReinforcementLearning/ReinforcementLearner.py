@@ -38,6 +38,19 @@ class ReinforcementLearner(ABC):
             self.load_checkpoint(self.checkpoint_path)
 
     def train(self, episodes, device, checkpoint_int=10, restore_early_stopping=False, render=False, verbose=True):
+        """
+        Wrapper for
+        Args:
+            episodes:
+            device:
+            checkpoint_int:
+            restore_early_stopping:
+            render:
+            verbose:
+
+        Returns:
+
+        """
         self.agent.train()
 
         for episode in tqdm(range(episodes)):
@@ -67,8 +80,13 @@ class ReinforcementLearner(ABC):
         self.optimizer.step()
         return
 
-    # @abstractmethod
     def chose_action(self, observation):
+        raise NotImplementedError
+
+    def replay_memory(self, device, verbose):
+        raise NotImplementedError
+
+    def play_episode(self, episode_length, render):
         raise NotImplementedError
 
     def dump_checkpoint(self, epoch, path=None):
