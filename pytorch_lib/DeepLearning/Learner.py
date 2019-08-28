@@ -82,7 +82,6 @@ class Learner(ABC):
                 if verbose == 1:
                     print('validation loss: {}\n'.format(performance))
 
-
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.epochs_run, self.checkpoint_path)

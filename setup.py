@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='pytorch_lib',
       version='0.1',
@@ -7,5 +7,8 @@ setup(name='pytorch_lib',
       author='Jonas Goltz',
       author_email='goltz.jonas@googlemail.com',
       license='MIT',
-      packages=['torch', 'numpy', 'gym'],
+      packages=find_packages(),
       zip_safe=False)
+
+# build *.tar.gz by
+# $python setup.py sdist

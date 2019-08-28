@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision as tv
 
-from pytorch_lib.DeepLearning.Ensemble import BaysianEnsemble
-from pytorch_lib.DeepLearning import ClassificationLearner
-from pytorch_lib.DeepLearning.Loss import AnkerLossClassification
+from pytorch_lib import BaysianEnsemble
+from pytorch_lib import ClassificationLearner
+from pytorch_lib import AnkerLossClassification
 from models.test_Model import Model
 
 import matplotlib.pyplot as plt
