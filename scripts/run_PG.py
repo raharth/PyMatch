@@ -1,18 +1,16 @@
-import gym
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
 
-from ReinforcementLearning.PolicyGradient import PolicyGradient
-from ReinforcementLearning.Loss import REINFORCELoss
+from pytorch_lib.ReinforcementLearning.PolicyGradient import PolicyGradient
+from pytorch_lib.ReinforcementLearning.Loss import REINFORCELoss
 from models.PG1 import Model
-from ReinforcementLearning.TorchEnv import TorchEnv
+from pytorch_lib.ReinforcementLearning.TorchGym import TorchGym
 
 from my_utils import sliding_mean
 
 
 model = Model(4, 2)
-env = TorchEnv('CartPole-v1')
+env = TorchGym('CartPole-v1')
 optim = torch.optim.SGD(model.parameters(), lr=.0001, momentum=.1)
 crit = REINFORCELoss()
 

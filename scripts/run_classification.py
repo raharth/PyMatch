@@ -3,7 +3,7 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
-from DeepLearning.Trainer import ClassificationLearner
+from pytorch_lib.DeepLearning import ClassificationLearner
 from models.test_Model import Model
 
 # training the model

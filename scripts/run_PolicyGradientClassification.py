@@ -8,9 +8,9 @@ import torchvision as tv
 import torchvision.transforms as transforms
 
 # own stuff
-from ReinforcementLearning.Loss import REINFORCELoss
+from pytorch_lib.ReinforcementLearning.Loss import REINFORCELoss
 from models.Model_PG1 import Model
-from ReinforcementLearning.PolicyGradientClassification import PolicyGradientClassification
+from pytorch_lib.ReinforcementLearning.PolicyGradientClassification import PolicyGradientClassification
 
 
 plt.style.use('seaborn')

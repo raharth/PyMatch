@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.tensor as tt
 
-from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from ReinforcementLearning.Memory import Memory
+from pytorch_lib.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
+from pytorch_lib.ReinforcementLearning.Memory import Memory
 
 
 class Q_Learner(ReinforcementLearner):

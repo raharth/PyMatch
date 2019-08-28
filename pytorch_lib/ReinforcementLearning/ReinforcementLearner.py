@@ -2,11 +2,9 @@ import torch
 import torch.nn as nn
 
 import os
-import numpy as np
 from tqdm import tqdm
 from abc import ABC
 
-from ReinforcementLearning.Memory import Memory
 
 class ReinforcementLearner(ABC):
 

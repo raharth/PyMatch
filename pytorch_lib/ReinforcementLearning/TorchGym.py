@@ -1,7 +1,7 @@
 import torch
 import gym
 
-class TorchEnv:
+class TorchGym:
 
     def __init__(self, env_name):
         self.env = gym.make(env_name)

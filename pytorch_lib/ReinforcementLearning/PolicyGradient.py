@@ -1,6 +1,4 @@
 # general imports
-import numpy as np
-from tqdm import tqdm
 
 # torch imports
 import torch
@@ -8,9 +6,8 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 # own imports
-from ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from ReinforcementLearning.Loss import REINFORCELoss
-from ReinforcementLearning.Memory import Memory
+from pytorch_lib.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
+from pytorch_lib.ReinforcementLearning.Memory import Memory
 
 
 class PolicyGradient(ReinforcementLearner):
