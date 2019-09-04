@@ -139,7 +139,8 @@ class ClassificationLearner(Learner):
 
     def predict(self, data, device, prob=False):
         with torch.no_grad():
-            y_pred = self.model.forward(data, device=device, train=False).to('cpu')
+            data = data.to(device)
+            y_pred = self.model.forward(data, train=False).to('cpu')
             if prob:
                 y_pred = y_pred.data
             else:
