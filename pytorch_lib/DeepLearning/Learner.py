@@ -22,13 +22,17 @@ class Learner(ABC):
         self.checkpoint_path = './tmp/checkpoint'  # .pth'
         self.early_stopping_path = './tmp/early_stopping'  # .pth'
 
-        if not os.path.exists('./tmp'):
-            os.makedirs('./tmp')
+        # creating folders
+        if not os.path.exists(self.checkpoint_path):
+            os.makedirs(self.checkpoint_path)
+        if not os.path.exists(self.early_stopping_path):
+            os.makedirs(self.early_stopping_path)
 
         self.name = name
 
         self.losses = []
         self.val_losses = []
+        self.val_epochs = []
         self.epochs_run = 0
         self.best_performance = np.inf
 
@@ -75,11 +79,12 @@ class Learner(ABC):
             if epoch % checkpoint_int == 0:
                 self.dump_checkpoint(self.epochs_run + epoch)
 
-            if epoch % validation_int == 0:
+            if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
                 if verbose == 1:
                     print('evaluating')
                 performance = self.validate(device=device)
-                self.val_losses += [[performance, self.epochs_run + epoch]]
+                self.val_losses += [performance]
+                self.val_epochs += [self.epochs_run]
                 if performance < self.best_performance:
                     self.best_performance = performance
                     self.dump_checkpoint(epoch=self.epochs_run + epoch, path=self.early_stopping_path,
@@ -110,7 +115,8 @@ class ClassificationLearner(Learner):
                  name=''):
         super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
                                                     load_checkpoint, name)
-        pass
+        self.train_accuracy = []
+        self.val_accuracy = []
 
     def train_epoch(self, device, verbose=1):
         accuracies = []
@@ -151,8 +157,9 @@ class ClassificationLearner(Learner):
                     accuracies += [(y_pred == y).float()]
 
             loss = torch.stack(loss).mean().item()
+            accuracy = torch.cat(accuracies).mean().item()
+            self.val_accuracy += [accuracy]
             if verbose == 1:
-                accuracy = torch.cat(accuracies).mean().item()
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
             return loss
 
