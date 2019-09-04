@@ -132,8 +132,10 @@ class ClassificationLearner(Learner):
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
         self.losses += [loss]
+        accuracy = torch.cat(accuracies).float().mean().item()
+        self.train_accuracy += [accuracy]
         if verbose == 1:
-            print('train loss: {:.4f} - train accuracy: {}\n'.format(loss, torch.cat(accuracies).float().mean().item()))
+            print('train loss: {:.4f} - train accuracy: {}\n'.format(loss, accuracy))
 
     def predict(self, data, device, prob=False):
         with torch.no_grad():
