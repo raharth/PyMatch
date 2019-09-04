@@ -15,14 +15,13 @@ class Model(nn.Module):
         self.fc2 = nn.Linear(500, n_classes)
         self.ankered_layers = [self.fc1, self.fc2]
 
-    def forward(self, X, train=True, device='cpu'):
+    def forward(self, X, train=True):
         if train:
             self.train()
         else:
             self.eval()
 
-        x = X.to(device)
-        x = self.conv1(x)
+        x = self.conv1(X)
         x = self.bn1(x)
         x = F.relu(x)
         x = self.conv2(x)

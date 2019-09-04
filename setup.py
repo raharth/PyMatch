@@ -8,6 +8,9 @@ setup(name='pytorch_lib',
       author_email='goltz.jonas@googlemail.com',
       license='MIT',
       packages=find_packages(),
+      install_requires=[
+          'tqdm'
+      ],
       zip_safe=False)
 
 # build *.tar.gz by

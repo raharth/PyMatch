@@ -111,8 +111,9 @@ class ClassificationLearner(Learner):
         accuracies = []
         losses = []
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
+            data = data.to(device)
             labels = labels.to(device)
-            y_pred = self.model.forward(data, device=device)
+            y_pred = self.model.forward(data)
             loss = self.crit(y_pred, labels)
             self.backward(loss)
             if verbose == 1:

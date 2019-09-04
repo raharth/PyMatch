@@ -3,7 +3,7 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
-from pytorch_lib import ClassificationLearner
+from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from models.test_Model import Model
 
 # training the model
@@ -19,8 +19,8 @@ momentum = .5
 log_interval = 10
 
 
-train_data = tv.datasets.CIFAR10('data/CIFAR10/', train=True, transform=tv.transforms.ToTensor(), download=True)
-test_data = tv.datasets.CIFAR10('data/CIFAR10/', train=False, transform=tv.transforms.ToTensor(), download=True)
+train_data = tv.datasets.CIFAR10('./data/CIFAR10/', train=True, transform=tv.transforms.ToTensor(), download=False)
+test_data = tv.datasets.CIFAR10('data/CIFAR10/', train=False, transform=tv.transforms.ToTensor(), download=False)
 train_loader = torch.utils.data.DataLoader(train_data, batch_size=train_batch_size, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True)
 
