@@ -152,7 +152,7 @@ class ClassificationLearner(Learner):
             loss = []
             accuracies = []
             for data, y in self.val_loader:
-                y_pred = self.model(data, device=device, train=False).to('cpu')
+                y_pred = self.model(data, train=False).to('cpu')
                 loss += [self.crit(y_pred, y)]
 
                 if verbose == 1:
