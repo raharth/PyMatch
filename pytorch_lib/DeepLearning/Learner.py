@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 from tqdm import tqdm
 from abc import ABC, abstractmethod
+import os
 
 
 class Learner(ABC):
@@ -20,6 +21,10 @@ class Learner(ABC):
 
         self.checkpoint_path = './tmp/checkpoint'  # .pth'
         self.early_stopping_path = './tmp/early_stopping'  # .pth'
+
+        if not os.path.exists('./tmp'):
+            os.makedirs('./tmp')
+
         self.name = name
 
         self.losses = []
