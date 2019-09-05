@@ -46,21 +46,34 @@ class Learner(ABC):
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
         self.optimizer.step()
 
-    def dump_checkpoint(self, epoch, path=None, tag='checkpoint'):
+    def dump_checkpoint(self, path=None, tag='checkpoint'):
         path = self.get_path(path=path, tag=tag)
-        torch.save({'epoch': epoch,
+        torch.save(self.create_state_dict(), path)
+
+    def create_state_dict(self):
+        state_dict = {'epoch': self.epoch,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'loss': self.losses,
-                    },
-                   path)
+                    'val_loss': self.val_losses,
+                    'val_epoch': self.val_epochs
+                    }
+        return state_dict
 
     def load_checkpoint(self, path, tag):
-        checkpoint = torch.load(self.get_path(path=path, tag=tag))
+        checkpoint = self._load_checkpoint(path, tag)
+        self.restore_checkpoint(checkpoint)
+
+    def _load_checkpoint(self, path, tag):
+        return torch.load(self.get_path(path=path, tag=tag))
+
+    def restore_checkpoint(self, checkpoint):
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.epochs_run = checkpoint['epoch']
         self.losses = checkpoint['loss']
+        self.val_losses = checkpoint['val_loss']
+        self.val_epochs = checkpoint['val_epoch']
 
     def get_path(self, path, tag):
         if path is None:
@@ -77,24 +90,23 @@ class Learner(ABC):
             self.train_epoch(device)
 
             if epoch % checkpoint_int == 0:
-                self.dump_checkpoint(self.epochs_run + epoch)
+                self.dump_checkpoint()
 
             if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
                 if verbose == 1:
                     print('evaluating')
-                performance = self.validate(device=device)
+                performance = self.validate(device=device, verbose=verbose)
                 self.val_losses += [performance]
                 self.val_epochs += [self.epochs_run]
                 if performance < self.best_performance:
                     self.best_performance = performance
-                    self.dump_checkpoint(epoch=self.epochs_run + epoch, path=self.early_stopping_path,
-                                         tag='early_stopping')
-                if verbose == 1:
-                    print('validation loss: {}\n'.format(performance))
+                    self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
+                # if verbose == 1:
+                #     print('validation loss: {}\n'.format(performance))
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
-        self.dump_checkpoint(self.epochs_run, self.checkpoint_path)
+        self.dump_checkpoint(self.checkpoint_path)
 
     @abstractmethod
     def train_epoch(self, device, verbose=1):
@@ -140,7 +152,7 @@ class ClassificationLearner(Learner):
     def predict(self, data, device, prob=False):
         with torch.no_grad():
             data = data.to(device)
-            y_pred = self.model.forward(data, train=False).to('cpu')
+            y_pred = self.model.forward(data).to('cpu')
             if prob:
                 y_pred = y_pred.data
             else:
@@ -152,12 +164,12 @@ class ClassificationLearner(Learner):
             loss = []
             accuracies = []
             for data, y in self.val_loader:
-                y_pred = self.model(data, train=False).to('cpu')
+                data = data.to(device)
+                y_pred = self.model(data).to('cpu')
                 loss += [self.crit(y_pred, y)]
 
-                if verbose == 1:
-                    y_pred = y_pred.max(dim=1)[1]
-                    accuracies += [(y_pred == y).float()]
+                y_pred = y_pred.max(dim=1)[1]
+                accuracies += [(y_pred == y).float()]
 
             loss = torch.stack(loss).mean().item()
             accuracy = torch.cat(accuracies).mean().item()
@@ -165,5 +177,32 @@ class ClassificationLearner(Learner):
             if verbose == 1:
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
             return loss
+
+    # def dump_checkpoint(self, path=None, tag='checkpoint'):
+    #     path = self.get_path(path=path, tag=tag)
+    #     torch.save(self.create_state_dict(), path)
+
+    def create_state_dict(self):
+        state_dict = super().create_state_dict()
+        state_dict['train_acc'] = self.train_accuracy
+        state_dict['val_acc'] = self.val_accuracy
+        return state_dict
+
+    # def load_checkpoint(self, path, tag):
+    #     checkpoint = torch.load(self.get_path(path=path, tag=tag))
+    #     self.model.load_state_dict(checkpoint['model_state_dict'])
+    #     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    #     self.epochs_run = checkpoint['epoch']
+    #     self.losses = checkpoint['loss']
+    #     self.val_losses = checkpoint['val_loss']
+    #     self.val_epochs = checkpoint['val_epoch']
+    #     self.train_accuracy = checkpoint['train_acc']
+    #     self.val_accuracy = checkpoint['val_acc']
+
+    def restore_checkpoint(self, checkpoint):
+        super().restore_checkpoint(checkpoint)
+        self.train_accuracy = checkpoint['train_acc']
+        self.val_accuracy = checkpoint['val_acc']
+
 
 
