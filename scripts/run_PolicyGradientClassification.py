@@ -65,7 +65,6 @@ trainer = PolicyGradientClassification(agent=agent, optimizer=optim, train_loade
                                        crit=REINFORCELoss(), grad_clip=50., val_loader=test_loader, load_checkpoint=False)
 
 epochs = 1
-
 trainer.train(epochs=epochs, device=device)
 
 trainer.validate(device)

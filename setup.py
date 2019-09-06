@@ -9,7 +9,7 @@ setup(name='pytorch_lib',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'tqdm'
+          'tqdm', 'numpy', 'torchvision'
       ],
       zip_safe=False)
 
