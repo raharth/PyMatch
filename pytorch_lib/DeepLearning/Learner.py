@@ -51,7 +51,7 @@ class Learner(ABC):
         torch.save(self.create_state_dict(), path)
 
     def create_state_dict(self):
-        state_dict = {'epoch': self.epoch,
+        state_dict = {'epoch': self.epochs_run,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'loss': self.losses,
@@ -85,7 +85,7 @@ class Learner(ABC):
             self.epochs_run += 1
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
-                print('epoch: {}{}'.format(self.epochs_run, name))
+                print('\nepoch: {}{}'.format(self.epochs_run, name))
 
             self.train_epoch(device)
 
@@ -101,8 +101,6 @@ class Learner(ABC):
                 if performance < self.best_performance:
                     self.best_performance = performance
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
-                # if verbose == 1:
-                #     print('validation loss: {}\n'.format(performance))
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
@@ -147,7 +145,7 @@ class ClassificationLearner(Learner):
         accuracy = torch.cat(accuracies).float().mean().item()
         self.train_accuracy += [accuracy]
         if verbose == 1:
-            print('train loss: {:.4f} - train accuracy: {}\n'.format(loss, accuracy))
+            print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
 
     def predict(self, data, device, prob=False):
         with torch.no_grad():
@@ -178,26 +176,11 @@ class ClassificationLearner(Learner):
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
             return loss
 
-    # def dump_checkpoint(self, path=None, tag='checkpoint'):
-    #     path = self.get_path(path=path, tag=tag)
-    #     torch.save(self.create_state_dict(), path)
-
     def create_state_dict(self):
         state_dict = super().create_state_dict()
         state_dict['train_acc'] = self.train_accuracy
         state_dict['val_acc'] = self.val_accuracy
         return state_dict
-
-    # def load_checkpoint(self, path, tag):
-    #     checkpoint = torch.load(self.get_path(path=path, tag=tag))
-    #     self.model.load_state_dict(checkpoint['model_state_dict'])
-    #     self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    #     self.epochs_run = checkpoint['epoch']
-    #     self.losses = checkpoint['loss']
-    #     self.val_losses = checkpoint['val_loss']
-    #     self.val_epochs = checkpoint['val_epoch']
-    #     self.train_accuracy = checkpoint['train_acc']
-    #     self.val_accuracy = checkpoint['val_acc']
 
     def restore_checkpoint(self, checkpoint):
         super().restore_checkpoint(checkpoint)
