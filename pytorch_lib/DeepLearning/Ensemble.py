@@ -7,8 +7,9 @@ class Ensemble:
     def __init__(self, trainer_factory, n_model, trainer_args={}):
         self.learners = []
         for i in range(n_model):
-            trainer_args['name'] = trainer_args['name'] + '_{}'.format(i) if 'name' in trainer_args else '{}'.format(i)
-            self.learners.append(trainer_factory(**trainer_args))
+            t_args = dict(trainer_args)
+            t_args['name'] = trainer_args['name'] + '_{}'.format(i) if 'name' in trainer_args else '{}'.format(i)
+            self.learners.append(trainer_factory(**t_args))
         self.epochs_run = 0
 
         self.losses = []
