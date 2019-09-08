@@ -5,11 +5,13 @@ import torch.optim as optim
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
+import numpy as np
 
-from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from models.test_Model import Model
+from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from pytorch_lib.utils.KFold import KFold
 from pytorch_lib.DeepLearning.Ensemble import Ensemble
+from pytorch_lib.utils.Functional import scale_confusion_matrix, plot_confusion_matrix
 
 
 def factory(kfold, device, lr, momentum, name, n_classes):
@@ -42,18 +44,31 @@ params = {'kfold': kfold, 'device': device, 'lr': lr, 'momentum': momentum, 'nam
 ensemble = Ensemble(trainer_factory=factory, n_model=folds, trainer_args=params)
 
 
-ensemble.train(epochs=epochs, device=device)
+# ensemble.train(epochs=epochs, device=device)
 ensemble.load_checkpoint()
 
-for learner in ensemble.learners:
-    plt.plot(learner.losses)
-plt.show()
-
-for learner in ensemble.learners:
-    plt.plot(learner.train_accuracy)
-plt.show()
+# for learner in ensemble.learners:
+#     plt.plot(learner.losses)
+# plt.show()
+#
+# for learner in ensemble.learners:
+#     plt.plot(learner.train_accuracy)
+# plt.show()
 
 y_preds, y_trues = ensemble.run_validation(device=device)
 cm = []
 for y_pred, y_true in zip(y_preds, y_trues):
-    cm += [confusion_matrix(y_true, y_pred)]
+    cm += [scale_confusion_matrix(confusion_matrix(y_true, y_pred))]
+
+plot_confusion_matrix(cm[0], figsize=(10, 10))
+plt.show()
+
+cm = np.array(cm)
+cm_mean = cm.mean(0)
+cm_std = cm.std(0)
+
+plot_confusion_matrix(cm_mean, figsize=(10, 10))
+plt.show()
+
+plot_confusion_matrix(cm_std, figsize=(10, 10))
+plt.show()

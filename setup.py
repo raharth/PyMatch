@@ -9,7 +9,7 @@ setup(name='pytorch_lib',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'tqdm', 'numpy', 'torchvision'
+          'tqdm', 'numpy', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn'
       ],
       zip_safe=False)
 
