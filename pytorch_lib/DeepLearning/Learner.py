@@ -147,7 +147,7 @@ class ClassificationLearner(Learner):
         if verbose == 1:
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
 
-    def predict(self, data, device, prob=False):
+    def predict(self, data, device='cpu', prob=False):
         with torch.no_grad():
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')

@@ -36,7 +36,7 @@ class Ensemble:
         for trainer in self.learners:
             trainer.load_checkpoint(path=path, tag=tag)
 
-    def run_validation(self):
+    def run_validation(self, device='cpu'):
         y_pred_learners = []
         y_true_learners = []
 
@@ -45,7 +45,7 @@ class Ensemble:
             y_true = []
             for X, y in learner.val_loader:
                 y_true += [y]
-                y_pred += [learner.predict(X)]
+                y_pred += [learner.predict(X, device=device)]
             y_pred_learners += [torch.cat(y_pred)]
             y_true_learners += [torch.cat(y_true)]
         return y_pred_learners, y_true_learners

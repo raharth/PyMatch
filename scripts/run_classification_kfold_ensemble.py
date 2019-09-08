@@ -4,6 +4,7 @@ from torch import nn
 import torch.optim as optim
 
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from models.test_Model import Model
@@ -42,6 +43,7 @@ ensemble = Ensemble(trainer_factory=factory, n_model=folds, trainer_args=params)
 
 
 ensemble.train(epochs=epochs, device=device)
+ensemble.load_checkpoint()
 
 for learner in ensemble.learners:
     plt.plot(learner.losses)
@@ -50,3 +52,8 @@ plt.show()
 for learner in ensemble.learners:
     plt.plot(learner.train_accuracy)
 plt.show()
+
+y_preds, y_trues = ensemble.run_validation(device=device)
+cm = []
+for y_pred, y_true in zip(y_preds, y_trues):
+    cm += [confusion_matrix(y_true, y_pred)]
