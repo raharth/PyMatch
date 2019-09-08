@@ -4,6 +4,7 @@ import torch
 class KFold:
 
     def __init__(self, dataset, n_fold=10, batch_size=32, num_workers=0):
+        self.fold = 0
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset = dataset
@@ -18,7 +19,9 @@ class KFold:
         fold_idx = fold_idx[:self.folded_size].view(-1, self.fold_size)
         return fold_idx
 
-    def fold_loaders(self, fold):
+    def fold_loaders(self, fold=-1):
+        if fold == -1:
+            fold = self.fold
         test_fold_idx = self.fold_idx[fold]
         train_fold_idx = self.fold_idx[[i for i in range(self.n_fold) if i != fold]].view(-1)
         train_loader = torch.utils.data.DataLoader(self.dataset,
@@ -29,6 +32,7 @@ class KFold:
                                                   batch_size=self.batch_size,  # args.batch_size,
                                                   num_workers=self.num_workers,  # args.loader_num_workers,
                                                   sampler=torch.utils.data.SubsetRandomSampler(test_fold_idx))
+        self.fold = (self.fold + 1) % self.n_fold
         return train_loader, test_loader
 
 
