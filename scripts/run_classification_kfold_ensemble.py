@@ -49,18 +49,22 @@ ensemble.load_checkpoint()
 
 for learner in ensemble.learners:
     plt.plot(learner.losses)
+plt.title('train loss')
 plt.show()
 
 for learner in ensemble.learners:
     plt.plot(learner.train_accuracy)
+plt.title('train acc')
 plt.show()
 
 for learner in ensemble.learners:
     plt.plot(learner.val_losses)
+plt.title('val loss')
 plt.show()
 
 for learner in ensemble.learners:
     plt.plot(learner.val_accuracy)
+plt.title('val acc')
 plt.show()
 
 y_preds, y_trues = ensemble.run_validation(device=device)

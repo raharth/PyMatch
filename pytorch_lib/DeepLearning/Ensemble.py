@@ -15,7 +15,7 @@ class Ensemble:
         self.losses = []
 
     def predict(self, x, device='cpu'):
-        # @todo probably delete that here
+        # @todo pass args to the learner
         y_preds = [leaner.predict(x, device, prob=True) for leaner in self.learners]
         y_preds = torch.stack(y_preds)
         y_pred_mean = y_preds.mean(dim=0)

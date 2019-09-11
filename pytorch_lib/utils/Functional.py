@@ -27,3 +27,7 @@ def plot_confusion_matrix(confm, class_names=None, figsize=(8, 8), heat_map_args
     m.set_xticklabels(m.get_xticklabels(), rotation=45.)
     plt.ylim(0., len(class_names) + .5)
     return m
+
+# def multiclass_F1(cm):
+#     for i in range(cm.shape[0]):
+

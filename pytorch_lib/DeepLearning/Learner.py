@@ -129,6 +129,7 @@ class ClassificationLearner(Learner):
         self.val_accuracy = []
 
     def train_epoch(self, device, verbose=1):
+        self.model.train()
         accuracies = []
         losses = []
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
@@ -149,6 +150,7 @@ class ClassificationLearner(Learner):
 
     def predict(self, data, device='cpu', prob=False):
         with torch.no_grad():
+            self.model.eval()
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
             if prob:
@@ -159,6 +161,7 @@ class ClassificationLearner(Learner):
 
     def validate(self, device, verbose=0):
         with torch.no_grad():
+            self.model.eval()
             loss = []
             accuracies = []
             for data, y in self.val_loader:
