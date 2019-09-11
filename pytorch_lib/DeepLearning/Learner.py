@@ -148,15 +148,28 @@ class ClassificationLearner(Learner):
         if verbose == 1:
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
 
-    def predict(self, data, device='cpu', prob=False):
+    def predict_data_loader(self, data_loader, device='cpu', return_prob=False, return_true=False):
+        y_pred = []
+        y_true = []
+        for X, y in data_loader:
+            y_true += [y]
+            y_pred += [self.predict(X, device=device, return_prob=return_prob)]
+        y_pred = torch.cat(y_pred)
+        y_true = torch.cat(y_true)
+        if return_true:
+            return y_pred, y_true
+        return y_pred
+
+    def predict(self, data, device='cpu', return_prob=False):
         with torch.no_grad():
             self.model.eval()
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
-            if prob:
-                y_pred = y_pred.data
+            if return_prob:
+                y_pred = y_pred.data    # @todo 'data' necessary?
             else:
-                y_pred = torch.max(y_pred.data, 1)[1].data
+                # y_pred = torch.max(y_pred.data, 1)[1].data
+                y_pred = y_pred.max(dim=1)[1]
             return y_pred
 
     def validate(self, device, verbose=0):

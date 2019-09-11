@@ -16,11 +16,27 @@ class Ensemble:
 
     def predict(self, x, device='cpu'):
         # @todo pass args to the learner
-        y_preds = [leaner.predict(x, device, prob=True) for leaner in self.learners]
+        y_preds = [leaner.predict(x, device, return_prob=True) for leaner in self.learners]
         y_preds = torch.stack(y_preds)
         y_pred_mean = y_preds.mean(dim=0)
         y_pred_std = y_preds.std(dim=0)
         return y_pred_mean, y_pred_std
+
+    def predict_data_loader(self, data_loader, device='cpu', return_true=False):
+        y_pred_m = []
+        y_pred_s = []
+        y_true = []
+        for x, y in data_loader:
+            y_pred = self.predict(x, device=device)
+            y_pred_m += [y_pred[0]]
+            y_pred_s += [y_pred[1]]
+            y_true += [y]
+        y_pred_m = torch.cat(y_pred_m)
+        y_pred_s = torch.cat(y_pred_s)
+        if return_true:
+            y_true = torch.cat(y_true)
+            return y_pred_m, y_pred_s, y_true
+        return y_pred_m, y_pred_s
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
         for trainer in self.learners:
@@ -71,7 +87,7 @@ class BaysianEnsemble(Ensemble):
             correct_pred = []
 
             for data, y in tqdm(data_loader):
-                y_pred = trainer.predict(data, device=device, prob=False)
+                y_pred = trainer.predict(data, device=device, return_prob=False)
                 y_pred_list += [y_pred]
                 correct_pred += [y == y_pred.to('cpu')]
 
