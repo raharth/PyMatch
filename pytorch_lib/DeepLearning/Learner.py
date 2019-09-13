@@ -10,9 +10,9 @@ class Learner(ABC):
 
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
                  name=''):
-        self.model = model
-        self.optimizer = optimizer
-        self.crit = crit
+        self.model = model  # neural network
+        self.optimizer = optimizer  # optimizer for the network
+        self.crit = crit  # loss
 
         self.grad_clip = grad_clip
 
@@ -28,13 +28,15 @@ class Learner(ABC):
         if not os.path.exists(self.early_stopping_path):
             os.makedirs(self.early_stopping_path)
 
-        self.name = name
+        self.name = name  # name for the learner used for checkpointing and early stopping
 
-        self.losses = []
-        self.val_losses = []
-        self.val_epochs = []
-        self.epochs_run = 0
-        self.best_performance = np.inf
+        self.losses = []  # list of all training losses
+        self.val_losses = []  # list of all validation losses
+        self.val_epochs = []  # list of validated epochs
+        self.epochs_run = 0  # numer of epochs the model has been trained
+        self.best_val_performance = np.inf  # best validation performance
+        self.best_train_performance = np.inf  # best training performance
+        self.epochs_since_last_train_improvement = 0
 
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
@@ -51,56 +53,89 @@ class Learner(ABC):
         torch.save(self.create_state_dict(), path)
 
     def create_state_dict(self):
+        """
+        Creates the state dictionary of a learner.
+        This should be redefined by each derived learner that introduces own members. Always call the parents method. This dictionary can then be extended by
+        the derived learner's members
+
+        Returns:
+            state dictionary of the learner
+
+        """
         state_dict = {'epoch': self.epochs_run,
-                    'model_state_dict': self.model.state_dict(),
-                    'optimizer_state_dict': self.optimizer.state_dict(),
-                    'loss': self.losses,
-                    'val_loss': self.val_losses,
-                    'val_epoch': self.val_epochs
-                    }
+                      'model_state_dict': self.model.state_dict(),
+                      'optimizer_state_dict': self.optimizer.state_dict(),
+                      'loss': self.losses,
+                      'val_loss': self.val_losses,
+                      'val_epoch': self.val_epochs,
+                      'best_train_performance': self.best_train_performance,
+                      'epochs_since_last_train_improvement': self.epochs_since_last_train_improvement
+                      }
         return state_dict
 
     def load_checkpoint(self, path, tag):
-        checkpoint = self._load_checkpoint(path, tag)
+        checkpoint = torch.load(self.get_path(path=path, tag=tag))
         self.restore_checkpoint(checkpoint)
 
-    def _load_checkpoint(self, path, tag):
-        return torch.load(self.get_path(path=path, tag=tag))
-
     def restore_checkpoint(self, checkpoint):
+        """
+        Restores a checkpoint_dictionary.
+        This should be redefined by every derived learner (if it introduces own members), while the derived learner should call the parent function
+
+        Args:
+            checkpoint: dictionary containing the state of the learner
+
+        Returns:
+            None
+        """
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.epochs_run = checkpoint['epoch']
         self.losses = checkpoint['loss']
         self.val_losses = checkpoint['val_loss']
         self.val_epochs = checkpoint['val_epoch']
+        self.best_train_performance = checkpoint['best_train_performance']
+        self.epochs_since_last_train_improvement = checkpoint['epochs_since_last_train_improvement']
 
     def get_path(self, path, tag):
         if path is None:
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
+    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
         for epoch in range(epochs):
             self.epochs_run += 1
+            self.epochs_since_last_train_improvement += 1
+
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
                 print('\nepoch: {}{}'.format(self.epochs_run, name))
 
-            self.train_epoch(device)
+            train_loss = self.train_epoch(device)
 
+            # tracking training performance
+            if train_loss < self.best_train_performance:
+                self.best_train_performance = train_loss
+                self.epochs_since_last_train_improvement = 0
+
+            # checkpointing
             if epoch % checkpoint_int == 0:
                 self.dump_checkpoint()
 
+            # tracking validation performance
             if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
                 if verbose == 1:
                     print('evaluating')
-                performance = self.validate(device=device, verbose=verbose)
-                self.val_losses += [performance]
+                val_loss = self.validate(device=device, verbose=verbose)
+                self.val_losses += [val_loss]
                 self.val_epochs += [self.epochs_run]
-                if performance < self.best_performance:
-                    self.best_performance = performance
+                if val_loss < self.best_val_performance:
+                    self.best_val_performance = val_loss
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
+
+            # early termination
+            if 0 < early_termination < self.epochs_since_last_train_improvement:
+                break
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
@@ -108,14 +143,46 @@ class Learner(ABC):
 
     @abstractmethod
     def train_epoch(self, device, verbose=1):
+        """
+        Train a single epoch.
+        this has to be implemented by each type of learner individually.
+
+        Args:
+            device: device to run it on 'cpu' or 'cuda'
+            verbose: verbosity of the learning
+
+        Returns:
+            current loss
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, data_loader, device, prob=False):
+    def predict(self, data, device, prob=False):
+        """
+        Predicting a batch of data.
+
+        Args:
+            data: batch of data to predict
+            device: device to run it on 'cpu' or 'cuda'
+            prob: @todo this is not supposed to be in the abstract class, since only useful for a classification learner
+
+        Returns:
+            predicted values for the given data
+        """
         raise NotImplementedError
 
     @abstractmethod
     def validate(self, device, verbose=0):
+        """
+        Validation of the validation data if provided
+
+        Args:
+            device: device to run it on 'cpu' or 'cuda'
+            verbose: verbosity of the learning
+
+        Returns:
+            loss
+        """
         raise NotImplementedError
 
 
@@ -147,8 +214,10 @@ class ClassificationLearner(Learner):
         self.train_accuracy += [accuracy]
         if verbose == 1:
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
+        return loss
 
     def predict_data_loader(self, data_loader, device='cpu', return_prob=False, return_true=False):
+        # @todo can be probably moved to the abstraction of the class
         y_pred = []
         y_true = []
         for X, y in data_loader:
@@ -166,7 +235,7 @@ class ClassificationLearner(Learner):
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
             if return_prob:
-                y_pred = y_pred.data    # @todo 'data' necessary?
+                y_pred = y_pred.data  # @todo 'data' necessary?
             else:
                 # y_pred = torch.max(y_pred.data, 1)[1].data
                 y_pred = y_pred.max(dim=1)[1]
@@ -202,6 +271,3 @@ class ClassificationLearner(Learner):
         super().restore_checkpoint(checkpoint)
         self.train_accuracy = checkpoint['train_acc']
         self.val_accuracy = checkpoint['val_acc']
-
-
-
