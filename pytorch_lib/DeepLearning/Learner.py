@@ -146,6 +146,18 @@ class Learner(ABC):
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.checkpoint_path)
 
+    def predict_data_loader(self, data_loader, device='cpu', return_true=False, model_args={}):
+        y_pred = []
+        y_true = []
+        for X, y in data_loader:
+            y_true += [y]
+            y_pred += [self.predict(X, device=device, **model_args)]
+        y_pred = torch.cat(y_pred)
+        y_true = torch.cat(y_true)
+        if return_true:
+            return y_pred, y_true
+        return y_pred
+
     @abstractmethod
     def train_epoch(self, device, verbose=1):
         """
@@ -219,19 +231,6 @@ class ClassificationLearner(Learner):
         if verbose == 1:
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
         return loss
-
-    def predict_data_loader(self, data_loader, device='cpu', return_prob=False, return_true=False):
-        # @todo can be probably moved to the abstraction of the class
-        y_pred = []
-        y_true = []
-        for X, y in data_loader:
-            y_true += [y]
-            y_pred += [self.predict(X, device=device, return_prob=return_prob)]
-        y_pred = torch.cat(y_pred)
-        y_true = torch.cat(y_true)
-        if return_true:
-            return y_pred, y_true
-        return y_pred
 
     def predict(self, data, device='cpu', return_prob=False):
         with torch.no_grad():
