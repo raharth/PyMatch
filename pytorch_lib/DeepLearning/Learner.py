@@ -283,8 +283,12 @@ class ImageClassifier(ClassificationLearner):
                                               name='', callbacks=callbacks)
 
     def create_result_df(self, data_loader, device='cpu'):
-        y_pred = self.predict_data_loader(data_loader, device=device)
-        data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
+        y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
+        # @todo ugly as fuck
+        try:
+            data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
+        except:
+            data = np.stack((np.array(data_loader.dataset.dataset.samples)[:, 0], y_pred), 1)
         return pd.DataFrame(data, columns=['img_path', 'label'])
 
     def sort_images(self, create_result_df, classes, output_root, class_mapping):
