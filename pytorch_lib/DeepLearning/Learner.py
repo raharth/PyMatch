@@ -298,7 +298,7 @@ class ImageClassifier(ClassificationLearner):
             shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))
 
     def sorting_prediction(self, data_loader, device='cpu', classes=None, class_mapping=None, output_root=None):
-        class_mapping = {str(v): k for k, v in data_loader.dataset.class_to_idx.items()} if class_mapping is None else class_mapping
+        class_mapping = class_mapping if class_mapping is not None else {str(v): k for k, v in data_loader.dataset.class_to_idx.items()}
         classes = [k for k in data_loader.dataset.class_to_idx] if classes is None else classes
         output_root = 'results/img_output' if output_root is None else output_root
         if not os.path.exists(output_root):
