@@ -289,6 +289,20 @@ class ImageClassifier(ClassificationLearner):
 
     @staticmethod
     def sort_images(create_result_df, classes, output_root, class_mapping):
+        """
+        Sorting the images of the result DataFrame according to their predicted label.
+
+        !!! This may not be a torch.Subset!!!
+
+        Args:
+            create_result_df: result DataFrame that contains the path to the image and the assigned label
+            classes: all possible classes
+            output_root: root path for the output folders
+            class_mapping: mapping from output node to class label
+
+        Returns:
+
+        """
         # creating output folders
         for class_name in classes:
             class_path = '{}/{}'.format(output_root, class_name)

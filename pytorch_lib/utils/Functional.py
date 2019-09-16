@@ -21,11 +21,11 @@ def plot_confusion_matrix(confm, class_names=None, figsize=(8, 8), heat_map_args
         class_names = ['{}'.format(i) for i in range(len(confm))]
     df_cm = pd.DataFrame(confm, index=class_names, columns=class_names)
     plt.figure(figsize=figsize)
-    # fig, ax = plt.subplots(fi)
-    m = sn.heatmap(df_cm, **heat_map_args) #, ax=ax)
+    fig, ax = plt.subplots(figsize=figsize)
+    m = sn.heatmap(df_cm, **heat_map_args, ax=ax)
     m.set_yticklabels(m.get_yticklabels(), rotation=45.)
     m.set_xticklabels(m.get_xticklabels(), rotation=45.)
-    plt.ylim(0., len(class_names) + .5)
+    m.set_ylim(0., len(class_names) + .5)
     return m
 
 # def multiclass_F1(cm):

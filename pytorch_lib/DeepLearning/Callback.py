@@ -1,4 +1,9 @@
 import matplotlib.pyplot as plt
+import torch
+from sklearn.metrics import confusion_matrix
+
+from pytorch_lib.utils.Functional import scale_confusion_matrix, plot_confusion_matrix
+
 
 class Callback:
 
@@ -52,3 +57,23 @@ class LearningCurvePlotter(Callback):
         fig.savefig(self.img_path)
         plt.close(fig)
 
+
+class PlotConfusionMatrix(Callback):
+
+    def __init__(self):
+        super(PlotConfusionMatrix, self).__init__()
+
+    def callback(self, model, data_loader, classes, device='cpu'):
+        # @todo nasty way of doing it, definitely refactor that piece of crap, this is probably not meant to be a callback anyways
+        y_true_ens = []
+        y_pred_ens = []
+        for X, y in data_loader:
+            y_true_ens += [y]
+            y_pred_ens += [model.predict(X, device=device)]
+        y_true_ens = torch.cat(y_true_ens)
+        y_pred_ens = torch.cat(y_pred_ens)
+
+        cm = scale_confusion_matrix(confusion_matrix(y_true_ens, y_pred_ens))
+        plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
+        plt.title('Learner performance')
+        plt.show()
