@@ -4,6 +4,8 @@ import numpy as np
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 import os
+import shutil
+import pandas as pd
 
 
 class Learner(ABC):
@@ -191,8 +193,7 @@ class Learner(ABC):
 
 class ClassificationLearner(Learner):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
-                 name=''):
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name=''):
         super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
                                                     load_checkpoint, name)
         self.train_accuracy = []
@@ -274,3 +275,35 @@ class ClassificationLearner(Learner):
         super().restore_checkpoint(checkpoint)
         self.train_accuracy = checkpoint['train_acc']
         self.val_accuracy = checkpoint['val_acc']
+
+
+class ImageClassifier(ClassificationLearner):
+
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name=''):
+        super(ImageClassifier, self).__init__(model, optimizer, crit, train_loader, val_loader=val_loader, grad_clip=grad_clip, load_checkpoint=load_checkpoint,
+                                              name='')
+
+    def create_result_df(self, data_loader, device='cpu'):
+        y_pred = self.predict_data_loader(data_loader, device=device)
+        data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
+        return pd.DataFrame(data, columns=['img_path', 'label'])
+
+    def sort_images(self, create_result_df, classes, output_root, class_mapping):
+        # creating output folders
+        for class_name in classes:
+            class_path = '{}/{}'.format(output_root, class_name)
+            if not os.path.exists(class_path):
+                os.makedirs(class_path)
+
+        for img_path, label in create_result_df.values:
+            shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))
+
+    def sorting_prediction(self, data_loader, device='cpu', classes=None, output_root=None):
+        class_mapping = {str(v): k for k, v in data_loader.dataset.class_to_idx.items()}
+        classes = [k for k in data_loader.dataset.class_to_idx] if classes is None else classes
+        output_root = 'results/img_output' if output_root is None else output_root
+        if not os.path.exists(output_root):
+            os.makedirs(output_root)
+
+        df = self.create_result_df(data_loader, device)
+        self.sort_images(df, classes, output_root, class_mapping)
