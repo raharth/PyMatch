@@ -3,6 +3,7 @@ import torch.nn as nn
 
 
 class SpatialGlimpse(nn.Module):
+
     def __init__(self, retina, scale, depth, channels=False, flatten=True):
         """
         Layer defining spatial  glimpses

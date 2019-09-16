@@ -8,8 +8,7 @@ import os
 
 class Learner(ABC):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
-                 name=''):
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
         self.model = model  # neural network
         self.optimizer = optimizer  # optimizer for the network
         self.crit = crit  # loss
@@ -29,6 +28,7 @@ class Learner(ABC):
             os.makedirs(self.early_stopping_path)
 
         self.name = name  # name for the learner used for checkpointing and early stopping
+        self.callbacks = [] if callbacks is None else callbacks
 
         self.losses = []  # list of all training losses
         self.val_losses = []  # list of all validation losses
@@ -136,6 +136,9 @@ class Learner(ABC):
             # early termination
             if 0 < early_termination < self.epochs_since_last_train_improvement:
                 break
+
+            for cb in self.callbacks:
+                cb.callback(self)
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
