@@ -193,9 +193,9 @@ class Learner(ABC):
 
 class ClassificationLearner(Learner):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name=''):
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
         super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
-                                                    load_checkpoint, name)
+                                                    load_checkpoint, name, callbacks=callbacks)
         self.train_accuracy = []
         self.val_accuracy = []
 
@@ -279,9 +279,9 @@ class ClassificationLearner(Learner):
 
 class ImageClassifier(ClassificationLearner):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name=''):
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
         super(ImageClassifier, self).__init__(model, optimizer, crit, train_loader, val_loader=val_loader, grad_clip=grad_clip, load_checkpoint=load_checkpoint,
-                                              name='')
+                                              name='', callbacks=callbacks)
 
     def create_result_df(self, data_loader, device='cpu'):
         y_pred = self.predict_data_loader(data_loader, device=device)
