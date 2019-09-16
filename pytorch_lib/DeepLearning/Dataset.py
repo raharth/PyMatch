@@ -9,6 +9,7 @@ class ImageFolderWithPaths(datasets.ImageFolder):
     """
 
     def __getitem__(self, index, return_path=False):
+        # @todo cannot be used in that way
         original_tuple = super(ImageFolderWithPaths, self).__getitem__(index)
         if return_path:
             path = self.imgs[index][0]

@@ -284,14 +284,11 @@ class ImageClassifier(ClassificationLearner):
 
     def create_result_df(self, data_loader, device='cpu'):
         y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
-        # @todo ugly as fuck
-        try:
-            data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
-        except:
-            data = np.stack((np.array(data_loader.dataset.dataset.samples)[:, 0], y_pred), 1)
+        data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
         return pd.DataFrame(data, columns=['img_path', 'label'])
 
-    def sort_images(self, create_result_df, classes, output_root, class_mapping):
+    @staticmethod
+    def sort_images(create_result_df, classes, output_root, class_mapping):
         # creating output folders
         for class_name in classes:
             class_path = '{}/{}'.format(output_root, class_name)
@@ -300,13 +297,3 @@ class ImageClassifier(ClassificationLearner):
 
         for img_path, label in create_result_df.values:
             shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))
-
-    def sorting_prediction(self, data_loader, device='cpu', classes=None, class_mapping=None, output_root=None):
-        class_mapping = class_mapping if class_mapping is not None else {str(v): k for k, v in data_loader.dataset.class_to_idx.items()}
-        classes = [k for k in data_loader.dataset.class_to_idx] if classes is None else classes
-        output_root = 'results/img_output' if output_root is None else output_root
-        if not os.path.exists(output_root):
-            os.makedirs(output_root)
-
-        df = self.create_result_df(data_loader, device)
-        self.sort_images(df, classes, output_root, class_mapping)
