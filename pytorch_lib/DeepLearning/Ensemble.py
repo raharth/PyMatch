@@ -74,7 +74,7 @@ class Ensemble:
 
         return y_pred_m, y_pred_certainty
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
+    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1, callback_iter=-1):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -90,11 +90,16 @@ class Ensemble:
             None
 
         """
-        for trainer in self.learners:
-            if verbose == 1:
-                print('Trainer {}'.format(trainer.name))
-            trainer.train(epochs=epochs, device=device, checkpoint_int=checkpoint_int,
-                          validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+        if callback_iter > 0:
+            epoch_iter = [callback_iter for _ in range(epochs//callback_iter)] + [epochs % callback_iter]
+        else:
+            epoch_iter = [epochs]
+        for run_epochs in epoch_iter:
+            for trainer in self.learners:
+                if verbose == 1:
+                    print('Trainer {}'.format(trainer.name))
+                trainer.train(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
+                              validation_int=validation_int, restore_early_stopping=restore_early_stopping)
             for cb in self.callbacks:
                 cb.callback(self)
 
