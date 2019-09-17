@@ -73,8 +73,7 @@ class Learner(ABC):
             state dictionary of the learner
 
         """
-        state_dict = {'epoch': self.epochs_run,
-                      'model_state_dict': self.model.state_dict(),
+        state_dict = {'model_state_dict': self.model.state_dict(),
                       'optimizer_state_dict': self.optimizer.state_dict(),
                       'train_dict': self.train_dict,
                       # 'loss': self.losses,
@@ -117,17 +116,17 @@ class Learner(ABC):
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
         for epoch in range(epochs):
-            self.epochs_run += 1
-            self.epochs_since_last_train_improvement += 1
+            self.train_dict['epochs_run'] += 1
+            self.train_dict['epochs_since_last_train_improvement'] += 1
 
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
-                print('\nepoch: {}{}'.format(self.epochs_run, name))
+                print('\nepoch: {}{}'.format(self.train_dict['epochs_run'], name))
 
             train_loss = self.train_epoch(device)
 
             # tracking training performance
-            if train_loss < self.best_train_performance:
+            if train_loss < self.train_dict['best_train_performance']:
                 self.train_dict['best_train_performance'] = train_loss
                 self.train_dict['epochs_since_last_train_improvement'] = 0
 
@@ -140,14 +139,14 @@ class Learner(ABC):
                 if verbose == 1:
                     print('evaluating')
                 val_loss = self.validate(device=device, verbose=verbose)
-                self.val_losses += [val_loss]
-                self.val_epochs += [self.epochs_run]
+                self.train_dict['val_losses'] += [val_loss]
+                self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
                 if val_loss < self.train_dict['best_val_performance']:
                     self.train_dict['best_val_performance'] = val_loss
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             # early termination
-            if 0 < early_termination < self.epochs_since_last_train_improvement:
+            if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
                 break
 
             for cb in self.callbacks:
@@ -219,8 +218,8 @@ class ClassificationLearner(Learner):
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
         super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
                                                     load_checkpoint, name, callbacks=callbacks)
-        self.train_accuracy = []
-        self.val_accuracy = []
+        self.train_dict['train_accuracy'] = []
+        self.train_dict['val_accuracy'] = []
 
     def train_epoch(self, device, verbose=1):
         self.model.train()
@@ -236,9 +235,9 @@ class ClassificationLearner(Learner):
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
-        self.losses += [loss]
+        self.train_dict['losses'] += [loss]
         accuracy = torch.cat(accuracies).float().mean().item()
-        self.train_accuracy += [accuracy]
+        self.train_dict['train_accuracy'] += [accuracy]
         if verbose == 1:
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
         return loss
@@ -269,21 +268,17 @@ class ClassificationLearner(Learner):
 
             loss = torch.stack(loss).mean().item()
             accuracy = torch.cat(accuracies).mean().item()
-            self.val_accuracy += [accuracy]
+            self.train_dict['val_accuracy'] += [accuracy]
             if verbose == 1:
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
             return loss
 
-    def create_state_dict(self):
-        state_dict = super().create_state_dict()
-        state_dict['train_acc'] = self.train_accuracy
-        state_dict['val_acc'] = self.val_accuracy
-        return state_dict
-
-    def restore_checkpoint(self, checkpoint):
-        super().restore_checkpoint(checkpoint)
-        self.train_accuracy = checkpoint['train_acc']
-        self.val_accuracy = checkpoint['val_acc']
+    # def create_state_dict(self):
+    #     state_dict = super().create_state_dict()
+    #     return state_dict
+    #
+    # def restore_checkpoint(self, checkpoint):
+    #     super().restore_checkpoint(checkpoint)
 
 
 class ImageClassifier(ClassificationLearner):
