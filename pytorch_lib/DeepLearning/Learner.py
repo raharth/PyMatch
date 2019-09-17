@@ -52,7 +52,17 @@ class Learner(ABC):
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
 
-    def backward(self, loss):
+    def _backward(self, loss):
+        """
+        Backward pass for the model, also performing a grad clip if defined for the learner.
+
+        Args:
+            loss: loss the backward pass is based on
+
+        Returns:
+            None
+
+        """
         self.optimizer.zero_grad()
         loss.backward()
         if self.grad_clip is not None:
@@ -60,6 +70,17 @@ class Learner(ABC):
         self.optimizer.step()
 
     def dump_checkpoint(self, path=None, tag='checkpoint'):
+        """
+        Dumping a checkpoint of the model.
+
+        Args:
+            path: target folder path
+            tag: addition tag for the dump
+
+        Returns:
+            None
+
+        """
         path = self.get_path(path=path, tag=tag)
         torch.save(self.create_state_dict(), path)
 
@@ -85,6 +106,17 @@ class Learner(ABC):
         return state_dict
 
     def load_checkpoint(self, path, tag):
+        """
+        Loads dumped checkpoint.
+
+        Args:
+            path: source path
+            tag: additional name tag
+
+        Returns:
+            None
+
+        """
         checkpoint = torch.load(self.get_path(path=path, tag=tag))
         self.restore_checkpoint(checkpoint)
 
@@ -110,11 +142,37 @@ class Learner(ABC):
         # self.epochs_since_last_train_improvement = checkpoint['epochs_since_last_train_improvement']
 
     def get_path(self, path, tag):
+        """
+        Returns the path for dumping or loading a checkpoint.
+
+        Args:
+            path: target folder
+            tag: additional name tag
+
+        Returns:
+
+        """
         if path is None:
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
+        """
+        Trains the learner for a number of epochs.
+
+        Args:
+            epochs: number of epochs to train
+            device: device to runt he model on
+            checkpoint_int: every checkpoint_int epochs the model is checkpointed
+            validation_int: every validation_int epochs the model is validated
+            restore_early_stopping: restores best performing weights after training
+            early_termination: terminates if there is no improvement for n iterations
+            verbose: verbosity
+
+        Returns:
+            None
+
+        """
         for epoch in range(epochs):
             self.train_dict['epochs_run'] += 1
             self.train_dict['epochs_since_last_train_improvement'] += 1
@@ -157,6 +215,19 @@ class Learner(ABC):
         self.dump_checkpoint(self.checkpoint_path)
 
     def predict_data_loader(self, data_loader, device='cpu', return_true=False, model_args={}):
+        """
+        Predict a entire data loader.
+
+        Args:
+            data_loader: data to predict
+            device: device to run the model on
+            return_true: return the true values as well (necessary if the data loader permutates the data
+            model_args: additional model argumentes for the forward pass (is that actually something one should do anyway?)
+
+        Returns:
+            predicted labels (, true labels)
+
+        """
         y_pred = []
         y_true = []
         for X, y in data_loader:
@@ -222,6 +293,16 @@ class ClassificationLearner(Learner):
         self.train_dict['val_accuracy'] = []
 
     def train_epoch(self, device, verbose=1):
+        """
+        Train a single epoch.
+
+        Args:
+            device: device to run it on 'cpu' or 'cuda'
+            verbose: verbosity of the learning
+
+        Returns:
+            current loss
+        """
         self.model.train()
         accuracies = []
         losses = []
@@ -230,7 +311,7 @@ class ClassificationLearner(Learner):
             labels = labels.to(device)
             y_pred = self.model.forward(data)
             loss = self.crit(y_pred, labels)
-            self.backward(loss)
+            self._backward(loss)
             if verbose == 1:    # somehow ugly, tis is only necessary if verbosity==1, but it is not outputting anything right here
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
@@ -243,6 +324,17 @@ class ClassificationLearner(Learner):
         return loss
 
     def predict(self, data, device='cpu', return_prob=False):
+        """
+        Predicting a batch as tensor.
+
+        Args:
+            data: data to predict
+            device: device to run the model on
+            return_prob: return probability (if False return class label)
+
+        Returns:
+            prediction (, true label)
+        """
         with torch.no_grad():
             self.model.eval()
             data = data.to(device)
@@ -254,6 +346,17 @@ class ClassificationLearner(Learner):
             return y_pred
 
     def validate(self, device, verbose=0):
+        """
+        Validate the model on the validation data.
+
+        Args:
+            device: device to run the model on
+            verbose: verbosity
+
+        Returns:
+            validation loss
+
+        """
         with torch.no_grad():
             self.model.eval()
             loss = []
