@@ -41,14 +41,6 @@ class Learner(ABC):
                            'epochs_since_last_train_improvement': 0,
                            }
 
-        # self.losses = []  # list of all training losses
-        # self.val_losses = []  # list of all validation losses
-        # self.val_epochs = []  # list of validated epochs
-        # self.epochs_run = 0  # numer of epochs the model has been trained
-        # self.best_val_performance = np.inf  # best validation performance
-        # self.best_train_performance = np.inf  # best training performance
-        # self.epochs_since_last_train_improvement = 0
-
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
 
@@ -134,12 +126,6 @@ class Learner(ABC):
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.train_dict = checkpoint['train_dict']
-        # self.epochs_run = checkpoint['epoch']
-        # self.losses = checkpoint['loss']
-        # self.val_losses = checkpoint['val_loss']
-        # self.val_epochs = checkpoint['val_epoch']
-        # self.best_train_performance = checkpoint['best_train_performance']
-        # self.epochs_since_last_train_improvement = checkpoint['epochs_since_last_train_improvement']
 
     def get_path(self, path, tag):
         """
@@ -207,8 +193,6 @@ class Learner(ABC):
                 if val_loss < self.train_dict['best_val_performance']:
                     self.train_dict['best_val_performance'] = val_loss
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
-
-
 
             for cb in self.callbacks:
                 cb.callback(self)
@@ -378,13 +362,6 @@ class ClassificationLearner(Learner):
             if verbose == 1:
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
             return loss
-
-    # def create_state_dict(self):
-    #     state_dict = super().create_state_dict()
-    #     return state_dict
-    #
-    # def restore_checkpoint(self, checkpoint):
-    #     super().restore_checkpoint(checkpoint)
 
 
 class ImageClassifier(ClassificationLearner):
