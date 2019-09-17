@@ -36,25 +36,79 @@ class LearningCurvePlotter(Callback):
 
     def __init__(self, img_path='tmp'):
         super(LearningCurvePlotter, self).__init__()
-        self.img_path = '{}/learning_curve.png'.format(img_path)
+        self.img_path = img_path
 
     def callback(self, model, figsize=(10, 10)):
         fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=figsize)
+        fig.suptitle('{}'.format(model.name))
 
-        ax[0].plot(model.losses)
-        ax[0].plot(model.val_losses)
+        ax[0].plot(model.train_dict['train_losses'])
+        ax[0].plot(model.train_dict['val_losses'])
         ax[0].legend(['train', 'val'])
         ax[0].set_title('loss')
         ax[0].set_ylabel('loss')
 
-        ax[1].plot(model.train_accuracy)
-        ax[1].plot(model.val_accuracy)
+        ax[1].plot(model.train_dict['train_accuracy'])
+        ax[1].plot(model.train_dict['val_accuracy'])
         ax[1].legend(['train', 'val'])
         ax[1].set_title('accuracy')
         ax[1].set_ylabel('accuracy in %')
         ax[1].set_xlabel('epoch')
 
-        fig.savefig(self.img_path)
+        img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
+        fig.savefig(img_path)
+        plt.close(fig)
+
+
+class EnsembleLearningCurvePlotter(Callback):
+
+    def __init__(self, img_path='tmp'):
+        super(EnsembleLearningCurvePlotter, self).__init__()
+        self.img_path = img_path
+
+    def callback(self, ensemble, figsize=(10, 10)):
+        fig, ax = plt.subplots(nrows=2, ncols=2, sharex=True, sharey=True, figsize=figsize)
+        # fig.suptitle('{}'.format(model.name))
+        names = []
+
+        for learner in ensemble.learners:
+            ax[0, 0].plot(learner.train_dict['train_losses'])
+            names += [learner.name]
+        ax[0, 0].legend(names)
+        ax[0, 0].set_title('train loss')
+        ax[0, 0].set_ylabel('loss')
+
+        for learner in ensemble.learners:
+            ax[1, 0].plot(learner.train_dict['val_losses'])
+        ax[1, 0].legend(names)
+        ax[1, 0].set_title('validation loss')
+        ax[1, 0].set_ylabel('loss')
+
+        for learner in ensemble.learners:
+            ax[0, 1].plot(learner.train_dict['train_accuracy'])
+        ax[0, 1].legend(names)
+        ax[0, 1].set_title('train accuracy in %')
+        ax[0, 1].set_ylabel('loss')
+
+        for learner in ensemble.learners:
+            ax[1, 1].plot(learner.train_dict['val_accuracy'])
+        ax[1, 1].legend(names)
+        ax[1, 1].set_title('validation accuracy')
+        ax[1, 1].set_ylabel('validation accuracy in %')
+
+        # ax.set_xlabel('common xlabel')
+        # ax.set_ylabel('common ylabel')
+
+
+        # ax[1].plot(model.train_dict['train_accuracy'])
+        # ax[1].plot(model.train_dict['val_accuracy'])
+        # ax[1].legend(['train', 'val'])
+        # ax[1].set_title('accuracy')
+        # ax[1].set_ylabel('accuracy in %')
+        # ax[1].set_xlabel('epoch')
+
+        img_path = '{}/learning_curve_ensemble.png'.format(self.img_path)
+        fig.savefig(img_path)
         plt.close(fig)
 
 

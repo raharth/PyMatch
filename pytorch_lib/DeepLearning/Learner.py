@@ -174,6 +174,11 @@ class Learner(ABC):
 
         """
         for epoch in range(epochs):
+
+            # early termination
+            if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
+                break
+
             self.train_dict['epochs_run'] += 1
             self.train_dict['epochs_since_last_train_improvement'] += 1
 
@@ -203,9 +208,7 @@ class Learner(ABC):
                     self.train_dict['best_val_performance'] = val_loss
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
-            # early termination
-            if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
-                break
+
 
             for cb in self.callbacks:
                 cb.callback(self)
@@ -316,7 +319,7 @@ class ClassificationLearner(Learner):
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
-        self.train_dict['losses'] += [loss]
+        self.train_dict['train_losses'] += [loss]
         accuracy = torch.cat(accuracies).float().mean().item()
         self.train_dict['train_accuracy'] += [accuracy]
         if verbose == 1:
