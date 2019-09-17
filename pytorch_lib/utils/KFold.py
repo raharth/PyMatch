@@ -14,12 +14,35 @@ class KFold:
 
         self.fold_idx = self.fold_split()
 
-    def fold_split(self):
+    def fold_split(self, random_seed=None):
+        """
+        Splitting the folds.
+
+        Args:
+            random_seed: Random seed for reproducibility
+
+        Returns:
+            tensor containing indices for folds, where dim=0 is the fold number
+
+        """
+        if random_seed is not None:
+            torch.manual_seed(random_seed)
         fold_idx = torch.randperm(self.dataset.__len__())
         fold_idx = fold_idx[:self.folded_size].view(-1, self.fold_size)
         return fold_idx
 
     def fold_loaders(self, fold=-1):
+        """
+        Loading a specific fold as train and test data loader. If no fold number is provided it returns the next fold. It returns a randomly sampled subset of
+        the original data set.
+
+        Args:
+            fold: fold number to return
+
+        Returns:
+            (train data loader, test data loader)
+
+        """
         if fold == -1:
             fold = self.fold
         test_fold_idx = self.fold_idx[fold]
@@ -35,24 +58,4 @@ class KFold:
         self.fold = (self.fold + 1) % self.n_fold
         return train_loader, test_loader
 
-
-
-
-
-
-
-#
-# # dataset = tv.datasets.CIFAR10('./data/CIFAR10/', train=True, transform=tv.transforms.ToTensor(), download=True)
-# dataset = torch.tensor(range(40)).view(-1, 2)
-# n_fold = 4
-# fold_size = len(dataset) // n_fold
-# folded_size = n_fold * fold_size
-# fold = 1
-#
-# fold_idx = torch.randperm(folded_size)  # permutation
-# fold_idx = torch.tensor(range(folded_size)) # unpermuted
-# fold_idx = fold_idx[:folded_size].view(-1, fold_size)
-#
-# test_fold_idx = fold_idx[fold]
-# train_fold_idx = fold_idx[[i for i in range(n_fold) if i != fold]].view(-1)
 
