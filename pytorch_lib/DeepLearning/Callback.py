@@ -74,27 +74,31 @@ class EnsembleLearningCurvePlotter(Callback):
         for learner in ensemble.learners:
             ax[0, 0].plot(learner.train_dict['train_losses'])
             names += [learner.name]
-        ax[0, 0].legend(names)
+        # ax[0, 0].legend(names)
         ax[0, 0].set_title('train loss')
         ax[0, 0].set_ylabel('loss')
 
         for learner in ensemble.learners:
-            ax[1, 0].plot(learner.train_dict['val_losses'])
-        ax[1, 0].legend(names)
-        ax[1, 0].set_title('validation loss')
-        ax[1, 0].set_ylabel('loss')
+            ax[0, 1].plot(learner.train_dict['val_losses'])
+        # ax[0, 1].legend(names)
+        ax[0, 1].set_title('validation loss')
 
         for learner in ensemble.learners:
-            ax[0, 1].plot(learner.train_dict['train_accuracy'])
-        ax[0, 1].legend(names)
-        ax[0, 1].set_title('train accuracy in %')
-        ax[0, 1].set_ylabel('loss')
+            ax[1, 0].plot(learner.train_dict['train_accuracy'])
+        # ax[1, 0].legend(names)
+        ax[1, 0].set_title('train accuracy')
+        ax[1, 0].set_ylabel('accuracy in %')
+        ax[1, 0].set_xlabel('epoch')
 
         for learner in ensemble.learners:
             ax[1, 1].plot(learner.train_dict['val_accuracy'])
-        ax[1, 1].legend(names)
+        # ax[1, 1].legend(names)
         ax[1, 1].set_title('validation accuracy')
-        ax[1, 1].set_ylabel('validation accuracy in %')
+        # ax[1, 1].set_ylabel('validation accuracy in %')
+        ax[1, 1].set_xlabel('epoch')
+
+        fig.legend(names, framealpha=0.5)
+
 
         # ax.set_xlabel('common xlabel')
         # ax.set_ylabel('common ylabel')

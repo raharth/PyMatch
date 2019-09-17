@@ -79,6 +79,7 @@ class Ensemble:
         Trains each learner of the ensemble for a number of epochs
 
         Args:
+            callback_iter: number of iterations till the ensemble callbacks are called
             epochs: number of epochs to train each learner
             device: device to run the models on
             checkpoint_int: every checkpoint_int iterations the model is checkpointed
@@ -90,10 +91,13 @@ class Ensemble:
             None
 
         """
-        if callback_iter > 0:
-            epoch_iter = [callback_iter for _ in range(epochs//callback_iter)] + [epochs % callback_iter]
+        if callback_iter > 0:   # dive into a sequence of shorter training runs
+            epoch_iter = [callback_iter for _ in range(epochs//callback_iter)]
+            if epochs % callback_iter > 0:
+                callback_iter += [epochs % callback_iter]
         else:
             epoch_iter = [epochs]
+
         for run_epochs in epoch_iter:
             for trainer in self.learners:
                 if verbose == 1:
