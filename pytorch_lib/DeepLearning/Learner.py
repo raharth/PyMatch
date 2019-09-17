@@ -32,13 +32,22 @@ class Learner(ABC):
         self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
 
-        self.losses = []  # list of all training losses
-        self.val_losses = []  # list of all validation losses
-        self.val_epochs = []  # list of validated epochs
-        self.epochs_run = 0  # numer of epochs the model has been trained
-        self.best_val_performance = np.inf  # best validation performance
-        self.best_train_performance = np.inf  # best training performance
-        self.epochs_since_last_train_improvement = 0
+        self.train_dict = {'train_losses': [],  # list of all training losses
+                           'val_losses': [],    # list of all validation losses
+                           'val_epochs': [],    # list of validated epochs
+                           'epochs_run': 0,     # number of epochs the model has been trained
+                           'best_val_performance': np.inf,  # best validation performance
+                           'best_train_performance': np.inf,    # best training performance
+                           'epochs_since_last_train_improvement': 0,
+                           }
+
+        # self.losses = []  # list of all training losses
+        # self.val_losses = []  # list of all validation losses
+        # self.val_epochs = []  # list of validated epochs
+        # self.epochs_run = 0  # numer of epochs the model has been trained
+        # self.best_val_performance = np.inf  # best validation performance
+        # self.best_train_performance = np.inf  # best training performance
+        # self.epochs_since_last_train_improvement = 0
 
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
@@ -67,11 +76,12 @@ class Learner(ABC):
         state_dict = {'epoch': self.epochs_run,
                       'model_state_dict': self.model.state_dict(),
                       'optimizer_state_dict': self.optimizer.state_dict(),
-                      'loss': self.losses,
-                      'val_loss': self.val_losses,
-                      'val_epoch': self.val_epochs,
-                      'best_train_performance': self.best_train_performance,
-                      'epochs_since_last_train_improvement': self.epochs_since_last_train_improvement
+                      'train_dict': self.train_dict,
+                      # 'loss': self.losses,
+                      # 'val_loss': self.val_losses,
+                      # 'val_epoch': self.val_epochs,
+                      # 'best_train_performance': self.best_train_performance,
+                      # 'epochs_since_last_train_improvement': self.epochs_since_last_train_improvement
                       }
         return state_dict
 
@@ -92,12 +102,13 @@ class Learner(ABC):
         """
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.epochs_run = checkpoint['epoch']
-        self.losses = checkpoint['loss']
-        self.val_losses = checkpoint['val_loss']
-        self.val_epochs = checkpoint['val_epoch']
-        self.best_train_performance = checkpoint['best_train_performance']
-        self.epochs_since_last_train_improvement = checkpoint['epochs_since_last_train_improvement']
+        self.train_dict = checkpoint['train_dict']
+        # self.epochs_run = checkpoint['epoch']
+        # self.losses = checkpoint['loss']
+        # self.val_losses = checkpoint['val_loss']
+        # self.val_epochs = checkpoint['val_epoch']
+        # self.best_train_performance = checkpoint['best_train_performance']
+        # self.epochs_since_last_train_improvement = checkpoint['epochs_since_last_train_improvement']
 
     def get_path(self, path, tag):
         if path is None:
@@ -117,8 +128,8 @@ class Learner(ABC):
 
             # tracking training performance
             if train_loss < self.best_train_performance:
-                self.best_train_performance = train_loss
-                self.epochs_since_last_train_improvement = 0
+                self.train_dict['best_train_performance'] = train_loss
+                self.train_dict['epochs_since_last_train_improvement'] = 0
 
             # checkpointing
             if epoch % checkpoint_int == 0:
@@ -131,8 +142,8 @@ class Learner(ABC):
                 val_loss = self.validate(device=device, verbose=verbose)
                 self.val_losses += [val_loss]
                 self.val_epochs += [self.epochs_run]
-                if val_loss < self.best_val_performance:
-                    self.best_val_performance = val_loss
+                if val_loss < self.train_dict['best_val_performance']:
+                    self.train_dict['best_val_performance'] = val_loss
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             # early termination
@@ -221,7 +232,7 @@ class ClassificationLearner(Learner):
             y_pred = self.model.forward(data)
             loss = self.crit(y_pred, labels)
             self.backward(loss)
-            if verbose == 1:
+            if verbose == 1:    # somehow ugly, tis is only necessary if verbosity==1, but it is not outputting anything right here
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
@@ -238,9 +249,8 @@ class ClassificationLearner(Learner):
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
             if return_prob:
-                y_pred = y_pred.data  # @todo 'data' necessary?
+                y_pred = y_pred # .data  # @todo 'data' necessary?
             else:
-                # y_pred = torch.max(y_pred.data, 1)[1].data
                 y_pred = y_pred.max(dim=1)[1]
             return y_pred
 
