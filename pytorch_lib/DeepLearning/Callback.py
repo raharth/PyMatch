@@ -67,7 +67,7 @@ class EnsembleLearningCurvePlotter(Callback):
         self.img_path = img_path
 
     def callback(self, ensemble, figsize=(10, 10)):
-        fig, ax = plt.subplots(nrows=2, ncols=2, sharex=True, sharey=True, figsize=figsize)
+        fig, ax = plt.subplots(nrows=2, ncols=2, sharex=True, figsize=figsize)
         # fig.suptitle('{}'.format(model.name))
         names = []
 

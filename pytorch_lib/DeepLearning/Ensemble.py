@@ -59,14 +59,16 @@ class Ensemble:
 
         """
         y_pred = []
+        y_cert = []
         y_true = []
         for x, y in data_loader:
-            y_pred += [self.predict(x, device=device, return_prob=return_prob)]
+            pred = self.predict(x, device=device, return_prob=return_prob)
+            y_pred += [pred[0]]
+            y_cert += [pred[1]]
             y_true += [y]
 
-        y_pred = torch.tensor(y_pred)
-        y_pred_m = y_pred[:, 0]
-        y_pred_certainty = y_pred[:, 1]
+        y_pred = torch.cat(y_pred)
+        y_cert = torch.cat(y_cert)
 
         if return_true:
             y_true = torch.cat(y_true)
@@ -200,7 +202,7 @@ class Ensemble:
         for y in y_vote.transpose(0, 1):
             val, count = torch.unique(y, return_counts=True)
             y_pred += [val[count.argmax()].item()]
-            y_count += [count.argmax() / len(self.learners)]
+            y_count += [count[count.argmax()] / float(len(self.learners))]
         return torch.tensor(y_pred), torch.tensor(y_count)
 
 
