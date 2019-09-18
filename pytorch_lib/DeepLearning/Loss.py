@@ -1,5 +1,6 @@
 from torch.nn.modules.loss import _Loss
 import torch
+import torch.nn as nn
 from torch.distributions import normal
 
 
@@ -46,4 +47,15 @@ class AnkerLossClassification(_Loss):
         loss += self.C / target.shape[0] * l2_reg   # C / N * L_2
         return loss
 
+class OneHotBCELoss(_Loss):
+
+    def __init__(self, n_classes):
+        super(OneHotBCELoss, self).__init__()
+        self.n_classes = n_classes
+        self.bce_loss = nn.BCELoss()
+
+    def forward(self, input, target):
+        target_onehot = torch.zeros((len(target), self.n_classes))
+        target_onehot.scatter_(1, target.view(-1, 1), 1)
+        return self.bce_loss(input, target_onehot)
 

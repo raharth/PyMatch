@@ -15,7 +15,7 @@ class Ensemble:
 
         # self.losses = [] # @todo I don't think that this is actually used anywhere
 
-    def predict(self, x, device='cpu', return_prob=True, learner_args=None):
+    def predict(self, x, device='cpu', return_prob=True, learner_args=None, return_certainty=False):
         """
         Predicting a data tensor.
 
@@ -24,6 +24,7 @@ class Ensemble:
             device: device to run the model on
             return_prob: return probability or class label
             learner_args: additional learner arguments (this may not include the 'return_prob' argument)
+            return_certainty: returns certainty about predictions
 
         Returns:
             prediction with certainty measure.
@@ -36,13 +37,16 @@ class Ensemble:
         if learner_args is None:
             learner_args = {}
 
-        y_preds = [leaner.predict(x, device, return_prob=return_prob, **learner_args) for leaner in self.learners]
-        y_preds = torch.stack(y_preds)
+        preds = [leaner.predict(x, device, return_prob=return_prob, **learner_args) for leaner in self.learners]
+        preds = torch.stack(preds)
 
         if return_prob:
-            return y_preds.mean(dim=0), y_preds.std(dim=0)
-
-        return self.majority_vote(y_preds)
+            y_pred, y_cert = preds.mean(dim=0), preds.std(dim=0)
+        else:
+            y_pred, y_cert = self.majority_vote(preds)
+        if return_certainty:
+            return y_pred, y_cert
+        return y_pred
 
     def predict_data_loader(self, data_loader, device='cpu', return_true=False, return_prob=False):
         """
