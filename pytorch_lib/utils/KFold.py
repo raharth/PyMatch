@@ -3,10 +3,11 @@ import torch
 
 class KFold:
 
-    def __init__(self, dataset, n_fold=10, batch_size=32, num_workers=0):
+    def __init__(self, dataset, n_fold=10, batch_size=32, num_workers=0, pin_memory=False):
         self.fold = 0
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.pin_memory = pin_memory
         self.dataset = dataset
         self.n_fold = n_fold
         self.fold_size = len(self.dataset) // self.n_fold
@@ -50,10 +51,12 @@ class KFold:
         train_loader = torch.utils.data.DataLoader(self.dataset,
                                                    batch_size=self.batch_size,  # args.batch_size,
                                                    num_workers=self.num_workers,  # args.loader_num_workers,
+                                                   pin_memory=self.pin_memory,
                                                    sampler=torch.utils.data.SubsetRandomSampler(train_fold_idx))
         test_loader = torch.utils.data.DataLoader(self.dataset,
                                                   batch_size=self.batch_size,  # args.batch_size,
                                                   num_workers=self.num_workers,  # args.loader_num_workers,
+                                                  pin_memory=self.pin_memory,
                                                   sampler=torch.utils.data.SubsetRandomSampler(test_fold_idx))
         self.fold = (self.fold + 1) % self.n_fold
         return train_loader, test_loader

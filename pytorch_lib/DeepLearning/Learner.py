@@ -291,6 +291,7 @@ class ClassificationLearner(Learner):
             current loss
         """
         self.model.train()
+        self.model.to(device)
         accuracies = []
         losses = []
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
@@ -324,6 +325,7 @@ class ClassificationLearner(Learner):
         """
         with torch.no_grad():
             self.model.eval()
+            self.model.to(device)
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
             if return_prob:
@@ -346,6 +348,7 @@ class ClassificationLearner(Learner):
         """
         with torch.no_grad():
             self.model.eval()
+            self.model.to(device)
             loss = []
             accuracies = []
             for data, y in self.val_loader:

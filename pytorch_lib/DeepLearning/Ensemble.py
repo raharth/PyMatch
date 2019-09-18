@@ -72,9 +72,9 @@ class Ensemble:
 
         if return_true:
             y_true = torch.cat(y_true)
-            return y_pred_m, y_pred_certainty, y_true
+            return y_pred, y_cert, y_true
 
-        return y_pred_m, y_pred_certainty
+        return y_pred, y_cert
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1, callback_iter=-1):
         """
