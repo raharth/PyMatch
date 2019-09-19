@@ -166,7 +166,7 @@ class Ensemble:
             y_true_learners += [torch.cat(y_true)]
         return y_pred_learners, y_true_learners
 
-    def train_upto(self, epochs, device='cpu', checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
+    def resume_training(self, epochs, device='cpu', checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
         """
         The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
 
@@ -183,7 +183,7 @@ class Ensemble:
 
         """
         for learner in self.learners:
-            train_epochs = epochs - learner.epochs_run
+            train_epochs = epochs - learner.train_dict['epochs_run']
             if verbose == 1:
                 print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
             learner.train(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,

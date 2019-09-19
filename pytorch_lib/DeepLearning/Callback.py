@@ -90,7 +90,7 @@ class EnsembleLearningCurvePlotter(Callback):
         ax[0, 0].set_ylabel('loss', fontsize=20)
 
         for learner in ensemble.learners:
-            ax[0, 1].plot(learner.train_dict['val_losses'])
+            ax[0, 1].plot(learner.train_dict['val_epochs'], learner.train_dict['val_losses'])
 
         for learner in ensemble.learners:
             ax[1, 0].plot(learner.train_dict['train_accuracy'])
@@ -98,7 +98,7 @@ class EnsembleLearningCurvePlotter(Callback):
         ax[1, 0].set_xlabel('train', fontsize=20)
 
         for learner in ensemble.learners:
-            ax[1, 1].plot(learner.train_dict['val_accuracy'])
+            ax[1, 1].plot(learner.train_dict['val_epochs'], learner.train_dict['val_accuracy'])
         ax[1, 1].set_xlabel('validation', fontsize=20)
 
         fig.legend(names, framealpha=0.5)
