@@ -127,7 +127,7 @@ class Ensemble:
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
 
-    def load_checkpoint(self, path=None, tag='checkpoint'):
+    def load_checkpoint(self, path=None, tag='checkpoint', device='cpu'):
         """
         Loads a set of checkpoints, one for each learner
 
@@ -140,7 +140,7 @@ class Ensemble:
 
         """
         for learner in self.learners:
-            learner.load_checkpoint(path=path, tag=tag)
+            learner.load_checkpoint(path=path, tag=tag, device=device)
 
     def run_validation(self, device='cpu'):
         """

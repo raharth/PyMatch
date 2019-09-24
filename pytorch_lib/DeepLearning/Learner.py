@@ -97,7 +97,7 @@ class Learner(ABC):
                       }
         return state_dict
 
-    def load_checkpoint(self, path, tag):
+    def load_checkpoint(self, path, tag, device='cpu'):
         """
         Loads dumped checkpoint.
 
@@ -109,7 +109,7 @@ class Learner(ABC):
             None
 
         """
-        checkpoint = torch.load(self.get_path(path=path, tag=tag))
+        checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
         self.restore_checkpoint(checkpoint)
 
     def restore_checkpoint(self, checkpoint):
