@@ -66,18 +66,16 @@ class Ensemble:
         y_cert = []
         y_true = []
         for x, y in data_loader:
-            # @todo there has to be a more elegant way to solve this. This actually produces a lot of crap....
-            # @todo depending on return_certainty it returns one or two values, which means that pred[0] grabs different things - a tensor of predictions
-            # @todo or a single prediction of that tensor
             pred = self.predict(x, device=device, return_prob=return_prob, return_certainty=return_certainty)
             if return_certainty:
+                # @todo there has to be a more elegant way to solve this
                 y_pred += [pred[0]]
                 y_cert += [pred[1]]
             else:
                 y_pred += [pred]
             y_true += [y]
 
-        result = [torch.cat(y_pred) if return_prob else torch.stack(y_pred)]
+        result = [torch.cat(y_pred)]
 
         if return_true:
             result += [torch.cat(y_true)]
