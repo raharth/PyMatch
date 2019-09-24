@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 
 from pytorch_lib.utils.Functional import scale_confusion_matrix, plot_confusion_matrix
 
@@ -38,7 +38,7 @@ class LearningCurvePlotter(Callback):
         super(LearningCurvePlotter, self).__init__()
         self.img_path = img_path
 
-    def callback(self, model, args=None):
+    def callback(self, model, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -60,6 +60,8 @@ class LearningCurvePlotter(Callback):
         ax[1].set_ylabel('accuracy in %')
         ax[1].set_xlabel('epoch')
 
+        if return_fig:
+            return fig, ax
         img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
         fig.savefig(img_path)
         plt.close(fig)
@@ -71,7 +73,7 @@ class EnsembleLearningCurvePlotter(Callback):
         super(EnsembleLearningCurvePlotter, self).__init__()
         self.img_path = img_path
 
-    def callback(self, ensemble, args):
+    def callback(self, ensemble, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -104,18 +106,20 @@ class EnsembleLearningCurvePlotter(Callback):
         fig.legend(names, framealpha=0.5)
 
         img_path = '{}/learning_curve_ensemble.png'.format(self.img_path)
+        if return_fig:
+            return fig, ax
         fig.savefig(img_path)
         plt.close(fig)
 
 
-class PlotConfusionMatrix(Callback):
+class ConfusionMatrixPlotter(Callback):
 
-    def __init__(self, data_loader, img_path='./tmp/'):
-        super(PlotConfusionMatrix, self).__init__()
+    def __init__(self, data_loader, img_path='./tmp', img_name='confusion_matrix'):
+        super(ConfusionMatrixPlotter, self).__init__()
         self.data_loader = data_loader
-        self.img_path = img_path
+        self.img_path = '{}/{}.png'.format(img_path, img_name)
 
-    def callback(self, model, classes, device='cpu'):
+    def callback(self, model, classes, device='cpu', return_fig=False):
         y_true = []
         y_pred = []
         for X, y in self.data_loader:
@@ -127,7 +131,35 @@ class PlotConfusionMatrix(Callback):
         cm = scale_confusion_matrix(confusion_matrix(y_true_ens, y_pred_ens))
         fig, ax = plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
         fig.suptitle('Learner performance')
-
-        img_path = '{}/confusion_matrix.png'.format(self.img_path)
-        fig.savefig(img_path)
+        if return_fig:
+            return fig, ax
+        fig.savefig(self.img_path)
         plt.close(fig)
+
+
+class Reporter(Callback):
+
+    def __init__(self, data_loader, folder_path='./tmp', file_name='report', mode='a+'):
+        """
+
+        Args:
+            data_loader:
+            folder_path:
+            file_name:
+            mode: mode of the writer, 'a': append, 'w': overwrite
+        """
+        super(Reporter, self).__init__()
+        self.mode = mode
+        self.data_loader = data_loader
+        self.file_path = '{}/{}.txt'.format(folder_path, file_name)
+
+    def callback(self, model, classes):
+        y_pred, y_true = model.predict_data_loader(self.data_loader, return_true=True)
+        report = classification_report(y_true.numpy(), y_pred.numpy(), digits=3, target_names=classes)
+        self._write_report(report)
+
+    def _write_report(self, report):
+        with open(self.file_path, self.mode) as file:
+            file.write(report)
+            file.write('\n\n')
+            file.close()

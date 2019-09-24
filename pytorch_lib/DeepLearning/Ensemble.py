@@ -15,7 +15,7 @@ class Ensemble:
 
         # self.losses = [] # @todo I don't think that this is actually used anywhere
 
-    def predict(self, x, device='cpu', return_prob=True, learner_args=None, return_certainty=False):
+    def predict(self, x, device='cpu', return_prob=False, return_certainty=False, learner_args=None):
         """
         Predicting a data tensor.
 
