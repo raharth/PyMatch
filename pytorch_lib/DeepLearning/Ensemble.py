@@ -48,7 +48,7 @@ class Ensemble:
             return y_pred, y_cert
         return y_pred
 
-    def predict_data_loader(self, data_loader, device='cpu', return_true=False, return_prob=False):
+    def predict_data_loader(self, data_loader, device='cpu', return_true=False, return_prob=False, return_certainty=False):
         """
         Predicting an entire torch data loader.
 
@@ -66,19 +66,22 @@ class Ensemble:
         y_cert = []
         y_true = []
         for x, y in data_loader:
-            pred = self.predict(x, device=device, return_prob=return_prob)
+            # @todo there has to be a more elegant way to solve this. This actually produces a lot of crap....
+            # @todo depending on return_certainty it returns one or two values, which means that pred[0] grabs different things - a tensor of predictions
+            # @todo or a single prediction of that tensor
+            pred = self.predict(x, device=device, return_prob=return_prob, return_certainty=True)
             y_pred += [pred[0]]
             y_cert += [pred[1]]
             y_true += [y]
 
-        y_pred = torch.cat(y_pred)
-        y_cert = torch.cat(y_cert)
+        result = [torch.cat(y_pred) if return_prob else torch.stack(y_pred)]
 
         if return_true:
-            y_true = torch.cat(y_true)
-            return y_pred, y_cert, y_true
+            result += [torch.cat(y_true)]
+        if return_certainty:
+            result += [torch.stack(y_cert)]
 
-        return y_pred, y_cert
+        return tuple(result)
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1, callback_iter=-1):
         """

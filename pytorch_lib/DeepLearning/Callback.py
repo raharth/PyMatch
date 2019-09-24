@@ -2,7 +2,10 @@ import matplotlib.pyplot as plt
 import torch
 from sklearn.metrics import confusion_matrix, classification_report
 
-from pytorch_lib.utils.Functional import scale_confusion_matrix, plot_confusion_matrix
+from pytorch_lib.utils.Functional import scale_confusion_matrix
+
+import pandas as pd
+import seaborn as sn
 
 
 class Callback:
@@ -80,35 +83,35 @@ class EnsembleLearningCurvePlotter(Callback):
             args['figsize'] = (10, 10)
 
         fig, ax = plt.subplots(nrows=2, ncols=2, sharex=True, figsize=args['figsize'])
-        ax.set_xlabel('epochs')
-        ax.set_ylabel('performance')
-        fig.suptitle('Training performance')
+        fig.text(0.5, 0.04, 'epochs', ha='center', va='center', fontsize=20)
+        fig.text(0.02, 0.5, 'performance', ha='center', va='center', fontsize=20, rotation='vertical')
+        fig.suptitle('Training performance', fontsize=25)
 
         names = []
 
         for learner in ensemble.learners:
             ax[0, 0].plot(learner.train_dict['train_losses'])
             names += [learner.name]
-        ax[0, 0].set_ylabel('loss', fontsize=20)
+        ax[0, 0].set_ylabel('loss', fontsize=15)
 
         for learner in ensemble.learners:
             ax[0, 1].plot(learner.train_dict['val_epochs'], learner.train_dict['val_losses'])
 
         for learner in ensemble.learners:
             ax[1, 0].plot(learner.train_dict['train_accuracy'])
-        ax[1, 0].set_ylabel('accuracy in %')
-        ax[1, 0].set_xlabel('train', fontsize=20)
+        ax[1, 0].set_ylabel('accuracy in %', fontsize=15)
+        ax[1, 0].set_xlabel('train', fontsize=15)
 
         for learner in ensemble.learners:
             ax[1, 1].plot(learner.train_dict['val_epochs'], learner.train_dict['val_accuracy'])
-        ax[1, 1].set_xlabel('validation', fontsize=20)
+        ax[1, 1].set_xlabel('validation', fontsize=15)
 
-        fig.legend(names, framealpha=0.5)
+        fig.legend(names, framealpha=0.5, loc='center right')
 
         img_path = '{}/learning_curve_ensemble.png'.format(self.img_path)
         if return_fig:
             return fig, ax
-        fig.savefig(img_path)
+        fig.savefig(self.img_path, dpi=fig.dpi, bbox_inches='tight', pad_inches=0.5)
         plt.close(fig)
 
 
@@ -119,7 +122,7 @@ class ConfusionMatrixPlotter(Callback):
         self.data_loader = data_loader
         self.img_path = '{}/{}.png'.format(img_path, img_name)
 
-    def callback(self, model, classes, device='cpu', return_fig=False):
+    def callback(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
         y_true = []
         y_pred = []
         for X, y in self.data_loader:
@@ -129,12 +132,36 @@ class ConfusionMatrixPlotter(Callback):
         y_pred_ens = torch.cat(y_pred)
 
         cm = scale_confusion_matrix(confusion_matrix(y_true_ens, y_pred_ens))
-        fig, ax = plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
-        fig.suptitle('Learner performance')
+        fig, ax = self.plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
+        fig.suptitle(title, y=.95, fontsize=25)
+
         if return_fig:
             return fig, ax
-        fig.savefig(self.img_path)
+        fig.savefig(self.img_path, dpi=fig.dpi, bbox_inches='tight', pad_inches=0.5)
         plt.close(fig)
+
+    def plot_confusion_matrix(self, confm, class_names=None, figsize=(8, 8), heat_map_args={}):
+        if 'annot' not in heat_map_args:
+            heat_map_args['annot'] = True
+        if 'fmt' not in heat_map_args:
+            heat_map_args['fmt'] = '.2%'
+        if 'vmin' not in heat_map_args:
+            heat_map_args['vmin'] = 0.
+        if 'vmax' not in heat_map_args:
+            heat_map_args['vmax'] = 1.
+
+        if class_names is None:
+            class_names = ['{}'.format(i) for i in range(len(confm))]
+
+        df_cm = pd.DataFrame(confm, index=class_names, columns=class_names)
+        fig, ax = plt.subplots(figsize=figsize)
+        ax = sn.heatmap(df_cm, **heat_map_args, ax=ax)
+        ax.set_yticklabels(ax.get_yticklabels(), rotation=45.)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45.)
+        ax.set_ylim(0., len(class_names) + .5)
+        ax.set_xlabel('predicted', fontsize=15)
+        ax.set_ylabel('true', fontsize=15)
+        return fig, ax
 
 
 class Reporter(Callback):
