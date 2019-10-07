@@ -201,31 +201,6 @@ class Learner(ABC):
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.checkpoint_path)
 
-    def predict_data_loader(self, data_loader, device='cpu', return_true=False, model_args={}):
-        """
-        Predict a entire data loader.
-
-        Args:
-            data_loader: data to predict
-            device: device to run the model on
-            return_true: return the true values as well (necessary if the data loader permutates the data
-            model_args: additional model argumentes for the forward pass (is that actually something one should do anyway?)
-
-        Returns:
-            predicted labels (, true labels)
-
-        """
-        y_pred = []
-        y_true = []
-        for X, y in data_loader:
-            y_true += [y]
-            y_pred += [self.predict(X, device=device, **model_args)]
-        y_pred = torch.cat(y_pred)
-        y_true = torch.cat(y_true)
-        if return_true:
-            return y_pred, y_true
-        return y_pred
-
     @abstractmethod
     def train_epoch(self, device, verbose=1):
         """
@@ -284,7 +259,7 @@ class ClassificationLearner(Learner):
         Train a single epoch.
 
         Args:
-            device: device to run it on 'cpu' or 'cuda'
+            device: device t-o run it on 'cpu' or 'cuda'
             verbose: verbosity of the learning
 
         Returns:
@@ -300,7 +275,7 @@ class ClassificationLearner(Learner):
             y_pred = self.model.forward(data)
             loss = self.crit(y_pred, labels)
             self._backward(loss)
-            if verbose == 1:    # somehow ugly, tis is only necessary if verbosity==1, but it is not outputting anything right here
+            if verbose == 1:    # somehow ugly, this is only necessary if verbosity==1, but it is not outputting anything right here
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
@@ -328,6 +303,7 @@ class ClassificationLearner(Learner):
             self.model.to(device)
             data = data.to(device)
             y_pred = self.model.forward(data).to('cpu')
+            # @todo this could be done by a general output modifier
             if return_prob:
                 y_pred = y_pred # .data  # @todo 'data' necessary?
             else:
