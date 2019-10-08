@@ -20,7 +20,7 @@ def predict_single_models(ensemble, data_loader):
         correct_pred = []
 
         for data, y in tqdm(data_loader):
-            y_pred = trainer.predict(data, device=device, return_prob=False)
+            y_pred = trainer.cover(data, device=device, return_prob=False)
             y_pred_list += [y_pred]
             correct_pred += [y == y_pred.to('cpu')]
 

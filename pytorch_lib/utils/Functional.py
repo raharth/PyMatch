@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sn
-
+import json
 
 def scale_confusion_matrix(confm):
     return (confm.transpose() / confm.sum(1)).transpose()
@@ -28,6 +28,7 @@ def plot_confusion_matrix(confm, class_names=None, figsize=(8, 8), heat_map_args
     ax.set_ylim(0., len(class_names) + .5)
     return fig, ax
 
-# def multiclass_F1(cm):
-#     for i in range(cm.shape[0]):
 
+def read_setting(path):
+    with open(path) as json_file:
+        return json.load(json_file)

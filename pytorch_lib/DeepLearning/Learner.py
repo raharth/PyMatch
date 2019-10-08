@@ -7,6 +7,8 @@ import os
 import shutil
 import pandas as pd
 
+from pytorch_lib.utils import DataHandler
+
 
 class Learner(ABC):
 
@@ -159,6 +161,9 @@ class Learner(ABC):
             None
 
         """
+
+        # self.to(device)
+
         for epoch in range(epochs):
 
             # early termination
@@ -201,6 +206,13 @@ class Learner(ABC):
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.checkpoint_path)
 
+    def eval(self):
+        self.model.eval()
+
+    def to(self, device):
+        self.model.to(device)
+        self.crit.to(device)
+
     @abstractmethod
     def train_epoch(self, device, verbose=1):
         """
@@ -217,14 +229,14 @@ class Learner(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, data, device, prob=False):
+    def predict(self, data, device='cpu', return_device=None):
         """
         Predicting a batch of data.
 
         Args:
             data: batch of data to predict
             device: device to run it on 'cpu' or 'cuda'
-            prob: @todo this is not supposed to be in the abstract class, since only useful for a classification learner
+            return_device: device to return it on
 
         Returns:
             predicted values for the given data
@@ -267,13 +279,17 @@ class ClassificationLearner(Learner):
         """
         self.model.train()
         self.model.to(device)
+
         accuracies = []
         losses = []
+
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
             labels = labels.to(device)
+
             y_pred = self.model.forward(data)
-            loss = self.crit(y_pred, labels)
+            loss = self.crit(y_pred.to('cpu'), labels.to('cpu'))
+
             self._backward(loss)
             if verbose == 1:    # somehow ugly, this is only necessary if verbosity==1, but it is not outputting anything right here
                 losses += [loss.item()]
@@ -286,7 +302,7 @@ class ClassificationLearner(Learner):
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
         return loss
 
-    def predict(self, data, device='cpu', return_prob=False):
+    def predict(self, data, device='cpu', return_device=None):
         """
         Predicting a batch as tensor.
 
@@ -298,17 +314,16 @@ class ClassificationLearner(Learner):
         Returns:
             prediction (, true label)
         """
+
+        if return_device is None:
+            return_device = device
+
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
             data = data.to(device)
-            y_pred = self.model.forward(data).to('cpu')
-            # @todo this could be done by a general output modifier
-            if return_prob:
-                y_pred = y_pred # .data  # @todo 'data' necessary?
-            else:
-                y_pred = y_pred.max(dim=1)[1]
-            return y_pred
+            y_pred = self.model.forward(data)
+            return y_pred.to(return_device)
 
     def validate(self, device, verbose=0):
         """
@@ -323,14 +338,15 @@ class ClassificationLearner(Learner):
 
         """
         with torch.no_grad():
-            self.model.eval()
-            self.model.to(device)
+            self.eval()
+            self.to(device)
             loss = []
             accuracies = []
             for data, y in self.val_loader:
                 data = data.to(device)
-                y_pred = self.model(data).to('cpu')
-                loss += [self.crit(y_pred, y)]
+                y = y.to(device)
+                y_pred = self.model(data)
+                loss += [self.crit(y_pred, y).to('cpu')]
 
                 y_pred = y_pred.max(dim=1)[1]
                 accuracies += [(y_pred == y).float()]
@@ -350,7 +366,8 @@ class ImageClassifier(ClassificationLearner):
                                               name='', callbacks=callbacks)
 
     def create_result_df(self, data_loader, device='cpu'):
-        y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
+        # y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
+        y_pred = DataHandler.predict_data_loader(self.model, self.data_loader, device=device)
         data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
         return pd.DataFrame(data, columns=['img_path', 'label'])
 

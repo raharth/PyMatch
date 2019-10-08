@@ -32,5 +32,6 @@ class Model(nn.Module):
         x = self.bn3(x)
         x = F.relu(x)
         x = self.fc2(x)
-        out = F.softmax(x, dim=1)
+        # out = F.softmax(x, dim=1)
+        out = F.sigmoid(x)
         return out

@@ -3,7 +3,10 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
+from pytorch_lib.DeepLearning.Hat import LabelHat, DefaultClassHat
 from pytorch_lib.DeepLearning.Learner import ClassificationLearner
+from pytorch_lib.DeepLearning.Callback import Reporter, ConfusionMatrixPlotter
+from pytorch_lib.utils.DataHandler import DataHandler
 from models.test_Model import Model
 
 # training the model
@@ -11,9 +14,9 @@ no_cuda = False
 use_cuda = not no_cuda and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
-train_batch_size = 256
+train_batch_size = 64
 test_batch_size = 1000
-epochs = 30
+epochs = 10
 lr = .01
 momentum = .5
 log_interval = 10
@@ -27,15 +30,28 @@ test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size,
 crit = nn.CrossEntropyLoss()
 crit_test = nn.CrossEntropyLoss(reduction='sum')
 
-model = Model(10).to(device)
+model = Model(len(train_data.classes)).to(device)
 
 optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
-loss_train = []
-loss_test = []
-accuracy = []
 
+learner = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
+                                val_loader=test_loader, name='class_test', load_checkpoint=True)
 
-trainer = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
-                                val_loader=test_loader, name='class_test', load_checkpoint=False)
+learner.train(epochs, device=device)
 
-trainer.train(epochs, device=device)
+# reporter = Reporter(test_loader)
+# reporter.callback(learner, train_data.classes)
+
+# plotter = ConfusionMatrixPlotter(test_loader)
+# plotter.callback(learner, train_data.classes)
+
+y_pred = DataHandler.predict_data_loader(learner, test_loader, device='cuda')
+
+print(y_pred.shape)
+print(y_pred[0])
+
+# label_hat = LabelHat()
+# y_labeled = label_hat.cover(y_pred)
+
+default_hat = DefaultClassHat()
+y_default = default_hat.cover(y_pred)
