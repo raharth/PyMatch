@@ -35,7 +35,7 @@ class Ensemble:
         if learner_args is None:
             learner_args = {}
 
-        preds = [leaner.predict(x, device, return_prob=return_prob, **learner_args) for leaner in self.learners]
+        preds = [leaner.predict(x, device, **learner_args) for leaner in self.learners]
         preds = torch.stack(preds)
 
         # if return_prob:

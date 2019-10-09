@@ -7,6 +7,18 @@ class Hat:
         raise NotImplementedError
 
 
+class HatCord:
+
+    def __init__(self, model, hat):
+        self.model = model
+        self.hat = hat
+
+    def predict(self, X, device='cpu', learner_args={}):
+        y = self.model.predict(X, device, **learner_args)
+        y = self.hat.cover(y)
+        return y
+
+
 class DefaultClassHat(Hat):
 
     def __init__(self):
