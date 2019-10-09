@@ -4,7 +4,6 @@ from sklearn.metrics import confusion_matrix, classification_report
 
 from pytorch_lib.utils.Functional import scale_confusion_matrix
 from pytorch_lib.utils.DataHandler import DataHandler
-from pytorch_lib.DeepLearning.Hat import LabelHat, EnsembleHat
 
 import pandas as pd
 import seaborn as sn
@@ -125,18 +124,9 @@ class ConfusionMatrixPlotter(Callback):
         self.img_path = '{}/{}.png'.format(img_path, img_name)
 
     def callback(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
-        y_true = []
-        y_pred = []
-        for X, y in self.data_loader:
-            y_true += [y]
-            y_pred += [model.predict(X, device=device)]
-        y_true_ens = torch.cat(y_true)
-        y_pred_ens = torch.cat(y_pred)
+        y_pred, y_true = DataHandler.predict_data_loader(model=model, data_loader=self.data_loader, device=device, return_true=True)
 
-        ensemble_hat = EnsembleHat()
-        ensemble_hat.cover(y_pred_ens)
-
-        cm = scale_confusion_matrix(confusion_matrix(y_true_ens, y_pred_ens))
+        cm = scale_confusion_matrix(confusion_matrix(y_true, y_pred))
         fig, ax = self.plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
         fig.suptitle(title, y=.95, fontsize=25)
 
@@ -187,8 +177,6 @@ class Reporter(Callback):
 
     def callback(self, model, classes):
         y_pred, y_true = DataHandler.predict_data_loader(model, self.data_loader, return_true=True)
-        label_hat = LabelHat()
-        y_pred = label_hat.cover(y_pred)
         report = classification_report(y_true.numpy(), y_pred.numpy(), digits=3, target_names=classes)
         self._write_report(report)
 

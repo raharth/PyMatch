@@ -7,18 +7,6 @@ class Hat:
         raise NotImplementedError
 
 
-class HatCord:
-
-    def __init__(self, model, hat):
-        self.model = model
-        self.hat = hat
-
-    def predict(self, X, device='cpu', learner_args={}):
-        y = self.model.predict(X, device, **learner_args)
-        y = self.hat.cover(y)
-        return y
-
-
 class DefaultClassHat(Hat):
 
     def __init__(self):
@@ -73,4 +61,25 @@ class EnsembleHat(Hat):
         super(EnsembleHat, self).__init__()
 
     def cover(self, y):
+        return y.mean(dim=0)
+
+
+class EnsembleHatStd(Hat):
+
+    def __init__(self):
+        super(EnsembleHatStd, self).__init__()
+
+    def cover(self, y):
         return y.mean(dim=0), y.std(dim=0)
+
+
+class ThresholdHat(Hat):
+
+    def __init__(self, threshold=.5):
+        super(ThresholdHat, self).__init__()
+        self.threshold = threshold
+
+    def cover(self, y):
+        y_default = (y.max(dim=1)[0] < self.threshold).float().view(-1, 1)
+        return torch.cat([y, y_default], dim=1)
+
