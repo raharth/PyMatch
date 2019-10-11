@@ -343,7 +343,7 @@ class ClassificationLearner(Learner):
                 y_pred = self.model(data)
                 loss += [self.crit(y_pred.to('cpu'), y)]
 
-                y_pred = y_pred.max(dim=1)[1]
+                y_pred = y_pred.max(dim=1)[1].to('cpu')
                 accuracies += [(y_pred == y).float()]
 
             loss = torch.stack(loss).mean().item()

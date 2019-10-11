@@ -112,7 +112,7 @@ class EnsembleLearningCurvePlotter(Callback):
         img_path = '{}/learning_curve_ensemble.png'.format(self.img_path)
         if return_fig:
             return fig, ax
-        fig.savefig(self.img_path, dpi=fig.dpi, bbox_inches='tight', pad_inches=0.5)
+        fig.savefig(img_path, dpi=fig.dpi, bbox_inches='tight', pad_inches=0.5)
         plt.close(fig)
 
 
