@@ -35,7 +35,7 @@ class Ensemble:
         if learner_args is None:
             learner_args = {}
 
-        preds = [leaner.predict(x, device, **learner_args) for leaner in self.learners]
+        preds = [leaner.predict(x, device, ) for leaner in self.learners]
 
         # if return_prob:
         #     y_pred, y_cert = preds.mean(dim=0), preds.std(dim=0)

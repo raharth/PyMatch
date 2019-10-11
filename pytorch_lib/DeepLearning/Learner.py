@@ -211,7 +211,7 @@ class Learner(ABC):
 
     def to(self, device):
         self.model.to(device)
-        self.crit.to(device)
+        # self.crit.to(device)    # @todo this seems to cause trouble
 
     @abstractmethod
     def train_epoch(self, device, verbose=1):
@@ -229,14 +229,13 @@ class Learner(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def predict(self, data, device='cpu', return_device=None):
+    def predict(self, data, device='cpu'):
         """
         Predicting a batch of data.
 
         Args:
             data: batch of data to predict
             device: device to run it on 'cpu' or 'cuda'
-            return_device: device to return it on
 
         Returns:
             predicted values for the given data
@@ -285,12 +284,12 @@ class ClassificationLearner(Learner):
 
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
-            labels = labels.to(device)
+            labels = labels
 
-            y_pred = self.model.forward(data)
-            loss = self.crit(y_pred.to('cpu'), labels.to('cpu'))
+            y_pred = self.model.forward(data).to('cpu')
+            loss = self.crit(y_pred, labels)
 
-            self._backward(loss)
+            self._backward(loss) # @todo to cuda
             if verbose == 1:    # somehow ugly, this is only necessary if verbosity==1, but it is not outputting anything right here
                 losses += [loss.item()]
                 accuracies += [(y_pred.max(dim=1)[1] == labels)]
@@ -302,28 +301,24 @@ class ClassificationLearner(Learner):
             print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
         return loss
 
-    def predict(self, data, device='cpu', return_device=None):
+    def predict(self, data, device='cpu'):
         """
         Predicting a batch as tensor.
 
         Args:
             data: data to predict
             device: device to run the model on
-            return_prob: return probability (if False return class label)
 
         Returns:
             prediction (, true label)
         """
-
-        if return_device is None:
-            return_device = device
 
         with torch.no_grad():
             self.model.eval()
             self.model.to(device)
             data = data.to(device)
             y_pred = self.model.forward(data)
-            return y_pred.to(return_device)
+            return y_pred
 
     def validate(self, device, verbose=0):
         """
@@ -339,14 +334,14 @@ class ClassificationLearner(Learner):
         """
         with torch.no_grad():
             self.eval()
-            self.to(device)
+            self.model.to(device)
             loss = []
             accuracies = []
             for data, y in self.val_loader:
                 data = data.to(device)
-                y = y.to(device)
+                y = y
                 y_pred = self.model(data)
-                loss += [self.crit(y_pred, y).to('cpu')]
+                loss += [self.crit(y_pred.to('cpu'), y)]
 
                 y_pred = y_pred.max(dim=1)[1]
                 accuracies += [(y_pred == y).float()]
