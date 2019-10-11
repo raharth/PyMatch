@@ -50,7 +50,7 @@ class MajorityHat(Hat):
         for y_vote in y.transpose(0, 1):
             val, count = torch.unique(y_vote, return_counts=True)
             y_pred += [val[count.argmax()].item()]
-            y_count += [count[count.argmax()] / float(len(self.learners))]
+            y_count += [count[count.argmax()] / float(len(self.learners))] # @todo this will crash
 
         return torch.tensor(y_pred), torch.tensor(y_count)
 
@@ -61,7 +61,7 @@ class EnsembleHat(Hat):
         super(EnsembleHat, self).__init__()
 
     def cover(self, y):
-        return y.mean(dim=0)
+        return y.mean(dim=1)
 
 
 class EnsembleHatStd(Hat):

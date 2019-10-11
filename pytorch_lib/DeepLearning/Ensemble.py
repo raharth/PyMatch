@@ -36,50 +36,7 @@ class Ensemble:
             learner_args = {}
 
         preds = [leaner.predict(x, device, ) for leaner in self.learners]
-
-        # if return_prob:
-        #     y_pred, y_cert = preds.mean(dim=0), preds.std(dim=0)
-        # else:
-        #     y_pred, y_cert = self.majority_vote(preds)
-        # if return_certainty:
-        #     return y_pred, y_cert
-        return torch.stack(preds)
-
-    # def predict_data_loader(self, data_loader, device='cpu', return_true=False, return_prob=False, return_certainty=False):
-    #     """
-    #     Predicting an entire torch data loader.
-    #
-    #     Args:
-    #         data_loader: data loader containing the data to predict
-    #         device: device to run the model on
-    #         return_true: return the true values of the data loader
-    #         return_prob: return probabilistic result (majority voting if not)
-    #
-    #     Returns:
-    #         prediction, certainty measure (, true values)
-    #
-    #     """
-    #     y_pred = []
-    #     y_cert = []
-    #     y_true = []
-    #     for x, y in data_loader:
-    #         pred = self.predict(x, device=device, return_prob=return_prob, return_certainty=return_certainty)
-    #         if return_certainty:
-    #             # @todo there has to be a more elegant way to solve this
-    #             y_pred += [pred[0]]
-    #             y_cert += [pred[1]]
-    #         else:
-    #             y_pred += [pred]
-    #         y_true += [y]
-    #
-    #     result = [torch.cat(y_pred)]
-    #
-    #     if return_true:
-    #         result += [torch.cat(y_true)]
-    #     if return_certainty:
-    #         result += [torch.stack(y_cert)]
-    #
-    #     return tuple(result)
+        return torch.stack(preds, dim=1)
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
               callback_iter=-1):
@@ -102,7 +59,7 @@ class Ensemble:
         if callback_iter > 0:   # dive into a sequence of shorter training runs
             epoch_iter = [callback_iter for _ in range(epochs//callback_iter)]
             if epochs % callback_iter > 0:
-                callback_iter += [epochs % callback_iter]
+                epoch_iter += [epochs % callback_iter]
         else:
             epoch_iter = [epochs]
 
@@ -191,26 +148,6 @@ class Ensemble:
             learner.train(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,
                           validation_int=validation_int, restore_early_stopping=restore_early_stopping)
 
-    # def majority_vote(self, y_vote):
-    #     """
-    #     Evaluates the predictions of the ensemble as a majority voting.
-    #
-    #     Args:
-    #         y_vote: probabilistic output of the ensemble as a torch tensor of the predictions, where dim=0 are the learners
-    #
-    #     Returns:
-    #         prediction and percentage of that prediction
-    #
-    #     """
-    #     y_pred = []
-    #     y_count = []
-    #
-    #     for y in y_vote.transpose(0, 1):
-    #         val, count = torch.unique(y, return_counts=True)
-    #         y_pred += [val[count.argmax()].item()]
-    #         y_count += [count[count.argmax()] / float(len(self.learners))]
-    #     return torch.tensor(y_pred), torch.tensor(y_count)
-
     def to(self, device):
         for learner in self.learners:
             learner.to(device)
@@ -230,26 +167,6 @@ class BaysianEnsemble(Ensemble):
         self.eval()
         with torch.no_grad():
             return torch.stack([learner.predict(x, device=device) for learner in self.learners])
-
-    # def predict_class(self, x, device):
-    #     y_pred, _ = self.predict(x, device)
-    #     return torch.max(y_pred.data, 1)[1].data
-    #
-    # def predict_class_single_models(self, data_loader, device):
-    #     for i, trainer in enumerate(self.learners):
-    #         y_pred_list = []
-    #         correct_pred = []
-    #
-    #         for data, y in tqdm(data_loader):
-    #             y_pred = trainer.predict(data, device=device, return_prob=False)
-    #             y_pred_list += [y_pred]
-    #             correct_pred += [y == y_pred.to('cpu')]
-    #
-    #         y_pred_list = torch.cat(y_pred_list)
-    #         correct_pred = torch.cat(correct_pred)
-    #
-    #         print('{}: accuracy: {}'.format(i, correct_pred.float().mean()))
-    #     # @todo no return?
 
     @staticmethod
     def get_confidence(y_mean, y_std):
