@@ -7,7 +7,7 @@ class HatCord:
     def predict(self, X, device='cpu', learner_args={}):
         y = self.model.predict(X, device, **learner_args)
         for hat in self.hat_list:
-            y = hat.cover(y)
+            y = hat.predict(y)
         return y
 
     def eval(self):

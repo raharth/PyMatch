@@ -1,17 +1,16 @@
 class Pipeline:
 
-    def __init__(self, pipes):
+    def __init__(self, pipes, pipe_args=None):
         self.pipes = pipes
+        self.pipe_args = pipe_args if pipe_args is not None else [None for _ in range(len(pipes))]
 
-    def predict(self, X, device='cpu', learner_args={}):
-        y = self.model.predict(X, device, **learner_args)
-        for pipe in self.pipes:
+    def predict(self, X):
+        for pipe, pipe_arg in zip(self.pipes, self.pipe_args):
+            X = pipe.predict(X, **pipe_arg)
+        return X
 
-            X = pipe.predict(X, **)
-        return y
-
-    def eval(self):
-        self.model.eval()
-
-    def to(self, device):
-        self.model.to(device)
+    # def eval(self):
+    #     self.model.eval()
+    #
+    # def to(self, device):
+    #     self.model.to(device)
