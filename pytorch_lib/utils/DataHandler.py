@@ -29,7 +29,7 @@ class DataHandler:
                 data = data.to(device)
                 y = y.to(device)
 
-                yp = model.predict(data, **model_args)
+                yp = model.predict(data)
                 y_pred += [yp]
                 y_true += [y]
 

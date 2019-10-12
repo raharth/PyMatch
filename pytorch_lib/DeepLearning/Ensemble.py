@@ -35,7 +35,7 @@ class Ensemble:
         if learner_args is None:
             learner_args = {}
 
-        preds = [leaner.predict(x, device, ) for leaner in self.learners]
+        preds = [leaner.predict(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=1)
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,

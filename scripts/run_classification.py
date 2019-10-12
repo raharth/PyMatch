@@ -7,6 +7,7 @@ from pytorch_lib.DeepLearning.Hat import LabelHat, DefaultClassHat
 from pytorch_lib.DeepLearning.HatCord import HatCord
 from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from pytorch_lib.DeepLearning.Callback import Reporter, ConfusionMatrixPlotter
+from pytorch_lib.DeepLearning.Pipeline import Pipeline
 from pytorch_lib.utils.DataHandler import DataHandler
 from models.test_Model import Model
 
@@ -48,6 +49,10 @@ reporter.callback(label_learner, train_data.classes)
 
 plotter = ConfusionMatrixPlotter(test_loader)
 plotter.callback(label_learner, train_data.classes)
+
+pipeline = Pipeline(pipes=[learner, label_hat], pipe_args=[{'device': 'cuda'}, {}])
+
+y_pred = pipeline.predict_dataloader(test_loader, device=device)
 
 # y_pred = DataHandler.predict_data_loader(learner, test_loader, device='cuda')
 

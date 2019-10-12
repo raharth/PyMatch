@@ -3,7 +3,7 @@ import torch
 
 class Hat:
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         raise NotImplementedError
 
 
@@ -16,7 +16,7 @@ class DefaultClassHat(Hat):
         """
         super(DefaultClassHat, self).__init__()
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1,1)
         return torch.cat([y, y_def], dim=1)
 
@@ -30,7 +30,7 @@ class LabelHat(Hat):
         """
         super(LabelHat, self).__init__()
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         return y.max(dim=1)[1]
 
 
@@ -39,7 +39,7 @@ class MajorityHat(Hat):
     def __init__(self):
         super(MajorityHat, self).__init__()
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         # @todo validate/test
         y_pred = []
         y_count = []
@@ -60,7 +60,7 @@ class EnsembleHat(Hat):
     def __init__(self):
         super(EnsembleHat, self).__init__()
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         return y.mean(dim=1)
 
 
@@ -69,7 +69,7 @@ class EnsembleHatStd(Hat):
     def __init__(self):
         super(EnsembleHatStd, self).__init__()
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         return y.mean(dim=0), y.std(dim=0)
 
 
@@ -79,7 +79,7 @@ class ThresholdHat(Hat):
         super(ThresholdHat, self).__init__()
         self.threshold = threshold
 
-    def predict(self, y):
+    def predict(self, y, device='cpu'):
         y_default = (y.max(dim=1)[0] < self.threshold).float().view(-1, 1)
         return torch.cat([y, y_default], dim=1)
 
