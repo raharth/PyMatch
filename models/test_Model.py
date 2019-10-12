@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -33,5 +34,5 @@ class Model(nn.Module):
         x = F.relu(x)
         x = self.fc2(x)
         # out = F.softmax(x, dim=1)
-        out = F.sigmoid(x)
+        out = torch.sigmoid(x)
         return out

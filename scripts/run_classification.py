@@ -4,6 +4,7 @@ from torch import nn
 import torch.optim as optim
 
 from pytorch_lib.DeepLearning.Hat import LabelHat, DefaultClassHat
+from pytorch_lib.DeepLearning.HatCord import HatCord
 from pytorch_lib.DeepLearning.Learner import ClassificationLearner
 from pytorch_lib.DeepLearning.Callback import Reporter, ConfusionMatrixPlotter
 from pytorch_lib.utils.DataHandler import DataHandler
@@ -37,21 +38,21 @@ optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 learner = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
                                 val_loader=test_loader, name='class_test', load_checkpoint=True)
 
-learner.train(epochs, device=device)
+# learner.train(epochs, device=device)
 
-# reporter = Reporter(test_loader)
-# reporter.callback(learner, train_data.classes)
+label_hat = LabelHat()
+label_learner = HatCord(learner, [label_hat])
 
-# plotter = ConfusionMatrixPlotter(test_loader)
-# plotter.callback(learner, train_data.classes)
+reporter = Reporter(test_loader)
+reporter.callback(label_learner, train_data.classes)
 
-y_pred = DataHandler.predict_data_loader(learner, test_loader, device='cuda')
+plotter = ConfusionMatrixPlotter(test_loader)
+plotter.callback(label_learner, train_data.classes)
 
-print(y_pred.shape)
-print(y_pred[0])
+# y_pred = DataHandler.predict_data_loader(learner, test_loader, device='cuda')
 
 # label_hat = LabelHat()
 # y_labeled = label_hat.cover(y_pred)
 
-default_hat = DefaultClassHat()
-y_default = default_hat.cover(y_pred)
+# default_hat = DefaultClassHat()
+# y_default = default_hat.cover(y_pred)
