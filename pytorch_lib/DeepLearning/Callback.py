@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import torch
 from sklearn.metrics import confusion_matrix, classification_report
 
 from pytorch_lib.utils.Functional import scale_confusion_matrix
