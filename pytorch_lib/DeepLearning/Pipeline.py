@@ -11,7 +11,7 @@ class Pipeline:
         # for pipe, pipe_arg in zip(self.pipes, self.pipe_args):
         #     X = pipe.predict(X, device=device, **pipe_arg)
         for pipe in self.pipes:
-            X = pipe.predict(X)
+            X = pipe.predict(X, device)
         return X
 
     def predict_dataloader(self, data_loader, device='cpu', return_true=False):
@@ -29,3 +29,14 @@ class Pipeline:
         if return_true:
             return torch.cat(y_pred), torch.cat(y_true)
         return torch.cat(y_pred)
+
+    def eval(self):
+        for pipe in self.pipes:
+            if hasattr(pipe, "eval"):
+                pipe.eval()
+
+    def to(self, device):
+        for pipe in self.pipes:
+            if hasattr(pipe, "to"):
+                pipe.to(device)
+

@@ -64,10 +64,10 @@ class Ensemble:
             epoch_iter = [epochs]
 
         for run_epochs in epoch_iter:
-            for trainer in self.learners:
+            for learner in self.learners:
                 if verbose == 1:
-                    print('Trainer {}'.format(trainer.name))
-                trainer.train(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
+                    print('Trainer {}'.format(learner.name))
+                learner.train(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
                               validation_int=validation_int, restore_early_stopping=restore_early_stopping)
             for cb in self.callbacks:
                 cb.callback(self)
