@@ -11,24 +11,26 @@ class DefaultClassHat(Hat):
 
     def __init__(self):
         """
-        Adding a default class to a sigmoid output.
+        Adding a default class to a sigmoid output. This is adding an additional output that sums up to 1 with all
+        other output nodes. This is only useful if there is no softmax output. Also is might become less useful if
+        there are many possible labels.
 
         """
         super(DefaultClassHat, self).__init__()
 
     def predict(self, y, device='cpu'):
-        y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1,1)
+        y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1, 1)
         return torch.cat([y, y_def], dim=1)
 
 
-class LabelHat(Hat):
+class MaxProbabilityHat(Hat):
 
     def __init__(self):
         """
         Predicts the a label from a probability distribution.
 
         """
-        super(LabelHat, self).__init__()
+        super(MaxProbabilityHat, self).__init__()
 
     def predict(self, y, device='cpu'):
         return y.max(dim=1)[1]
@@ -44,7 +46,7 @@ class MajorityHat(Hat):
         y_pred = []
         y_count = []
 
-        label_hat = LabelHat()
+        label_hat = MaxProbabilityHat()
         y = label_hat.predict(y)
 
         for y_vote in y.transpose(0, 1):

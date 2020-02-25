@@ -12,7 +12,8 @@ from pytorch_lib.utils import DataHandler
 
 class Learner(ABC):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
+    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
+                 name='', callbacks=None):
         self.model = model  # neural network
         self.optimizer = optimizer  # optimizer for the network
         self.crit = crit  # loss
@@ -144,7 +145,8 @@ class Learner(ABC):
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
+    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False,
+              early_termination=-1, verbose=1):
         """
         Trains the learner for a number of epochs.
 
