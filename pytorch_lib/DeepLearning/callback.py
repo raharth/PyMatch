@@ -83,14 +83,13 @@ class RegressionCurvePlotter(Callback):
             args['figsize'] = (10, 10)
 
         fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True, figsize=args['figsize'])
-        fig.title('{}'.format(model.name))
 
-        ax[0].plot(model.train_dict['train_losses'])
-        ax[0].plot(model.train_dict['val_losses'])
-        ax[0].legend(['train', 'val'])
-        ax[0].set_title('loss')
-        ax[0].set_ylabel('loss')
-        ax[0].set_xlabel('epoch')
+        ax.plot(model.train_dict['train_losses'])
+        ax.plot(model.train_dict['val_epochs'], model.train_dict['val_losses'])
+        ax.legend(['train', 'val'])
+        ax.set_title('loss')
+        ax.set_ylabel('loss')
+        ax.set_xlabel('epoch')
 
         if return_fig:
             return fig, ax
