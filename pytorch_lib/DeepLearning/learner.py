@@ -147,7 +147,7 @@ class Learner(ABC):
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False,
+    def train(self, epochs, device='cpu', checkpoint_int=10, validation_int=10, restore_early_stopping=False,
               early_termination=-1, verbose=1):
         """
         Trains the learner for a number of epochs.
@@ -341,7 +341,7 @@ class ClassificationLearner(Learner):
 class RegressionLearner(Learner):
 
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
-        super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
+        super(RegressionLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
                                                     load_checkpoint, name, callbacks=callbacks)
 
     def train_epoch(self, device, verbose=1):

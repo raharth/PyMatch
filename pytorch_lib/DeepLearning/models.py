@@ -1,5 +1,4 @@
 import torch.nn as nn
-from pytorch_lib.DeepLearning.learner import Learner
 
 
 class AutoEncoder(nn.Module):
