@@ -1,6 +1,8 @@
 import torch
 from torchvision import datasets
 from torch.utils import data
+import pandas as pd
+
 
 class ImageFolderWithPaths(datasets.ImageFolder):
     """Custom dataset that includes image file paths. Extends
@@ -19,7 +21,7 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         return original_tuple
 
 
-class InMemoryDataset(data.Dataset):
+class Dataset(data.Dataset):
 
     def __init__(self, data, labels):
         self.labels = labels
@@ -33,6 +35,17 @@ class InMemoryDataset(data.Dataset):
         X = self.data[index]
         y = self.labels[index]
         return X, y
+
+    @staticmethod
+    def read_csv(path, target_index=-1, **read_args):
+        data_frame = pd.read_csv(path, **read_args)
+        # data_frame['species'] = pd.Categorical(data_frame['species']).codes
+        data_frame = data_frame.sample(frac=1)
+        label = torch.tensor(data_frame.values[:, target_index]).type(torch.FloatTensor)
+        data = torch.tensor(data_frame.drop(index=target_index).values).type(torch.FloatTensor)
+        return Dataset(data=data, labels=label)
+
+
 
 
 class HardDriveDataset(data.Dataset):
