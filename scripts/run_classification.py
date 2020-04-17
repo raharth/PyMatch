@@ -3,11 +3,11 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
-from pytorch_lib.DeepLearning.Hat import LabelHat, DefaultClassHat
+from pytorch_lib.DeepLearning.hat import LabelHat, DefaultClassHat
 from pytorch_lib.DeepLearning.HatCord import HatCord
-from pytorch_lib.DeepLearning.Learner import ClassificationLearner
-from pytorch_lib.DeepLearning.Callback import Reporter, ConfusionMatrixPlotter
-from pytorch_lib.DeepLearning.Pipeline import Pipeline
+from pytorch_lib.DeepLearning.learner import ClassificationLearner
+from pytorch_lib.DeepLearning.callback import Reporter, ConfusionMatrixPlotter
+from pytorch_lib.DeepLearning.pipeline import Pipeline
 from pytorch_lib.utils.DataHandler import DataHandler
 from models.test_Model import Model
 

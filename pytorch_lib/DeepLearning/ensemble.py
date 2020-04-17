@@ -35,7 +35,7 @@ class Ensemble:
         if learner_args is None:
             learner_args = {}
 
-        preds = [leaner.predict(x, device=device) for leaner in self.learners]
+        preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=1)
 
     def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
@@ -120,7 +120,7 @@ class Ensemble:
             y_true = []
             for X, y in learner.val_loader:
                 y_true += [y]
-                y_pred += [learner.predict(X, device=device)]
+                y_pred += [learner.forward(X, device=device)]
             y_pred_learners += [torch.cat(y_pred)]
             y_true_learners += [torch.cat(y_true)]
         return y_pred_learners, y_true_learners
@@ -166,7 +166,7 @@ class BaysianEnsemble(Ensemble):
         self.to(device)
         self.eval()
         with torch.no_grad():
-            return torch.stack([learner.predict(x, device=device) for learner in self.learners])
+            return torch.stack([learner.forward(x, device=device) for learner in self.learners])
 
     @staticmethod
     def get_confidence(y_mean, y_std):

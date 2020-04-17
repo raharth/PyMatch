@@ -9,9 +9,9 @@ class Pipeline:
 
     def predict(self, X, device='cpu'):
         # for pipe, pipe_arg in zip(self.pipes, self.pipe_args):
-        #     X = pipe.predict(X, device=device, **pipe_arg)
+        #     X = pipe.forward(X, device=device, **pipe_arg)
         for pipe in self.pipes:
-            X = pipe.predict(X, device)
+            X = pipe.forward(X, device)
         return X
 
     def predict_dataloader(self, data_loader, device='cpu', return_true=False):

@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision as tv
 
-from pytorch_lib.DeepLearning.Ensemble import BaysianEnsemble
-from pytorch_lib.DeepLearning.Learner import ClassificationLearner
-from pytorch_lib.DeepLearning.Loss import AnkerLossClassification
+from pytorch_lib.DeepLearning.ensemble import BaysianEnsemble
+from pytorch_lib.DeepLearning.learner import ClassificationLearner
+from pytorch_lib.DeepLearning.loss import AnkerLossClassification
 from models.test_Model import Model
 
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ def predict_single_models(ensemble, data_loader):
         correct_pred = []
 
         for data, y in tqdm(data_loader):
-            y_pred = trainer.predict(data)
+            y_pred = trainer.forward(data)
             y_pred_list += [y_pred]
             correct_pred += [y == y_pred.to('cpu')]
 

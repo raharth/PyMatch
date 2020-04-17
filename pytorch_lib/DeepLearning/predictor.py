@@ -7,7 +7,7 @@ class Predictor:
         """
 
         Args:
-            model: model that can predict
+            model: model that can forward
             name: just a name
         """
         self.model = model
@@ -18,7 +18,7 @@ class Predictor:
         Predicting a batch as tensor.
 
         Args:
-            data: data to predict
+            data: data to forward
             device: device to run the model on
 
         Returns:
