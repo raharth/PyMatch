@@ -172,7 +172,6 @@ class Learner(ABC):
             if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
                 break
 
-            self.train_dict['epochs_run'] += 1
             self.train_dict['epochs_since_last_train_improvement'] += 1
 
             if verbose == 1:
@@ -203,6 +202,17 @@ class Learner(ABC):
 
             for cb in self.callbacks:
                 cb.callback(self)
+
+            self.train_dict['epochs_run'] += 1
+
+        if verbose == 1: # @todo code duplicate -> refactor
+            print('evaluating')
+        val_loss = self.validate(device=device, verbose=verbose)
+        self.train_dict['val_losses'] += [val_loss]
+        self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
+        if val_loss < self.train_dict['best_val_performance']:
+            self.train_dict['best_val_performance'] = val_loss
+            self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
@@ -340,9 +350,25 @@ class ClassificationLearner(Learner):
 
 class RegressionLearner(Learner):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
-        super(RegressionLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
-                                                    load_checkpoint, name, callbacks=callbacks)
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 train_loader,
+                 val_loader=None,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='',
+                 callbacks=None):
+        super(RegressionLearner, self).__init__(model,
+                                                optimizer,
+                                                crit,
+                                                train_loader,
+                                                val_loader,
+                                                grad_clip,
+                                                load_checkpoint,
+                                                name,
+                                                callbacks=callbacks)
 
     def train_epoch(self, device, verbose=1):
         """
