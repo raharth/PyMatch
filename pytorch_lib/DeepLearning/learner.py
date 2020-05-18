@@ -426,6 +426,7 @@ class RegressionLearner(Learner):
                 print('val loss: {:.4f}'.format(loss))
             return loss
 
+
 class ImageClassifier(ClassificationLearner):
 
     def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):

@@ -29,11 +29,12 @@ class DeepGenerator(AutoEncoder):
 
     def __init__(self, encoder, decoder):
         super(DeepGenerator, self).__init__(encoder, decoder)
-        self.kde = KernelDensity(bandwidth=.1, kernel='gaussian')
+        self.kde = None
 
     def estimate_latent_density(self, data):
         latent = self.encoder(data)
-        self.kde.fit(latent)
+        self.kde = KernelDensity(bandwidth=.1, kernel='gaussian')
+        self.kde.fit(latent.detach().numpy())
 
     def sample(self, n_samples: int, device='cpu'):
         latent = self.kde.sample(n_samples=n_samples)
