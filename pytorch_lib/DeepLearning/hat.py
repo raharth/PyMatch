@@ -28,12 +28,13 @@ class MaxProbabilityHat(Hat):
     def __init__(self):
         """
         Predicts the a label from a probability distribution.
-
         """
         super(MaxProbabilityHat, self).__init__()
 
-    def predict(self, y, device='cpu'):
-        return y.max(dim=1)[1]
+    def predict(self, y, device='cpu', return_value=False):
+        if return_value:
+            return y.argmax(dim=-1), y.max(dim=-1)[0]
+        return y.argmax(dim=-1)
 
 
 class MajorityHat(Hat):
@@ -60,6 +61,9 @@ class MajorityHat(Hat):
 class EnsembleHat(Hat):
 
     def __init__(self):
+        """
+        Reduces the ensemble predictions to a single average prediction with std
+        """
         super(EnsembleHat, self).__init__()
 
     def predict(self, y, device='cpu'):
@@ -69,9 +73,14 @@ class EnsembleHat(Hat):
 class EnsembleHatStd(Hat):
 
     def __init__(self):
+        """
+        Reduces the ensemble predictions to a single average prediction with std
+        """
         super(EnsembleHatStd, self).__init__()
 
-    def predict(self, y, device='cpu'):
+    def predict(self, y, device='cpu', return_value=False):
+        if return_value:
+            return y.mean(dim=0), y.std(dim=0), y.max(dim=0)[0]
         return y.mean(dim=0), y.std(dim=0)
 
 
@@ -89,6 +98,9 @@ class ThresholdHat(Hat):
 class EnsembleHat3Best(Hat):
 
     def __init__(self):
+        """
+        Predict the top 3 labels of a prediction by probability.
+        """
         super(EnsembleHat3Best, self).__init__()
 
     def predict(self, y, device='cpu'):

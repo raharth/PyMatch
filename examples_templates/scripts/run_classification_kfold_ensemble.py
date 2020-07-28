@@ -41,12 +41,12 @@ params = {'kfold': kfold, 'device': device, 'lr': settings['lr'], 'momentum': se
 ensemble = Ensemble(trainer_factory=factory, n_model=settings['folds'], trainer_args=params)
 
 
-ensemble.train(epochs=epochs, device=device)
+ensemble.fit(epochs=epochs, device=device)
 ensemble.load_checkpoint()
 classes = dataset.classes
 
 cm_plotter = ConfusionMatrixPlotter(data_loader=kfold.fold_loaders(0))
-cm_plotter.callback(model=ensemble, classes=classes, device=device)
+cm_plotter.__call__(model=ensemble, classes=classes, device=device)
 
 reporter = Reporter(data_loader=kfold.fold_loaders(0))
-reporter.callback(model=ensemble, classes=classes)
+reporter.__call__(model=ensemble, classes=classes)

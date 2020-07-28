@@ -38,8 +38,8 @@ class Ensemble:
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=1)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
-              callback_iter=-1):
+    def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
+            callback_iter=-1):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -67,10 +67,12 @@ class Ensemble:
             for learner in self.learners:
                 if verbose == 1:
                     print('Trainer {}'.format(learner.name))
-                learner.train(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
-                              validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+                learner.fit(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
+                            validation_int=validation_int, restore_early_stopping=restore_early_stopping)
             for cb in self.callbacks:
-                cb.callback(self)
+                cb.__call__(self)
+        for cb in self.callbacks:
+            cb.__call__(self)
 
     def dump_checkpoint(self, path=None, tag='checkpoint'):
         """
@@ -145,8 +147,8 @@ class Ensemble:
             train_epochs = epochs - learner.train_dict['epochs_run']
             if verbose == 1:
                 print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
-            learner.train(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,
-                          validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+            learner.fit(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,
+                        validation_int=validation_int, restore_early_stopping=restore_early_stopping)
 
     def to(self, device):
         for learner in self.learners:
@@ -159,8 +161,8 @@ class Ensemble:
 
 class BaysianEnsemble(Ensemble):
 
-    def __init__(self, trainer_factory, n_model, trainer_args={}):
-        super(BaysianEnsemble, self).__init__(trainer_factory, n_model, trainer_args=trainer_args)
+    def __init__(self, trainer_factory, n_model, trainer_args={}, callbacks=[]):
+        super(BaysianEnsemble, self).__init__(trainer_factory, n_model, trainer_args=trainer_args, callbacks=callbacks)
 
     def predict(self, x, device='cpu'):
         self.to(device)

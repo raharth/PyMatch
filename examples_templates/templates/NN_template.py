@@ -29,7 +29,7 @@ class Model(nn.Module):
 
 
 def train(model, train_loader, optimizer, epoch, crit, device='cpu'):
-    model.train()
+    model.fit()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()

@@ -13,7 +13,7 @@ class Callback:
     def __init__(self):
         pass
 
-    def callback(self, model, args):
+    def __call__(self, model, args):
         raise NotImplementedError
 
 
@@ -22,7 +22,7 @@ class EarlyStopping(Callback):
     def __init__(self):
         super(EarlyStopping, self).__init__()
 
-    def callback(self, model, args):
+    def __call__(self, model, args):
         raise NotImplementedError
 
 
@@ -31,7 +31,7 @@ class EarlyTermination(Callback):
     def __init__(self):
         super(EarlyTermination, self).__init__()
 
-    def callback(self, model, args):
+    def __call__(self, model, args):
         raise NotImplementedError
 
 
@@ -41,7 +41,7 @@ class ClasificationCurvePlotter(Callback):
         super(ClasificationCurvePlotter, self).__init__()
         self.img_path = img_path
 
-    def callback(self, model, args=None, return_fig=False):
+    def __call__(self, model, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -76,7 +76,7 @@ class RegressionCurvePlotter(Callback):
         super(RegressionCurvePlotter, self).__init__()
         self.img_path = img_path
 
-    def callback(self, model, args=None, return_fig=False):
+    def __call__(self, model, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -100,11 +100,17 @@ class RegressionCurvePlotter(Callback):
 
 class EnsembleLearningCurvePlotter(Callback):
 
-    def __init__(self, img_path='tmp'):
+    def __init__(self, target_folder_path='tmp'):
+        """
+        Plotting the learning curves of an entire ensemble
+         
+        Args:
+            target_folder_path:   path to dump the resulting image to 
+        """
         super(EnsembleLearningCurvePlotter, self).__init__()
-        self.img_path = img_path
+        self.img_path = target_folder_path
 
-    def callback(self, ensemble, args=None, return_fig=False):
+    def __call__(self, ensemble, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -150,7 +156,7 @@ class ConfusionMatrixPlotter(Callback):
         self.data_loader = data_loader
         self.img_path = '{}/{}.png'.format(img_path, img_name)
 
-    def callback(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
+    def __call__(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
         y_pred, y_true = DataHandler.predict_data_loader(model=model, data_loader=self.data_loader, device=device, return_true=True)
 
         cm = scale_confusion_matrix(confusion_matrix(y_true, y_pred))
@@ -202,7 +208,7 @@ class Reporter(Callback):
         self.data_loader = data_loader
         self.file_path = '{}/{}.txt'.format(folder_path, file_name)
 
-    def callback(self, model, classes):
+    def __call__(self, model, classes):
         y_pred, y_true = DataHandler.predict_data_loader(model, self.data_loader, return_true=True)
         report = classification_report(y_true.numpy(), y_pred.numpy(), digits=3, target_names=classes)
         self._write_report(report)

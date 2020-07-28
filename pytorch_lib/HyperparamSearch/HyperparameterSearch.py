@@ -29,7 +29,7 @@ class HyperparameterSearch:
     def _optimize(self, learner_args):
         model = self.factory(**self.factory_args, **learner_args)
         self.models += [model]
-        model.train(**self.training_args)
+        model.fit(**self.training_args)
         # model.train(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int, validation_int=validation_int,
         #             restore_early_stopping=restore_early_stopping)
         performance = self.performance_measure.evaluate(model)

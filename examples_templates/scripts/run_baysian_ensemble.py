@@ -87,8 +87,8 @@ for lambda_, H in it:
                     }
 
     ensemble = BaysianEnsemble(trainer_factory=trainer_factory, trainer_args=trainer_args, n_model=n_model)
-    ensemble.train(epochs=epochs, device=device, checkpoint_int=checkpoint_int, validation_int=validation_int, verbose=1,
-                   restore_early_stopping=True)
+    ensemble.fit(epochs=epochs, device=device, checkpoint_int=checkpoint_int, validation_int=validation_int, verbose=1,
+                 restore_early_stopping=True)
 
     # ensemble.load_checkpoint(path='./tmp/early_stopping', tag='early_stopping')
 

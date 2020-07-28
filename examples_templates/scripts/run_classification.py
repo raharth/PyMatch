@@ -38,16 +38,16 @@ optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 learner = ClassificationLearner(model=model, optimizer=optimizer, crit=crit, train_loader=train_loader,
                                 val_loader=test_loader, name='class_test', load_checkpoint=True)
 
-learner.train(epochs, device=device)
+learner.fit(epochs, device=device)
 
 label_hat = MaxProbabilityHat()
 pipeline = Pipeline(pipes=[learner, label_hat], pipe_args=[{'device': 'cuda'}, {}])
 
 reporter = Reporter(test_loader)
-reporter.callback(pipeline, train_data.classes)
+reporter.__call__(pipeline, train_data.classes)
 
 plotter = ConfusionMatrixPlotter(test_loader)
-plotter.callback(pipeline, train_data.classes)
+plotter.__call__(pipeline, train_data.classes)
 
 
 y_pred = pipeline.predict_dataloader(test_loader, device=device)

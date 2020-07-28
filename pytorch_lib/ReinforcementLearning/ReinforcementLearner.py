@@ -49,7 +49,7 @@ class ReinforcementLearner(ABC):
         Returns:
 
         """
-        self.agent.train()
+        self.agent.fit()
 
         for episode in tqdm(range(episodes)):
             if verbose:

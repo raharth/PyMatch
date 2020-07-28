@@ -12,8 +12,18 @@ from pytorch_lib.utils import DataHandler
 
 class Learner(ABC):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False,
-                 name='', callbacks=None):
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 train_loader,
+                 val_loader=None,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='',
+                 callbacks=None,
+                 dump_path='./tmp'
+                 ):
         self.model = model  # neural network
         self.optimizer = optimizer  # optimizer for the network
         self.crit = crit  # loss
@@ -23,8 +33,8 @@ class Learner(ABC):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.checkpoint_path = './tmp/checkpoint'  # .pth'
-        self.early_stopping_path = './tmp/early_stopping'  # .pth'
+        self.checkpoint_path = f'{dump_path}/checkpoint'
+        self.early_stopping_path = f'{dump_path}/early_stopping'
 
         # creating folders
         if not os.path.exists(self.checkpoint_path):
@@ -148,7 +158,7 @@ class Learner(ABC):
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
+    def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
         """
         Trains the learner for a number of epochs.
 
@@ -178,7 +188,7 @@ class Learner(ABC):
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
                 print('\nepoch: {}{}'.format(self.train_dict['epochs_run'], name))
 
-            train_loss = self.train_epoch(device)
+            train_loss = self.fit_epoch(device)
 
             # tracking training performance
             if train_loss < self.train_dict['best_train_performance']:
@@ -201,7 +211,7 @@ class Learner(ABC):
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             for cb in self.callbacks:
-                cb.callback(self)
+                cb.__call__(self)
 
             self.train_dict['epochs_run'] += 1
 
@@ -220,6 +230,9 @@ class Learner(ABC):
 
     def eval(self):
         self.model.eval()
+
+    def train(self):
+        self.model.fit()
 
     def to(self, device):
         self.model.to(device)
@@ -243,7 +256,7 @@ class Learner(ABC):
             return y_pred
 
     @abstractmethod
-    def train_epoch(self, device, verbose=1):
+    def fit_epoch(self, device, verbose=1):
         """
         Train a single epoch.
         this has to be implemented by each type of learner individually.
@@ -274,13 +287,31 @@ class Learner(ABC):
 
 class ClassificationLearner(Learner):
 
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
-        super(ClassificationLearner, self).__init__(model, optimizer, crit, train_loader, val_loader, grad_clip,
-                                                    load_checkpoint, name, callbacks=callbacks)
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 train_loader,
+                 val_loader=None,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='',
+                 callbacks=None,
+                 dump_path='./tmp'):
+        super(ClassificationLearner, self).__init__(model,
+                                                    optimizer,
+                                                    crit,
+                                                    train_loader,
+                                                    val_loader,
+                                                    grad_clip,
+                                                    load_checkpoint,
+                                                    name,
+                                                    callbacks=callbacks,
+                                                    dump_path=dump_path)
         self.train_dict['train_accuracy'] = []
         self.train_dict['val_accuracy'] = []
 
-    def train_epoch(self, device, verbose=1):
+    def fit_epoch(self, device, verbose=1):
         """
         Train a single epoch.
 
@@ -371,7 +402,7 @@ class RegressionLearner(Learner):
                                                 name,
                                                 callbacks=callbacks)
 
-    def train_epoch(self, device, verbose=1):
+    def fit_epoch(self, device, verbose=1):
         """
         Train a single epoch.
 
@@ -382,7 +413,7 @@ class RegressionLearner(Learner):
         Returns:
             current loss
         """
-        self.model.train()
+        self.model.fit()
         self.model.to(device)
 
         losses = []

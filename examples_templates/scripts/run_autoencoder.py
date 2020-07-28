@@ -53,5 +53,5 @@ crit = nn.MSELoss()
 optim = torch.optim.SGD(auto_encoder.parameters(), lr=0.01, momentum=0.9)
 learner = RegressionLearner(model=auto_encoder, optimizer=optim, crit=crit, train_loader=train_loader)
 
-learner.train(100, device='cpu')
+learner.fit(100, device='cpu')
 
