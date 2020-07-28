@@ -35,10 +35,10 @@ class EarlyTermination(Callback):
         raise NotImplementedError
 
 
-class LearningCurvePlotter(Callback):
+class ClasificationCurvePlotter(Callback):
 
     def __init__(self, img_path='tmp'):
-        super(LearningCurvePlotter, self).__init__()
+        super(ClasificationCurvePlotter, self).__init__()
         self.img_path = img_path
 
     def callback(self, model, args=None, return_fig=False):
@@ -62,6 +62,34 @@ class LearningCurvePlotter(Callback):
         ax[1].set_title('accuracy')
         ax[1].set_ylabel('accuracy in %')
         ax[1].set_xlabel('epoch')
+
+        if return_fig:
+            return fig, ax
+        img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
+        fig.savefig(img_path)
+        plt.close(fig)
+
+
+class RegressionCurvePlotter(Callback):
+
+    def __init__(self, img_path='tmp'):
+        super(RegressionCurvePlotter, self).__init__()
+        self.img_path = img_path
+
+    def callback(self, model, args=None, return_fig=False):
+        if args is None:
+            args = {}
+        if 'figsize' not in args:
+            args['figsize'] = (10, 10)
+
+        fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True, figsize=args['figsize'])
+
+        ax.plot(model.train_dict['train_losses'])
+        ax.plot(model.train_dict['val_epochs'], model.train_dict['val_losses'])
+        ax.legend(['train', 'val'])
+        ax.set_title('loss')
+        ax.set_ylabel('loss')
+        ax.set_xlabel('epoch')
 
         if return_fig:
             return fig, ax

@@ -8,6 +8,7 @@ import time
 
 
 class Model(nn.Module):
+
     def __init__(self):
         super(Model, self).__init__()
         self.conv1 = nn.Conv2d(3, 20, 5)

@@ -19,6 +19,7 @@ def pickle_load(path):
     with gzip.open(path, 'rb') as input:
         return _pickle.load(input)
 
+
 def sliding_mean(values, window_size):
     values = np.array(values)
     return np.array([values[i - window_size : i].mean() for i in range(window_size, len(values))])

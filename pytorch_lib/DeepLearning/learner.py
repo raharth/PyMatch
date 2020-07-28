@@ -47,6 +47,9 @@ class Learner(ABC):
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
 
+    def __call__(self, data, device='cpu'):
+        return self.forward(data=data, device=device)
+
     def _backward(self, loss):
         """
         Backward pass for the model, also performing a grad clip if defined for the learner.
@@ -145,8 +148,7 @@ class Learner(ABC):
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False,
-              early_termination=-1, verbose=1):
+    def train(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
         """
         Trains the learner for a number of epochs.
 
@@ -164,15 +166,12 @@ class Learner(ABC):
 
         """
 
-        # self.to(device)
-
         for epoch in range(epochs):
 
             # early termination
             if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
                 break
 
-            self.train_dict['epochs_run'] += 1
             self.train_dict['epochs_since_last_train_improvement'] += 1
 
             if verbose == 1:
@@ -204,6 +203,17 @@ class Learner(ABC):
             for cb in self.callbacks:
                 cb.callback(self)
 
+            self.train_dict['epochs_run'] += 1
+
+        if verbose == 1: # @todo code duplicate -> refactor
+            print('evaluating')
+        val_loss = self.validate(device=device, verbose=verbose)
+        self.train_dict['val_losses'] += [val_loss]
+        self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
+        if val_loss < self.train_dict['best_val_performance']:
+            self.train_dict['best_val_performance'] = val_loss
+            self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
+
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.checkpoint_path)
@@ -213,7 +223,24 @@ class Learner(ABC):
 
     def to(self, device):
         self.model.to(device)
-        # self.crit.to(device)    # @todo this seems to cause trouble
+
+    def forward(self, data, device='cpu'):
+        """
+        Predicting a batch as tensor.
+
+        Args:
+            data: data to forward
+            device: device to run the model on
+
+        Returns:
+            prediction (, true label)
+        """
+        with torch.no_grad():
+            self.model.eval()
+            self.model.to(device)
+            data = data.to(device)
+            y_pred = self.model.forward(data)
+            return y_pred
 
     @abstractmethod
     def train_epoch(self, device, verbose=1):
@@ -227,20 +254,6 @@ class Learner(ABC):
 
         Returns:
             current loss
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def predict(self, data, device='cpu'):
-        """
-        Predicting a batch of data.
-
-        Args:
-            data: batch of data to predict
-            device: device to run it on 'cpu' or 'cuda'
-
-        Returns:
-            predicted values for the given data
         """
         raise NotImplementedError
 
@@ -286,41 +299,21 @@ class ClassificationLearner(Learner):
 
         for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
             data = data.to(device)
-            labels = labels
+            labels = labels.to(device)
 
-            y_pred = self.model.forward(data).to('cpu')
+            y_pred = self.model.forward(data)
             loss = self.crit(y_pred, labels)
 
-            self._backward(loss) # @todo to cuda
-            if verbose == 1:    # somehow ugly, this is only necessary if verbosity==1, but it is not outputting anything right here
-                losses += [loss.item()]
-                accuracies += [(y_pred.max(dim=1)[1] == labels)]
+            self._backward(loss)
+            losses += [loss.item()]
+            accuracies += [(y_pred.max(dim=1)[1] == labels)]
         loss = np.mean(losses)
         self.train_dict['train_losses'] += [loss]
         accuracy = torch.cat(accuracies).float().mean().item()
         self.train_dict['train_accuracy'] += [accuracy]
         if verbose == 1:
-            print('train loss: {:.4f} - train accuracy: {}'.format(loss, accuracy))
+            print('train loss: {:.4f} - train accuracy: {:.4f}'.format(loss, accuracy))
         return loss
-
-    def predict(self, data, device='cpu'):
-        """
-        Predicting a batch as tensor.
-
-        Args:
-            data: data to predict
-            device: device to run the model on
-
-        Returns:
-            prediction (, true label)
-        """
-
-        with torch.no_grad():
-            self.model.eval()
-            self.model.to(device)
-            data = data.to(device)
-            y_pred = self.model.forward(data)
-            return y_pred
 
     def validate(self, device, verbose=0):
         """
@@ -353,6 +346,85 @@ class ClassificationLearner(Learner):
             self.train_dict['val_accuracy'] += [accuracy]
             if verbose == 1:
                 print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+            return loss
+
+
+class RegressionLearner(Learner):
+
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 train_loader,
+                 val_loader=None,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='',
+                 callbacks=None):
+        super(RegressionLearner, self).__init__(model,
+                                                optimizer,
+                                                crit,
+                                                train_loader,
+                                                val_loader,
+                                                grad_clip,
+                                                load_checkpoint,
+                                                name,
+                                                callbacks=callbacks)
+
+    def train_epoch(self, device, verbose=1):
+        """
+        Train a single epoch.
+
+        Args:
+            device: device t-o run it on 'cpu' or 'cuda'
+            verbose: verbosity of the learning
+
+        Returns:
+            current loss
+        """
+        self.model.train()
+        self.model.to(device)
+
+        losses = []
+
+        for batch, (data, labels) in tqdm(enumerate(self.train_loader)):
+            data = data.to(device)
+
+            y_pred = self.model.forward(data).to('cpu')
+            loss = self.crit(y_pred, labels)
+
+            self._backward(loss)
+            losses += [loss.item()]
+        loss = np.mean(losses)
+        self.train_dict['train_losses'] += [loss]
+        if verbose == 1:
+            print('train loss: {:.4f}'.format(loss))
+        return loss
+
+    def validate(self, device, verbose=0):
+        """
+        Validate the model on the validation data.
+
+        Args:
+            device: device to run the model on
+            verbose: verbosity
+
+        Returns:
+            validation loss
+
+        """
+        with torch.no_grad():
+            self.eval()
+            self.model.to(device)
+            loss = []
+            for data, y in self.val_loader:
+                data = data.to(device)
+                y_pred = self.model(data).to('cpu')
+                loss += [self.crit(y_pred, y)]
+
+            loss = torch.stack(loss).mean().item()
+            if verbose == 1:
+                print('val loss: {:.4f}'.format(loss))
             return loss
 
 

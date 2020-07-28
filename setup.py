@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='pytorch_lib',
-      version='0.2.1',
+      version='0.2.3',
       description='PyTorch wrapper for Deep Learning',
       url='https://github.com/raharth/PyTorch_Lib',
       author='Jonas Goltz',

@@ -4,10 +4,10 @@ from torch import nn
 import torch.optim as optim
 
 from models.test_Model import Model
-from pytorch_lib.DeepLearning.Callback import ConfusionMatrixPlotter, Reporter
-from pytorch_lib.DeepLearning.Learner import ClassificationLearner
+from pytorch_lib.DeepLearning.callback import ConfusionMatrixPlotter, Reporter
+from pytorch_lib.DeepLearning.learner import ClassificationLearner
 from pytorch_lib.utils.KFold import KFold
-from pytorch_lib.DeepLearning.Ensemble import Ensemble
+from pytorch_lib.DeepLearning.ensemble import Ensemble
 from pytorch_lib.utils.Functional import read_setting
 
 
