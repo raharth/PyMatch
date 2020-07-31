@@ -211,7 +211,7 @@ class Learner(ABC):
                     self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             for cb in self.callbacks:
-                cb.__call__(self)
+                cb(model=self)
 
             self.train_dict['epochs_run'] += 1
 

@@ -7,20 +7,20 @@ class Hat:
         raise NotImplementedError
 
 
-class DefaultClassHat(Hat):
-
-    def __init__(self):
-        """
-        Adding a default class to a sigmoid output. This is adding an additional output that sums up to 1 with all
-        other output nodes. This is only useful if there is no softmax output. Also is might become less useful if
-        there are many possible labels.
-
-        """
-        super(DefaultClassHat, self).__init__()
-
-    def predict(self, y, device='cpu'):
-        y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1, 1)
-        return torch.cat([y, y_def], dim=1)
+# class DefaultClassHat(Hat):
+#
+#     def __init__(self):
+#         """
+#         Adding a default class to a sigmoid output. This is adding an additional output that sums up to 1 with all
+#         other output nodes. This is only useful if there is no softmax output. Also is might become less useful if
+#         there are many possible labels.
+#
+#         """
+#         super(DefaultClassHat, self).__init__()
+#
+#     def predict(self, y, device='cpu'):
+#         y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1, 1)
+#         return torch.cat([y, y_def], dim=1)
 
 
 class MaxProbabilityHat(Hat):
@@ -78,8 +78,8 @@ class EnsembleHatStd(Hat):
         """
         super(EnsembleHatStd, self).__init__()
 
-    def predict(self, y, device='cpu', return_value=False):
-        if return_value:
+    def predict(self, y, device='cpu', return_max=False):
+        if return_max:
             return y.mean(dim=0), y.std(dim=0), y.max(dim=0)[0]
         return y.mean(dim=0), y.std(dim=0)
 

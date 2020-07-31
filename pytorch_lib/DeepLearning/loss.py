@@ -33,7 +33,7 @@ class AnkerLossClassification(_Loss):
         for layer in model.ankered_layers:
             params = layer._parameters['weight']
             # H = params.shape[0]     # is that actually correct? I understood it as the number of hidden nodes of a layer
-            m = normal.Normal(.0, 1. / H)
+            m = normal.Normal(.0, H)
             self.anker += [m.sample(sample_shape=params.shape).to(device)]
 
 

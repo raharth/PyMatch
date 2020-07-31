@@ -4,6 +4,8 @@ from shutil import copyfile
 import os
 import datetime
 import sys
+import wandb
+from pytorch_lib.DeepLearning.learner import Learner
 
 
 class Experiment:
@@ -111,4 +113,28 @@ class Experiment:
             print(f'Creating missing directory: {self.root}')
             os.makedirs(self.root)
         with open(f'{self.root}/{path}', 'w') as json_file:
-            json_file.write(json.dumps(data, indent=4))
+            json_file.write(json.dumps(data, indent=2))
+
+
+class WandbExperiment(Experiment):
+
+    def __init__(self, root, param_source):
+        """
+        Experiment linking to Wandb.
+
+        Args:
+            root:               experiment root as for the regular experiment
+            wandb_init_args:    wandb.init() arguments
+
+        Returns:
+
+        """
+        super(WandbExperiment, self).__init__(root)
+        self.params = self.get_params(param_source=param_source)
+        wandb.init(**self.params)
+
+    def watch(self, learner: Learner):
+        wandb.watch(learner.model)
+
+    def log(self, info):
+        wandb.log(info)

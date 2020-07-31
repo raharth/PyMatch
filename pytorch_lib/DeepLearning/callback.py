@@ -6,6 +6,8 @@ from pytorch_lib.utils.DataHandler import DataHandler
 
 import pandas as pd
 import seaborn as sn
+import wandb
+import numpy as np
 
 
 class Callback:
@@ -15,6 +17,9 @@ class Callback:
 
     def __call__(self, model, args):
         raise NotImplementedError
+
+    def start(self, model):
+        pass
 
 
 class EarlyStopping(Callback):
@@ -218,3 +223,34 @@ class Reporter(Callback):
             file.write(report)
             file.write('\n\n')
             file.close()
+
+
+class WandbTrainDictLogger(Callback):
+    def __init__(self):
+        super(WandbTrainDictLogger, self).__init__()
+
+    def __call__(self, model, args={}):
+        log_dict = {}
+        for k, v in model.train_dict.items():
+            if isinstance(v, (list, np.ndarray)):
+                log_dict[k] = v[-1]
+            if isinstance(v, (int, float)):
+                log_dict[k] = v
+        wandb.log(log_dict)
+
+class WandbExperiment(Callback):
+    def __init__(self):
+        super(WandbExperiment, self).__init__()
+        wandb.init()    # parameters are missing here
+
+    def start(self, model):
+        wandb.watch(model.learner)
+
+    def __call__(self, model, args={}):
+        log_dict = {}
+        for k, v in model.train_dict.items():
+            if isinstance(v, (list, np.ndarray)):
+                log_dict[k] = v[-1]
+            if isinstance(v, (int, float)):
+                log_dict[k] = v
+        wandb.log(log_dict)

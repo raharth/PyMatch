@@ -4,12 +4,12 @@ from tqdm import tqdm
 
 class Ensemble:
 
-    def __init__(self, trainer_factory, n_model, trainer_args={}, callbacks=[]):
+    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
         self.learners = []
         for i in range(n_model):
             t_args = dict(trainer_args)
             t_args['name'] = trainer_args['name'] + '_{}'.format(i) if 'name' in trainer_args else '{}'.format(i)
-            self.learners.append(trainer_factory(**t_args))
+            self.learners.append(trainer_factory(model_class, **t_args))
         self.epochs_run = 0
         self.callbacks = callbacks
 
@@ -56,21 +56,28 @@ class Ensemble:
             None
 
         """
-        if callback_iter > 0:   # dive into a sequence of shorter training runs
-            epoch_iter = [callback_iter for _ in range(epochs//callback_iter)]
-            if epochs % callback_iter > 0:
-                epoch_iter += [epochs % callback_iter]
-        else:
-            epoch_iter = [epochs]
-
-        for run_epochs in epoch_iter:
-            for learner in self.learners:
-                if verbose == 1:
-                    print('Trainer {}'.format(learner.name))
-                learner.fit(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
-                            validation_int=validation_int, restore_early_stopping=restore_early_stopping)
-            for cb in self.callbacks:
-                cb.__call__(self)
+        # if callback_iter > 0:   # dive into a sequence of shorter training runs
+        #     epoch_iter = [callback_iter for _ in range(epochs//callback_iter)]
+        #     if epochs % callback_iter > 0:
+        #         epoch_iter += [epochs % callback_iter]
+        # else:
+        #     epoch_iter = [epochs]
+        #
+        # for run_epochs in epoch_iter:
+        #     for learner in self.learners:
+        #         if verbose == 1:
+        #             print('Trainer {}'.format(learner.name))
+        #         learner.fit(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
+        #                     validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+        #     for cb in self.callbacks:
+        #         cb.__call__(self)
+        # for cb in self.callbacks:
+        #     cb.__call__(self)
+        for learner in self.learners:
+            if verbose == 1:
+                print('Trainer {}'.format(learner.name))
+            learner.fit(epochs=epochs, device=device, checkpoint_int=checkpoint_int,
+                        validation_int=validation_int, restore_early_stopping=restore_early_stopping)
         for cb in self.callbacks:
             cb.__call__(self)
 
@@ -161,8 +168,8 @@ class Ensemble:
 
 class BaysianEnsemble(Ensemble):
 
-    def __init__(self, trainer_factory, n_model, trainer_args={}, callbacks=[]):
-        super(BaysianEnsemble, self).__init__(trainer_factory, n_model, trainer_args=trainer_args, callbacks=callbacks)
+    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
+        super(BaysianEnsemble, self).__init__(model_class, trainer_factory, n_model, trainer_args=trainer_args, callbacks=callbacks)
 
     def predict(self, x, device='cpu'):
         self.to(device)

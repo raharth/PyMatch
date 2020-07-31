@@ -1,0 +1,22 @@
+{
+  "model_path": "projects.test_project.exp1.test_Model.Model",
+  "project_root": "projects/test_project",
+  "no_cuda": false,
+  "train_batch_size": 64,
+  "test_batch_size": 1000,
+  "n_model": 5,
+  "fit_params": {
+    "epochs": 20,
+    "checkpoint_int": 10,
+    "validation_int": 1,
+    "callback_iter": -1,
+    "restore_early_stopping": false
+  },
+  "trainer_args": {
+    "lr": 0.01,
+    "momentum": 0.5,
+    "n_classes": 10,
+    "C": 0.5,
+    "H": 1.0
+  }
+}
