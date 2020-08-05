@@ -11,7 +11,7 @@ import torchvision as tv
 from pytorch_lib.DeepLearning.ensemble import BaysianEnsemble
 from pytorch_lib.DeepLearning.hat import MaxProbabilityHat, EnsembleHatStd
 from pytorch_lib.DeepLearning.callback import EnsembleLearningCurvePlotter
-from pytorch_lib.utils.experiment import WandbExperiment
+from pytorch_lib.utils.experiment import WandbExperiment, Experiment
 
 
 if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py':
@@ -25,11 +25,12 @@ else:
 
 # wandb.init(project="pytorch_test")
 
-experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
-experiment.start()
-experiment.document_script(train_script)
+# experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
+experiment = Experiment(root=experiment_root)
+# experiment.start()
+# experiment.document_script(train_script)
 
-params = experiment.get_params()['config']
+params = experiment.get_params()
 Model = experiment.get_model_class()
 trainer_factory = experiment.get_factory()
 
@@ -54,7 +55,7 @@ ensemble = BaysianEnsemble(model_class=Model,
                            n_model=params['n_model'],
                            callbacks=[EnsembleLearningCurvePlotter(target_folder_path=f"{experiment.root}/tmp")])
 
-wandb.watch(ensemble.learners[0].model)
+# wandb.watch(ensemble.learners[0].model)
 
 ensemble.fit(device=device, **params['fit_params'])
 experiment.finish()

@@ -74,6 +74,8 @@ class Ensemble:
         # for cb in self.callbacks:
         #     cb.__call__(self)
         for learner in self.learners:
+            for cb in learner.callbacks:
+                cb.start(learner)
             if verbose == 1:
                 print('Trainer {}'.format(learner.name))
             learner.fit(epochs=epochs, device=device, checkpoint_int=checkpoint_int,

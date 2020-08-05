@@ -238,13 +238,17 @@ class WandbTrainDictLogger(Callback):
                 log_dict[k] = v
         wandb.log(log_dict)
 
-class WandbExperiment(Callback):
-    def __init__(self):
-        super(WandbExperiment, self).__init__()
-        wandb.init()    # parameters are missing here
 
-    def start(self, model):
-        wandb.watch(model.learner)
+class WandbExperiment(Callback):
+    def __init__(self, wandb_args):
+        super(WandbExperiment, self).__init__()
+        self.wandb_args = wandb_args
+
+    def start(self, learner):
+        self.wandb_args['name'] = learner.name
+        print(self.wandb_args)
+        wandb.init(**self.wandb_args, reinit=True)
+        wandb.watch(learner.model)
 
     def __call__(self, model, args={}):
         log_dict = {}
