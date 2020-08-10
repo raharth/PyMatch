@@ -11,3 +11,5 @@ test.py
 # python package build files
 dist/*
 *.egg-info
+
+experiments

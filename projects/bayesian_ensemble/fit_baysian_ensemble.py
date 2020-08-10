@@ -27,8 +27,8 @@ else:
 
 # experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
 experiment = Experiment(root=experiment_root)
-# experiment.start()
-# experiment.document_script(train_script)
+experiment.start()
+experiment.document_script(train_script)
 
 params = experiment.get_params()
 Model = experiment.get_model_class()
