@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
 
-from pytorch_lib.utils.Functional import scale_confusion_matrix
+from pytorch_lib.utils.functional import scale_confusion_matrix
 from pytorch_lib.utils.DataHandler import DataHandler
 
 import pandas as pd

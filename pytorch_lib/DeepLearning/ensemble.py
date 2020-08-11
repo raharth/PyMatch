@@ -39,7 +39,7 @@ class Ensemble:
         return torch.stack(preds, dim=1)
 
     def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
-            callback_iter=-1):
+            callback_iter=-1, early_termination=-1):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -78,8 +78,12 @@ class Ensemble:
                 cb.start(learner)
             if verbose == 1:
                 print('Trainer {}'.format(learner.name))
-            learner.fit(epochs=epochs, device=device, checkpoint_int=checkpoint_int,
-                        validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+            learner.fit(epochs=epochs,
+                        device=device,
+                        checkpoint_int=checkpoint_int,
+                        validation_int=validation_int,
+                        restore_early_stopping=restore_early_stopping,
+                        early_termination=early_termination)
         for cb in self.callbacks:
             cb.__call__(self)
 
@@ -167,15 +171,21 @@ class Ensemble:
         for learner in self.learners:
             learner.eval()
 
+    def train(self):
+        for learner in self.learners:
+            learner.train()
 
 class BaysianEnsemble(Ensemble):
 
     def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
         super(BaysianEnsemble, self).__init__(model_class, trainer_factory, n_model, trainer_args=trainer_args, callbacks=callbacks)
 
-    def predict(self, x, device='cpu'):
+    def predict(self, x, device='cpu', eval=True):
         self.to(device)
-        self.eval()
+        if eval:
+            self.eval()
+        else:
+            self.train()
         with torch.no_grad():
             return torch.stack([learner.forward(x, device=device) for learner in self.learners])
 

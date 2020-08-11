@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sn
 import json
+import sys
+
 
 def scale_confusion_matrix(confm):
     return (confm.transpose() / confm.sum(1)).transpose()
@@ -29,6 +31,10 @@ def plot_confusion_matrix(confm, class_names=None, figsize=(8, 8), heat_map_args
     return fig, ax
 
 
-def read_setting(path):
+def read_json(path):
     with open(path) as json_file:
         return json.load(json_file)
+
+
+def interactive_python_mode():
+    return sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'

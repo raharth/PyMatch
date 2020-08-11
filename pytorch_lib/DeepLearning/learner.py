@@ -232,12 +232,13 @@ class Learner(ABC):
         self.model.eval()
 
     def train(self):
-        self.model.fit()
+        self.model.train()
 
     def to(self, device):
         self.model.to(device)
 
-    def forward(self, data, device='cpu'):
+    def forward(self, data, device='cpu', eval=True):
+    # def predict(self, data, device='cpu'):
         """
         Predicting a batch as tensor.
 
@@ -249,7 +250,10 @@ class Learner(ABC):
             prediction (, true label)
         """
         with torch.no_grad():
-            self.model.eval()
+            if eval:
+                self.model.eval()
+            else:
+                self.model.train()
             self.model.to(device)
             data = data.to(device)
             y_pred = self.model.forward(data)

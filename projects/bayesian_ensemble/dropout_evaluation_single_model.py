@@ -12,13 +12,12 @@ from pytorch_lib.DeepLearning.ensemble import BaysianEnsemble
 from pytorch_lib.DeepLearning.hat import MaxProbabilityHat, EnsembleHatStd
 from pytorch_lib.DeepLearning.callback import EnsembleLearningCurvePlotter
 from pytorch_lib.utils.experiment import WandbExperiment, Experiment
-from pytorch_lib.utils.functional import interactive_python_mode
 
 
-if interactive_python_mode():
+if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py':
     print('Interactive')
-    experiment_root = 'projects/bayesian_ensemble/experiments/exp7'
-    train_script = 'projects/bayesian_ensemble/fit_baysian_ensemble.py'
+    experiment_root = 'projects/bayesian_ensemble/experiments/exp11_extended_single_model'
+    # train_script = 'projects/bayesian_ensemble/fit_baysian_ensemble.py'
 else:
     print('Script mode')
     experiment_root = sys.argv[1]
@@ -28,8 +27,8 @@ else:
 
 # experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
 experiment = Experiment(root=experiment_root)
-experiment.start()
-experiment.document_script(train_script)
+# experiment.start()
+# experiment.document_script(train_script)
 
 params = experiment.get_params()
 Model = experiment.get_model_class()
@@ -50,30 +49,33 @@ trainer_args['device'] = device
 trainer_args['path'] = trainer_args.get('path', f'{experiment.root}/tmp')
 
 
-ensemble = BaysianEnsemble(model_class=Model,
-                           trainer_factory=trainer_factory,
-                           trainer_args=trainer_args,
-                           n_model=params['n_model'],
-                           callbacks=[EnsembleLearningCurvePlotter(target_folder_path=f"{experiment.root}/tmp")])
+# ensemble = BaysianEnsemble(model_class=Model,
+#                            trainer_factory=trainer_factory,
+#                            trainer_args=trainer_args,
+#                            n_model=params['n_model'],
+#                            callbacks=[EnsembleLearningCurvePlotter(target_folder_path=f"{experiment.root}/tmp")])
 
+learner = trainer_factory(Model, **trainer_args, name='0')
 # wandb.watch(ensemble.learners[0].model)
 
-ensemble.fit(device=device, **params['fit_params'])
-experiment.finish()
+# ensemble.fit(device=device, **params['fit_params'])
+# experiment.finish()
 
-ensemble.load_checkpoint(path=f'{experiment.root}/tmp/early_stopping', tag='early_stopping')
+learner.load_checkpoint(path=f'{experiment.root}/tmp/early_stopping', tag='early_stopping', device='cuda')
 
 y_pred_list = []
 y_prob_list = []
 y_std_list = []
 correct_pred = []
 ys = []
+dropout_iterations = 10
 
 label_hat = MaxProbabilityHat()
 reduce_hat = EnsembleHatStd()
 
 for data, y in tqdm(test_loader):
-    ys_pred = ensemble.predict(data, device=device).to('cpu')
+    ys_pred = learner.forward(torch.cat(dropout_iterations*[data]), device=device, eval=False).to('cpu').reshape(
+        dropout_iterations, data.shape[0], 10)
     y_mean, y_std = reduce_hat.predict(ys_pred)
     y_pred, y_max = label_hat.predict(y_mean, return_value=True)
     y_pred_list += [y_pred]
@@ -87,7 +89,6 @@ y_pred_list = torch.cat(y_pred_list)
 y_prob_list = torch.cat(y_prob_list)
 y_std_list = torch.cat(y_std_list)
 correct_pred = torch.cat(correct_pred)
-print(y_prob_list.shape, correct_pred.shape)
 
 print('accuracy: {}'.format(correct_pred.float().mean()))
 print('correct - mean: {}, std: {}'.format(y_prob_list[correct_pred].mean(), y_std_list[correct_pred].mean()))
@@ -96,7 +97,7 @@ eval_dict = {'accuracy': correct_pred.float().mean().item(),
              'correct': {'mean': y_prob_list[correct_pred].mean().item(), 'std': y_std_list[correct_pred].mean().item()},
              'incorrect': {'mean': y_prob_list[~correct_pred].mean().item(), 'std': y_std_list[~correct_pred].mean().item()}}
 
-with open(f'{experiment.root}/evaluation_dict.json', 'w') as json_file:
+with open(f'{experiment.root}/single_evaluation_dict_model_0.json', 'w') as json_file:
     json_file.write(json.dumps(eval_dict, indent=4))
 
 S = np.linspace(0., 3., 100)
@@ -116,7 +117,7 @@ plt.xticks(ticks, S[ticks].round(2), rotation=90)
 plt.yticks(ticks, P[ticks].round(2))
 plt.colorbar()
 plt.tight_layout()
-plt.savefig(f'{experiment.root}/threshold_map.png')
+plt.savefig(f'{experiment.root}/single_threshold_map_model_0.png')
 plt.close()
 
 S = np.linspace(0., 3., 100)
@@ -132,7 +133,7 @@ plt.xlabel('accuracy')
 plt.ylabel('predicted')
 # plt.show()
 plt.tight_layout()
-plt.savefig(f'{experiment.root}/accuracy_excluded.png')
+plt.savefig(f'{experiment.root}/single_accuracy_excluded_model_0.png')
 plt.close()
 
 plt.title('Threshold vs Prediction and Accuracy')
@@ -143,5 +144,6 @@ plt.ylabel('fraction/accuracy')
 plt.legend()
 # plt.show()
 plt.tight_layout()
-plt.savefig(f'{experiment.root}/std_accuracy_excluded.png')
+plt.savefig(f'{experiment.root}/single_std_accuracy_excluded_model_0.png')
 plt.close()
+
