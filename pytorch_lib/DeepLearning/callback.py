@@ -40,10 +40,10 @@ class EarlyTermination(Callback):
         raise NotImplementedError
 
 
-class ClasificationCurvePlotter(Callback):
+class ClassificationCurvePlotter(Callback):
 
     def __init__(self, img_path='tmp'):
-        super(ClasificationCurvePlotter, self).__init__()
+        super(ClassificationCurvePlotter, self).__init__()
         self.img_path = img_path
 
     def __call__(self, model, args=None, return_fig=False):

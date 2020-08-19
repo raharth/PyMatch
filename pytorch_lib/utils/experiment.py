@@ -6,7 +6,7 @@ import datetime
 import sys
 import wandb
 from pytorch_lib.DeepLearning.learner import Learner
-
+from pytorch_lib.utils.exception import OverwriteException
 
 class Experiment:
     def __init__(self, root):
@@ -74,7 +74,7 @@ class Experiment:
         """
         copyfile(script_path, f'{self.root}/train_script.py')
 
-    def start(self):
+    def start(self, overwrite=False):
         """
         Starts a new training process, writing basic information.
 
@@ -82,6 +82,9 @@ class Experiment:
             None
 
         """
+        if os.path.isdir(f'{self.root}/meta_data.json') and not overwrite:
+            raise OverwriteException('This experiment has been already run. Please set `overwrite` to True if you are '
+                                     'sure to do so.')
         self.start_time = datetime.datetime.now()
         self.info['start time'] = str(self.start_time)
         self.write_json(self.info)
