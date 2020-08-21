@@ -1,10 +1,4 @@
 import sys
-# sys.path.insert(0, 'D:/projects/PyTorch_lib/pytorch_lib')
-# sys.path.insert(0, 'D:\\projects\\PyTorch_lib\\pytorch_lib')
-# sys.path.insert(0, 'D:/projects/PyTorch_lib')
-# sys.path.insert(0, 'D:\\projects\\PyTorch_lib')
-# print(sys.path)
-
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm

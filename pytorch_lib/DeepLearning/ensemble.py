@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+from pytorch_lib.utils.exception import TerminationException
 
 
 class Ensemble:
@@ -78,12 +79,15 @@ class Ensemble:
                 cb.start(learner)
             if verbose == 1:
                 print('Trainer {}'.format(learner.name))
-            learner.fit(epochs=epochs,
-                        device=device,
-                        checkpoint_int=checkpoint_int,
-                        validation_int=validation_int,
-                        restore_early_stopping=restore_early_stopping,
-                        early_termination=early_termination)
+            try:
+                learner.fit(epochs=epochs,
+                            device=device,
+                            checkpoint_int=checkpoint_int,
+                            validation_int=validation_int,
+                            restore_early_stopping=restore_early_stopping,
+                            early_termination=early_termination)
+            except TerminationException as te:
+                print(te)
         for cb in self.callbacks:
             cb.__call__(self)
 

@@ -3,6 +3,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 
 from pytorch_lib.utils.functional import scale_confusion_matrix
 from pytorch_lib.utils.DataHandler import DataHandler
+from pytorch_lib.utils.exception import TerminationException
 
 import pandas as pd
 import seaborn as sn
@@ -33,11 +34,14 @@ class EarlyStopping(Callback):
 
 class EarlyTermination(Callback):
 
-    def __init__(self):
+    def __init__(self, patience):
         super(EarlyTermination, self).__init__()
+        self.patience = patience
 
-    def __call__(self, model, args):
-        raise NotImplementedError
+    def __call__(self, model, early_termination):
+        if self.patience < model.train_dict['epochs_since_last_train_improvement']:
+            raise TerminationException(f'The model did not improve for the last {self.patience} steps and is '
+                                       f'therefore terminated')
 
 
 class ClassificationCurvePlotter(Callback):

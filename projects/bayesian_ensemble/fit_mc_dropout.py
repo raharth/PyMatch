@@ -15,7 +15,7 @@ from pytorch_lib.utils.functional import interactive_python_mode
 
 if interactive_python_mode():
     print('Interactive')
-    experiment_root = 'projects/bayesian_ensemble/experiments/exp16'
+    experiment_root = 'projects/bayesian_ensemble/experiments/exp18'
     train_script = 'projects/bayesian_ensemble/fit_mc_dropout.py'
 else:
     print('Script mode')

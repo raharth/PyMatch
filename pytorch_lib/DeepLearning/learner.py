@@ -179,8 +179,8 @@ class Learner(ABC):
         for epoch in range(epochs):
 
             # early termination
-            if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
-                break
+            # if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
+            #     break
 
             self.train_dict['epochs_since_last_train_improvement'] += 1
 

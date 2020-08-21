@@ -8,6 +8,7 @@ import wandb
 from pytorch_lib.DeepLearning.learner import Learner
 from pytorch_lib.utils.exception import OverwriteException
 
+
 class Experiment:
     def __init__(self, root):
         """
@@ -30,7 +31,7 @@ class Experiment:
         Returns:
             dictionary of parameters
         """
-        with open(f'{self.root}/params.json', 'r') as f:
+        with open(f'{self.root}/{param_source}', 'r') as f:
             params = json.load(f)
         return params
 
@@ -82,7 +83,7 @@ class Experiment:
             None
 
         """
-        if os.path.isdir(f'{self.root}/meta_data.json') and not overwrite:
+        if os.path.isfile(f'{self.root}/meta_data.json') and not overwrite:
             raise OverwriteException('This experiment has been already run. Please set `overwrite` to True if you are '
                                      'sure to do so.')
         self.start_time = datetime.datetime.now()

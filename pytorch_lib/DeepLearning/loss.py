@@ -44,7 +44,7 @@ class AnkerLossClassification(_Loss):
         for layer, anker in zip(self.model.ankered_layers, self.anker):
             param = layer._parameters['weight']
             l2_reg += torch.norm(param - anker)
-        loss += self.C / target.shape[0] * l2_reg   # C / N * L_2
+        loss += self.C * l2_reg   # C / N * L_2
         return loss
 
 class OneHotBCELoss(_Loss):
