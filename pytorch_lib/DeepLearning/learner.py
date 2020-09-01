@@ -22,9 +22,11 @@ class Learner(ABC):
                  load_checkpoint=False,
                  name='',
                  callbacks=None,
-                 dump_path='./tmp'
+                 dump_path='./tmp',
+                 device='cpu'
                  ):
         self.model = model  # neural network
+        self.device = device
         self.optimizer = optimizer  # optimizer for the network
         self.crit = crit  # loss
 
@@ -175,6 +177,7 @@ class Learner(ABC):
             None
 
         """
+        self.device = device
 
         for epoch in range(epochs):
 
@@ -196,19 +199,19 @@ class Learner(ABC):
                 self.train_dict['epochs_since_last_train_improvement'] = 0
 
             # checkpointing
-            if epoch % checkpoint_int == 0:
-                self.dump_checkpoint()
+            # if epoch % checkpoint_int == 0:
+            #     self.dump_checkpoint()
 
             # tracking validation performance
-            if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
-                if verbose == 1:
-                    print('evaluating')
-                val_loss = self.validate(device=device, verbose=verbose)
-                self.train_dict['val_losses'] += [val_loss]
-                self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
-                if val_loss < self.train_dict['best_val_performance']:
-                    self.train_dict['best_val_performance'] = val_loss
-                    self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
+            # if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
+            #     if verbose == 1:
+            #         print('evaluating')
+            #     val_loss = self.validate(device=device, verbose=verbose)
+            #     self.train_dict['val_losses'] += [val_loss]
+            #     self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
+            #     if val_loss < self.train_dict['best_val_performance']:
+            #         self.train_dict['best_val_performance'] = val_loss
+            #         self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             for cb in self.callbacks:
                 cb(model=self)

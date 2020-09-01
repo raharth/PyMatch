@@ -16,20 +16,41 @@ class Callback:
     def __init__(self):
         pass
 
-    def __call__(self, model, args):
+    def __call__(self, model):
         raise NotImplementedError
 
     def start(self, model):
         pass
 
 
+class Checkpointer(Callback):
+
+    def __init__(self, checkpoint_frequ=1):
+        super().__init__()
+        self.checkpoint_frequ = checkpoint_frequ
+
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.checkpoint_frequ == 0:
+            model.dump_checkpoint()
+
+
 class EarlyStopping(Callback):
 
-    def __init__(self):
+    def __init__(self, validation_int=1, verbose=1):
         super(EarlyStopping, self).__init__()
+        self.validation_int = validation_int
+        self.verbose = verbose
 
-    def __call__(self, model, args):
-        raise NotImplementedError
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.validation_int == 0 and model.val_loader is not None:
+            if self.verbose == 1:
+                print('evaluating')
+            val_loss = model.validate(device=model.device, verbose=self.verbose)
+            model.train_dict['val_losses'] += [val_loss]
+            model.train_dict['val_epochs'] += [model.train_dict['epochs_run']]
+            if val_loss < model.train_dict['best_val_performance']:
+                model.train_dict['best_val_performance'] = val_loss
+                model.dump_checkpoint(path=model.early_stopping_path, tag='early_stopping')
 
 
 class EarlyTermination(Callback):
@@ -38,7 +59,7 @@ class EarlyTermination(Callback):
         super(EarlyTermination, self).__init__()
         self.patience = patience
 
-    def __call__(self, model, early_termination):
+    def __call__(self, model):
         if self.patience < model.train_dict['epochs_since_last_train_improvement']:
             raise TerminationException(f'The model did not improve for the last {self.patience} steps and is '
                                        f'therefore terminated')

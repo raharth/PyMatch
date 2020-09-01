@@ -40,8 +40,8 @@ else:
 
 # experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
 experiment = Experiment(root=experiment_root)
-experiment.start()
-experiment.document_script(train_script)
+# experiment.start()
+# experiment.document_script(train_script)
 
 params = experiment.get_params()
 Model = experiment.get_model_class()
@@ -83,10 +83,10 @@ ensemble = BaysianEnsemble(model_class=Model,
 
 # wandb.watch(ensemble.learners[0].model)
 
-ensemble.fit(device=device, **params['fit_params'])
-experiment.finish()
+ensemble.load_checkpoint(path=f'{experiment.root}/tmp/checkpoint', tag='checkpoint', secure=False)
+ensemble.resume_training(device=device, **params['fit_params'])
+# experiment.finish()
 
-ensemble.load_checkpoint(path=f'{experiment.root}/tmp/early_stopping', tag='early_stopping')
 
 y_true = []
 y_out = []

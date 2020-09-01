@@ -29,19 +29,14 @@ def binarize(p_list, bins):
 
 if interactive_python_mode():
     print('Interactive')
-    experiment_root = 'projects/bayesian_ensemble/experiments/exp28'
+    experiment_root = 'projects/bayesian_ensemble/experiments/ensemble/exp28'
     train_script = 'projects/bayesian_ensemble/fit_bayesian_ensemble.py'
 else:
     print('Script mode')
     experiment_root = sys.argv[1]
     train_script = sys.argv[0]
 
-# wandb.init(project="pytorch_test")
-
-# experiment = WandbExperiment(root=experiment_root, param_source=experiment_root + "params.json")
 experiment = Experiment(root=experiment_root)
-experiment.start()
-experiment.document_script(train_script)
 
 params = experiment.get_params()
 Model = experiment.get_model_class()
@@ -50,25 +45,13 @@ trainer_factory = experiment.get_factory()
 use_cuda = not params['no_cuda'] and torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
-train_data = tv.datasets.CIFAR10('../data/CIFAR10/', train=True, transform=tv.transforms.ToTensor(), download=True)
-train_mask = np.array(train_data.targets) < 8
-train_data.data = train_data.data[train_mask]
-train_data.targets = list(np.array(train_data.targets).astype('int64')[train_mask])
-
-val_data = tv.datasets.CIFAR10('../data/CIFAR10/', train=False, transform=tv.transforms.ToTensor(), download=True)
-val_mask = np.array(val_data.targets) < 8
-val_data.data = val_data.data[val_mask]
-val_data.targets = list(np.array(val_data.targets).astype('int64')[val_mask])
-
 test_data = tv.datasets.CIFAR10('../data/CIFAR10/', train=False, transform=tv.transforms.ToTensor(), download=True)
 
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=params['train_batch_size'], shuffle=True)
-val_loader = torch.utils.data.DataLoader(val_data, batch_size=params['test_batch_size'], shuffle=False)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=params['test_batch_size'], shuffle=False)
 
 trainer_args = params['trainer_args']
-trainer_args['train_loader'] = train_loader
-trainer_args['val_loader'] = val_loader
+trainer_args['train_loader'] = None     # train_loader
+trainer_args['val_loader'] = None       # val_loader
 trainer_args['device'] = device
 trainer_args['path'] = trainer_args.get('path', f'{experiment.root}/tmp')
 
@@ -80,11 +63,6 @@ ensemble = BaysianEnsemble(model_class=Model,
                            callbacks=[
                                EnsembleLearningCurvePlotter(target_folder_path=f"{experiment.root}/tmp")
                            ])
-
-# wandb.watch(ensemble.learners[0].model)
-
-ensemble.fit(device=device, **params['fit_params'])
-experiment.finish()
 
 ensemble.load_checkpoint(path=f'{experiment.root}/tmp/early_stopping', tag='early_stopping')
 
