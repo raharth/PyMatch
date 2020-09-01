@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='pytorch_lib',
-      version='0.2.3',
+      version='0.2.4',
       description='PyTorch wrapper for Deep Learning',
       url='https://github.com/raharth/PyTorch_Lib',
       author='Jonas Goltz',
@@ -9,7 +9,7 @@ setup(name='pytorch_lib',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn'
+          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn', 'wandb'
       ],
       zip_safe=False)
 

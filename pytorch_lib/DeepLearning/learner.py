@@ -45,11 +45,11 @@ class Learner(ABC):
         self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
 
-        self.train_dict = {'train_losses': [],  # list of all training losses
-                           'val_losses': [],    # list of all validation losses
-                           'val_epochs': [],    # list of validated epochs
-                           'epochs_run': 0,     # number of epochs the model has been trained
-                           'best_val_performance': np.inf,  # best validation performance
+        self.train_dict = {'train_losses': [],                  # list of all training losses
+                           'val_losses': [],                    # list of all validation losses
+                           'val_epochs': [],                    # list of validated epochs
+                           'epochs_run': 0,                     # number of epochs the model has been trained
+                           'best_val_performance': np.inf,      # best validation performance
                            'best_train_performance': np.inf,    # best training performance
                            'epochs_since_last_train_improvement': 0,
                            }
