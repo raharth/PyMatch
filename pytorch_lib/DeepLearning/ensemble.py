@@ -5,7 +5,7 @@ from pytorch_lib.utils.exception import TerminationException
 
 class Ensemble:
 
-    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
+    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[], save_memory=True):
         self.learners = []
         for i in range(n_model):
             t_args = dict(trainer_args)
@@ -13,6 +13,7 @@ class Ensemble:
             self.learners.append(trainer_factory(model_class, **t_args))
         self.epochs_run = 0
         self.callbacks = callbacks
+        self.save_memory = save_memory
 
     def predict(self, x, device='cpu', return_prob=False, return_certainty=False, learner_args=None):
         """
@@ -57,23 +58,6 @@ class Ensemble:
             None
 
         """
-        # if callback_iter > 0:   # dive into a sequence of shorter training runs
-        #     epoch_iter = [callback_iter for _ in range(epochs//callback_iter)]
-        #     if epochs % callback_iter > 0:
-        #         epoch_iter += [epochs % callback_iter]
-        # else:
-        #     epoch_iter = [epochs]
-        #
-        # for run_epochs in epoch_iter:
-        #     for learner in self.learners:
-        #         if verbose == 1:
-        #             print('Trainer {}'.format(learner.name))
-        #         learner.fit(epochs=run_epochs, device=device, checkpoint_int=checkpoint_int,
-        #                     validation_int=validation_int, restore_early_stopping=restore_early_stopping)
-        #     for cb in self.callbacks:
-        #         cb.__call__(self)
-        # for cb in self.callbacks:
-        #     cb.__call__(self)
         for learner in self.learners:
             for cb in learner.callbacks:
                 cb.start(learner)
@@ -88,6 +72,9 @@ class Ensemble:
                             early_termination=early_termination)
             except TerminationException as te:
                 print(te)
+            if self.save_memory:
+                del learner
+                torch.cuda.empty_cache()
         for cb in self.callbacks:
             cb.__call__(self)
 
@@ -105,7 +92,7 @@ class Ensemble:
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
 
-    def load_checkpoint(self, path=None, tag='checkpoint', device='cpu'):
+    def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
         """
         Loads a set of checkpoints, one for each learner
 
@@ -118,7 +105,13 @@ class Ensemble:
 
         """
         for learner in self.learners:
-            learner.load_checkpoint(path=path, tag=tag, device=device)
+            try:
+                learner.load_checkpoint(path=path, tag=tag, device=device)
+            except FileNotFoundError as e:
+                if secure:
+                    raise e
+                else:
+                    print(f'learner `{learner.name}` could not be found and is hence newly initialized')
 
     def run_validation(self, device='cpu'):
         """
@@ -166,6 +159,7 @@ class Ensemble:
                 print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
             learner.fit(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,
                         validation_int=validation_int, restore_early_stopping=restore_early_stopping)
+            del learner
 
     def to(self, device):
         for learner in self.learners:

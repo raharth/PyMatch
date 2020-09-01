@@ -73,6 +73,8 @@ class Experiment:
         Returns:
             None
         """
+        if os.path.isfile(f'{self.root}/train_script.py'):
+            raise OverwriteException('There is already a stored script. Please remove the script before re-running')
         copyfile(script_path, f'{self.root}/train_script.py')
 
     def start(self, overwrite=False):
