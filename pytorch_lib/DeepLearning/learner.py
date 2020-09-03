@@ -160,17 +160,14 @@ class Learner(ABC):
             path = self.checkpoint_path
         return '{}/{}_{}'.format(path, tag, self.name)
 
-    def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
+    def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
         Trains the learner for a number of epochs.
 
         Args:
             epochs: number of epochs to train
             device: device to runt he model on
-            checkpoint_int: every checkpoint_int epochs the model is checkpointed
-            validation_int: every validation_int epochs the model is validated
             restore_early_stopping: restores best performing weights after training
-            early_termination: terminates if there is no improvement for n iterations
             verbose: verbosity
 
         Returns:
@@ -180,10 +177,6 @@ class Learner(ABC):
         self.device = device
 
         for epoch in range(epochs):
-
-            # early termination
-            # if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
-            #     break
 
             self.train_dict['epochs_since_last_train_improvement'] += 1
 
@@ -197,21 +190,6 @@ class Learner(ABC):
             if train_loss < self.train_dict['best_train_performance']:
                 self.train_dict['best_train_performance'] = train_loss
                 self.train_dict['epochs_since_last_train_improvement'] = 0
-
-            # checkpointing
-            # if epoch % checkpoint_int == 0:
-            #     self.dump_checkpoint()
-
-            # tracking validation performance
-            # if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
-            #     if verbose == 1:
-            #         print('evaluating')
-            #     val_loss = self.validate(device=device, verbose=verbose)
-            #     self.train_dict['val_losses'] += [val_loss]
-            #     self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
-            #     if val_loss < self.train_dict['best_val_performance']:
-            #         self.train_dict['best_val_performance'] = val_loss
-            #         self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             for cb in self.callbacks:
                 cb(model=self)
