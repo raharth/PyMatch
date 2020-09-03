@@ -158,7 +158,7 @@ class Learner(ABC):
         """
         if path is None:
             path = self.checkpoint_path
-        return '{}/{}_{}'.format(path, tag, self.name)
+        return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
