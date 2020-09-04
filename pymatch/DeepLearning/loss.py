@@ -17,7 +17,7 @@ class L2Loss(_Loss):
         device = loss.get_device() if loss.is_cuda else 'cpu'
         l2_reg = torch.tensor(0., device=device)
         for param in self.model.parameters():
-            l2_reg += torch.norm(param)
+            l2_reg = l2_reg + torch.norm(param)
         loss += self.C * l2_reg
         return loss
 
@@ -36,19 +36,19 @@ class AnkerLossClassification(_Loss):
             m = normal.Normal(.0, H)
             self.anker += [m.sample(sample_shape=params.shape).to(device)]
 
-
     def forward(self, input, target):
         loss = self.crit(input, target)
         device = loss.get_device() if loss.is_cuda else 'cpu'
         l2_reg = torch.tensor(0., device=device)
         for layer, anker in zip(self.model.ankered_layers, self.anker):
             param = layer._parameters['weight']
-            l2_reg += torch.norm(param - anker)
-        loss += self.C * l2_reg   # C / N * L_2
+            l2_reg = l2_reg + torch.norm(param - anker)
+        loss = loss + self.C * l2_reg   # C / N * L_2
         return loss
 
-class OneHotBCELoss(_Loss):
 
+class OneHotBCELoss(_Loss):
+    # @todo something is off here. Multiclass BCE is probably not gonna work
     def __init__(self, n_classes):
         super(OneHotBCELoss, self).__init__()
         self.n_classes = n_classes

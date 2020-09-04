@@ -5,8 +5,8 @@ import os
 import datetime
 import sys
 import wandb
-from pytorch_lib.DeepLearning.learner import Learner
-from pytorch_lib.utils.exception import OverwriteException
+from pymatch.DeepLearning.learner import Learner
+from pymatch.utils.exception import OverwriteException
 
 
 class Experiment:

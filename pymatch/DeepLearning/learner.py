@@ -7,7 +7,7 @@ import os
 import shutil
 import pandas as pd
 
-from pytorch_lib.utils import DataHandler
+from pymatch.utils import DataHandler
 
 
 class Learner(ABC):
@@ -47,11 +47,11 @@ class Learner(ABC):
         self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
 
-        self.train_dict = {'train_losses': [],  # list of all training losses
-                           'val_losses': [],    # list of all validation losses
-                           'val_epochs': [],    # list of validated epochs
-                           'epochs_run': 0,     # number of epochs the model has been trained
-                           'best_val_performance': np.inf,  # best validation performance
+        self.train_dict = {'train_losses': [],                  # list of all training losses
+                           'val_losses': [],                    # list of all validation losses
+                           'val_epochs': [],                    # list of validated epochs
+                           'epochs_run': 0,                     # number of epochs the model has been trained
+                           'best_val_performance': np.inf,      # best validation performance
                            'best_train_performance': np.inf,    # best training performance
                            'epochs_since_last_train_improvement': 0,
                            }
@@ -97,7 +97,8 @@ class Learner(ABC):
     def create_state_dict(self):
         """
         Creates the state dictionary of a learner.
-        This should be redefined by each derived learner that introduces own members. Always call the parents method. This dictionary can then be extended by
+        This should be redefined by each derived learner that introduces own members. Always call the parents method.
+        This dictionary can then be extended by
         the derived learner's members
 
         Returns:

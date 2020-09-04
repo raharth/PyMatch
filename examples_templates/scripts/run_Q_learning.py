@@ -1,10 +1,10 @@
 import torch
 import matplotlib.pyplot as plt
 
-from pytorch_lib.ReinforcementLearning.Q_Learner import Q_Learner
+from pymatch.ReinforcementLearning.Q_Learner import Q_Learner
 from models.DQN1 import Model
-from pytorch_lib.ReinforcementLearning.TorchGym import TorchGym
-from pytorch_lib.ReinforcementLearning.SelectionPolicy import EpsilonGreedy
+from pymatch.ReinforcementLearning.TorchGym import TorchGym
+from pymatch.ReinforcementLearning.SelectionPolicy import EpsilonGreedy
 
 from my_utils import sliding_mean
 

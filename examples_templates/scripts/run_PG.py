@@ -1,10 +1,10 @@
 import torch
 import matplotlib.pyplot as plt
 
-from pytorch_lib.ReinforcementLearning.PolicyGradient import PolicyGradient
-from pytorch_lib.ReinforcementLearning.Loss import REINFORCELoss
+from pymatch.ReinforcementLearning.PolicyGradient import PolicyGradient
+from pymatch.ReinforcementLearning.Loss import REINFORCELoss
 from models.PG1 import Model
-from pytorch_lib.ReinforcementLearning.TorchGym import TorchGym
+from pymatch.ReinforcementLearning.TorchGym import TorchGym
 
 from my_utils import sliding_mean
 

@@ -6,8 +6,8 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 # own imports
-from pytorch_lib.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from pytorch_lib.ReinforcementLearning.Memory import Memory
+from pymatch.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
+from pymatch.ReinforcementLearning.Memory import Memory
 
 
 class PolicyGradient(ReinforcementLearner):

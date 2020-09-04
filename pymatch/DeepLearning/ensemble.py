@@ -1,6 +1,6 @@
 import torch
 from tqdm import tqdm
-from pytorch_lib.utils.exception import TerminationException
+from pymatch.utils.exception import TerminationException
 
 
 class Ensemble:
@@ -40,8 +40,7 @@ class Ensemble:
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=1)
 
-    def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1,
-            callback_iter=-1, early_termination=-1):
+    def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -66,10 +65,7 @@ class Ensemble:
             try:
                 learner.fit(epochs=epochs,
                             device=device,
-                            checkpoint_int=checkpoint_int,
-                            validation_int=validation_int,
-                            restore_early_stopping=restore_early_stopping,
-                            early_termination=early_termination)
+                            restore_early_stopping=restore_early_stopping)
             except TerminationException as te:
                 print(te)
             if self.save_memory:

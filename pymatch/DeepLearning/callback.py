@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
 
-from pytorch_lib.utils.functional import scale_confusion_matrix
-from pytorch_lib.utils.DataHandler import DataHandler
-from pytorch_lib.utils.exception import TerminationException
+from pymatch.utils.functional import scale_confusion_matrix
+from pymatch.utils.DataHandler import DataHandler
+from pymatch.utils.exception import TerminationException
 
 import pandas as pd
 import seaborn as sn

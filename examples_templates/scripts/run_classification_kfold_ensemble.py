@@ -4,11 +4,11 @@ from torch import nn
 import torch.optim as optim
 
 from models.test_Model import Model
-from pytorch_lib.DeepLearning.callback import ConfusionMatrixPlotter, Reporter
-from pytorch_lib.DeepLearning.learner import ClassificationLearner
-from pytorch_lib.utils.KFold import KFold
-from pytorch_lib.DeepLearning.ensemble import Ensemble
-from pytorch_lib.utils.Functional import read_setting
+from pymatch.DeepLearning.callback import ConfusionMatrixPlotter, Reporter
+from pymatch.DeepLearning.learner import ClassificationLearner
+from pymatch.utils.KFold import KFold
+from pymatch.DeepLearning.ensemble import Ensemble
+from pymatch.utils.Functional import read_setting
 
 
 def factory(kfold, device, lr, momentum, name, n_classes):
