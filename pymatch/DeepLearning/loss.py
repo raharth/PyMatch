@@ -24,15 +24,14 @@ class L2Loss(_Loss):
 
 class AnkerLossClassification(_Loss):
 
-    def __init__(self, crit, model, C, device, H):
+    def __init__(self, crit, model, device, H):
         super(AnkerLossClassification, self).__init__()
         self.crit = crit
         self.model = model
-        self.C = C
+        self.C = 1 / (2 * H)**0.5
         self.anker = []
         for layer in model.ankered_layers:
             params = layer._parameters['weight']
-            # H = params.shape[0]     # is that actually correct? I understood it as the number of hidden nodes of a layer
             m = normal.Normal(.0, H)
             self.anker += [m.sample(sample_shape=params.shape).to(device)]
 
@@ -43,7 +42,7 @@ class AnkerLossClassification(_Loss):
         for layer, anker in zip(self.model.ankered_layers, self.anker):
             param = layer._parameters['weight']
             l2_reg = l2_reg + torch.norm(param - anker)
-        loss = loss + self.C * l2_reg   # C / N * L_2
+        loss = loss + self.C * l2_reg / len(target)   # C / N * L_2
         return loss
 
 

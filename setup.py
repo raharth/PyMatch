@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
-import json
 
-setup(name='pytorch_lib',
+setup(name='pymatch',
       version='0.2.6',
       description='PyTorch wrapper for Deep Learning',
       url='https://github.com/raharth/PyTorch_Lib',
