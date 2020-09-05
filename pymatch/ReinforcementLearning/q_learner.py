@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.tensor as tt
 
-from pymatch.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from pymatch.ReinforcementLearning.Memory import Memory
+from pymatch.ReinforcementLearning.reinforcement_learner import ReinforcementLearner
+from pymatch.ReinforcementLearning.memory import Memory
 
 
 class Q_Learner(ReinforcementLearner):

@@ -17,7 +17,6 @@ class Learner(ABC):
                  optimizer,
                  crit,
                  train_loader,
-                 val_loader=None,
                  grad_clip=None,
                  load_checkpoint=False,
                  name='',
@@ -25,15 +24,28 @@ class Learner(ABC):
                  dump_path='./tmp',
                  device='cpu'
                  ):
-        self.model = model  # neural network
+        """
+
+        Args:
+            model:              neural network
+            optimizer:          optimizer to optimize the model with
+            crit:               loss gunction
+            train_loader:       train loader
+            grad_clip:          gradient clipping
+            load_checkpoint:    determines if checkpoint should be leaded
+            name:               name of the learner, used for dumping
+            callbacks:          list of callbacks
+            dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
+            device:             device to run the learner on
+        """
+        self.model = model
         self.device = device
-        self.optimizer = optimizer  # optimizer for the network
-        self.crit = crit  # loss
+        self.optimizer = optimizer
+        self.crit = crit
 
         self.grad_clip = grad_clip
 
         self.train_loader = train_loader
-        self.val_loader = val_loader
 
         self.checkpoint_path = f'{dump_path}/checkpoint'
         self.early_stopping_path = f'{dump_path}/early_stopping'
@@ -48,12 +60,12 @@ class Learner(ABC):
         self.callbacks = [] if callbacks is None else callbacks
 
         self.train_dict = {'train_losses': [],                  # list of all training losses
-                           'val_losses': [],                    # list of all validation losses
-                           'val_epochs': [],                    # list of validated epochs
+                           # 'val_losses': [],                    # list of all validation losses
+                           # 'val_epochs': [],                    # list of validated epochs
                            'epochs_run': 0,                     # number of epochs the model has been trained
-                           'best_val_performance': np.inf,      # best validation performance
                            'best_train_performance': np.inf,    # best training performance
-                           'epochs_since_last_train_improvement': 0,
+                           'best_val_performance': np.inf,    # best training performance
+                           'epochs_since_last_val_improvement': 0   # @todo ugly shit, shouldnt be here
                            }
 
         if load_checkpoint:
@@ -112,7 +124,7 @@ class Learner(ABC):
                       # 'val_loss': self.val_losses,
                       # 'val_epoch': self.val_epochs,
                       # 'best_train_performance': self.best_train_performance,
-                      # 'epochs_since_last_train_improvement': self.epochs_since_last_train_improvement
+                      # 'epochs_since_last_val_improvement': self.epochs_since_last_train_improvement
                       }
         return state_dict
 
@@ -179,7 +191,7 @@ class Learner(ABC):
 
         for epoch in range(epochs):
 
-            self.train_dict['epochs_since_last_train_improvement'] += 1
+            self.train_dict['epochs_since_last_val_improvement'] += 1   # @todo this shouldn't be here... since is is related to the callback
 
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
@@ -190,21 +202,11 @@ class Learner(ABC):
             # tracking training performance
             if train_loss < self.train_dict['best_train_performance']:
                 self.train_dict['best_train_performance'] = train_loss
-                self.train_dict['epochs_since_last_train_improvement'] = 0
 
             for cb in self.callbacks:
                 cb(model=self)
 
             self.train_dict['epochs_run'] += 1
-
-        if verbose == 1: # @todo code duplicate -> refactor
-            print('evaluating')
-        val_loss = self.validate(device=device, verbose=verbose)
-        self.train_dict['val_losses'] += [val_loss]
-        self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
-        if val_loss < self.train_dict['best_val_performance']:
-            self.train_dict['best_val_performance'] = val_loss
-            self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
@@ -256,19 +258,19 @@ class Learner(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def validate(self, device, verbose=0):
-        """
-        Validation of the validation data if provided
-
-        Args:
-            device: device to run it on 'cpu' or 'cuda'
-            verbose: verbosity of the learning
-
-        Returns:
-            loss
-        """
-        raise NotImplementedError
+    # @abstractmethod
+    # def validate(self, device, verbose=0):
+    #     """
+    #     Validation of the validation data if provided
+    #
+    #     Args:
+    #         device: device to run it on 'cpu' or 'cuda'
+    #         verbose: verbosity of the learning
+    #
+    #     Returns:
+    #         loss
+    #     """
+    #     raise NotImplementedError
 
 
 class ClassificationLearner(Learner):
@@ -288,7 +290,6 @@ class ClassificationLearner(Learner):
                                                     optimizer,
                                                     crit,
                                                     train_loader,
-                                                    val_loader,
                                                     grad_clip,
                                                     load_checkpoint,
                                                     name,
@@ -332,38 +333,38 @@ class ClassificationLearner(Learner):
             print('train loss: {:.4f} - train accuracy: {:.4f}'.format(loss, accuracy))
         return loss
 
-    def validate(self, device, verbose=0):
-        """
-        Validate the model on the validation data.
-
-        Args:
-            device: device to run the model on
-            verbose: verbosity
-
-        Returns:
-            validation loss
-
-        """
-        with torch.no_grad():
-            self.eval()
-            self.model.to(device)
-            loss = []
-            accuracies = []
-            for data, y in self.val_loader:
-                data = data.to(device)
-                y = y
-                y_pred = self.model(data)
-                loss += [self.crit(y_pred.to('cpu'), y)]
-
-                y_pred = y_pred.max(dim=1)[1].to('cpu')
-                accuracies += [(y_pred == y).float()]
-
-            loss = torch.stack(loss).mean().item()
-            accuracy = torch.cat(accuracies).mean().item()
-            self.train_dict['val_accuracy'] += [accuracy]
-            if verbose == 1:
-                print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-            return loss
+    # def validate(self, device, verbose=0):
+    #     """
+    #     Validate the model on the validation data.
+    #
+    #     Args:
+    #         device: device to run the model on
+    #         verbose: verbosity
+    #
+    #     Returns:
+    #         validation loss
+    #
+    #     """
+    #     with torch.no_grad():
+    #         self.eval()
+    #         self.model.to(device)
+    #         loss = []
+    #         accuracies = []
+    #         for data, y in self.val_loader:
+    #             data = data.to(device)
+    #             y = y
+    #             y_pred = self.model(data)
+    #             loss += [self.crit(y_pred.to('cpu'), y)]
+    #
+    #             y_pred = y_pred.max(dim=1)[1].to('cpu')
+    #             accuracies += [(y_pred == y).float()]
+    #
+    #         loss = torch.stack(loss).mean().item()
+    #         accuracy = torch.cat(accuracies).mean().item()
+    #         self.train_dict['val_accuracy'] += [accuracy]
+    #         if verbose == 1:
+    #             print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+    #         return loss
 
 
 class RegressionLearner(Learner):

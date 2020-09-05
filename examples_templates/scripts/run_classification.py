@@ -3,10 +3,10 @@ import torchvision as tv
 from torch import nn
 import torch.optim as optim
 
-from pymatch.DeepLearning.Hat import MaxProbabilityHat, DefaultClassHat
-from pymatch.DeepLearning.Learner import ClassificationLearner
-from pymatch.DeepLearning.Callback import Reporter, ConfusionMatrixPlotter
-from pymatch.DeepLearning.Pipeline import Pipeline
+from pymatch.DeepLearning.hat import MaxProbabilityHat
+from pymatch.DeepLearning.learner import ClassificationLearner
+from pymatch.DeepLearning.callback import Reporter, ConfusionMatrixPlotter
+from pymatch.DeepLearning.pipeline import Pipeline
 from pymatch.utils.DataHandler import DataHandler
 from models.test_Model import Model
 

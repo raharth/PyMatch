@@ -3,7 +3,7 @@ import torch
 
 class Hat:
 
-    def predict(self, y, device='cpu'):
+    def __call__(self, y, device='cpu'):
         raise NotImplementedError
 
 
@@ -31,7 +31,7 @@ class MaxProbabilityHat(Hat):
         """
         super(MaxProbabilityHat, self).__init__()
 
-    def predict(self, y, device='cpu', return_value=False):
+    def __call__(self, y, device='cpu', return_value=False):
         if return_value:
             return y.argmax(dim=-1), y.max(dim=-1)[0]
         return y.argmax(dim=-1)
@@ -42,7 +42,7 @@ class MajorityHat(Hat):
     def __init__(self):
         super(MajorityHat, self).__init__()
 
-    def predict(self, y, device='cpu'):
+    def __call__(self, y, device='cpu'):
         # @todo validate/test
         y_pred = []
         y_count = []
@@ -66,7 +66,7 @@ class EnsembleHat(Hat):
         """
         super(EnsembleHat, self).__init__()
 
-    def predict(self, y, device='cpu'):
+    def __call__(self, y, device='cpu'):
         return y.mean(dim=1)
 
 
@@ -78,7 +78,7 @@ class EnsembleHatStd(Hat):
         """
         super(EnsembleHatStd, self).__init__()
 
-    def predict(self, y, device='cpu', return_max=False):
+    def __call__(self, y, device='cpu', return_max=False):
         if return_max:
             return y.mean(dim=0), y.std(dim=0), y.max(dim=0)[0]
         return y.mean(dim=0), y.std(dim=0)
@@ -90,7 +90,7 @@ class ThresholdHat(Hat):
         super(ThresholdHat, self).__init__()
         self.threshold = threshold
 
-    def predict(self, y, device='cpu'):
+    def __call__(self, y, device='cpu'):
         y_default = (y.max(dim=1)[0] < self.threshold).float().view(-1, 1)
         return torch.cat([y, y_default], dim=1)
 
@@ -103,7 +103,7 @@ class EnsembleHat3Best(Hat):
         """
         super(EnsembleHat3Best, self).__init__()
 
-    def predict(self, y, device='cpu'):
+    def __call__(self, y, device='cpu'):
         probs, classes = y.sort(1, descending=True)
         probs = probs[:, :3]
         classes = classes[:, :3]

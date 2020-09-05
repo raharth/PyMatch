@@ -9,6 +9,7 @@ import pandas as pd
 import seaborn as sn
 import wandb
 import numpy as np
+import torch
 
 
 class Callback:
@@ -34,20 +35,55 @@ class Checkpointer(Callback):
             model.dump_checkpoint()
 
 
-class EarlyStopping(Callback):
-
-    def __init__(self, validation_int=1, verbose=1):
-        super(EarlyStopping, self).__init__()
+class Validator(Callback):
+    def __init__(self, data_loader, validation_int, verbose=1):
+        super().__init__()
+        self.data_loader = data_loader
         self.validation_int = validation_int
         self.verbose = verbose
 
     def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.validation_int == 0 and model.val_loader is not None:
+        train_mode = model.model.training
+        with torch.no_grad():
+            model.eval()
+            model.to(model.device)
+            loss = []
+            accuracies = []
+            for data, y in self.data_loader:
+                data = data.to(model.device)
+                y = y
+                y_pred = model.model(data)
+                loss += [model.crit(y_pred.to('cpu'), y)]
+
+                y_pred = y_pred.max(dim=1)[1].to('cpu')
+                accuracies += [(y_pred == y).float()]
+
+            loss = torch.stack(loss).mean().item()
+            model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
+            model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
+            accuracy = torch.cat(accuracies).mean().item()
+            model.train_dict['val_accuracy'] = model.train_dict.get('val_accuracy', []) + [accuracy]
+
+        if loss < model.train_dict.get('best_val_performance', np.inf):
+            model.train_dict['best_train_performance'] = loss
+            model.train_dict['epochs_since_last_val_improvement'] = 0
+
+        if self.verbose == 1:
+            print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+        if train_mode:  # reset to original mode
+            model.train()
+        return loss
+
+
+class EarlyStopping(Validator):
+    def __init__(self, data_loader, validation_int=1, verbose=1):
+        super(EarlyStopping, self).__init__(data_loader, validation_int, verbose)
+
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.validation_int == 0:
             if self.verbose == 1:
                 print('evaluating')
-            val_loss = model.validate(device=model.device, verbose=self.verbose)
-            model.train_dict['val_losses'] += [val_loss]
-            model.train_dict['val_epochs'] += [model.train_dict['epochs_run']]
+            val_loss = Validator.__call__(self, model=model)
             if val_loss < model.train_dict['best_val_performance']:
                 model.train_dict['best_val_performance'] = val_loss
                 model.dump_checkpoint(path=model.early_stopping_path, tag='early_stopping')
@@ -60,7 +96,7 @@ class EarlyTermination(Callback):
         self.patience = patience
 
     def __call__(self, model):
-        if self.patience < model.train_dict['epochs_since_last_train_improvement']:
+        if self.patience < model.train_dict['epochs_since_last_val_improvement']:
             raise TerminationException(f'The model did not improve for the last {self.patience} steps and is '
                                        f'therefore terminated')
 
@@ -224,7 +260,7 @@ class ConfusionMatrixPlotter(Callback):
 
 class Reporter(Callback):
 
-    def __init__(self, data_loader, folder_path='./tmp', file_name='report', mode='a+'):
+    def __init__(self, data_loader, folder_path='./tmp', file_name='report', mode='w'):
         """
 
         Args:

@@ -6,22 +6,22 @@ import torch.nn as nn
 from torch.distributions import Categorical
 
 # own imports
-from pymatch.ReinforcementLearning.ReinforcementLearner import ReinforcementLearner
-from pymatch.ReinforcementLearning.Memory import Memory
+from pymatch.ReinforcementLearning.reinforcement_learner import ReinforcementLearner
+from pymatch.ReinforcementLearning.memory import Memory
 
 
 class PolicyGradient(ReinforcementLearner):
 
-    def __init__(self, agent, optimizer, env, crit, grad_clip=0., load_checkpoint=False):
+    def __init__(self, model, optimizer, env, crit, grad_clip=0., load_checkpoint=False):
         """
 
         Args:
-            agent (nn.Module): neural network
+            model (nn.Module): neural network
             optimizer (torch.optim): Optimizer
             env(any): environment to interact with
             crit (any): loss function
         """
-        super(PolicyGradient, self).__init__(agent, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
+        super(PolicyGradient, self).__init__(model, optimizer, env, crit, grad_clip=grad_clip, load_checkpoint=load_checkpoint)
         self.memory = Memory(['log_prob', 'reward'], buffer_size=None)
 
     def play_episode(self, episode_length=None, render=False):
