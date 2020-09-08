@@ -12,6 +12,3 @@ setup(name='pymatch',
           'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn'
       ],
       zip_safe=False)
-
-# build *.tar.gz by
-# $python setup.py sdist
