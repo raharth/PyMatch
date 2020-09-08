@@ -1,6 +1,6 @@
 # well actually not a real test... at least some playing around with it
 
-from pytorch_lib.utils.KFold import KFold
+from pymatch.utils.KFold import KFold
 from torch.utils.data.dataset import Dataset
 import torch
 

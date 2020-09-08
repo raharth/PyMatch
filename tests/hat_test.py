@@ -1,5 +1,5 @@
 import torch
-import pytorch_lib.DeepLearning.hat as pt_hat
+import pymatch.DeepLearning.hat as pt_hat
 
 hat = pt_hat.MaxProbabilityHat()
 y = torch.tensor([[.2, .3, .5], [.1, .8, .1]])

@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 
-setup(name='pytorch_lib',
-      version='0.2.5',
+setup(name='pymatch',
+      version='0.2.6',
       description='PyTorch wrapper for Deep Learning',
-      url='https://github.com/raharth/PyTorch_Lib',
+      url='https://github.com/raharth/PyMatch',
       author='Jonas Goltz',
       author_email='goltz.jonas@googlemail.com',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn', 'wandb'
+          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn'
       ],
       zip_safe=False)
 

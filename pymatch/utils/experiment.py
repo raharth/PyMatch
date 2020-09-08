@@ -5,8 +5,8 @@ import os
 import datetime
 import sys
 import wandb
-from pytorch_lib.DeepLearning.learner import Learner
-from pytorch_lib.utils.exception import OverwriteException
+from pymatch.DeepLearning.learner import Learner
+from pymatch.utils.exception import OverwriteException
 
 
 class Experiment:
@@ -18,6 +18,7 @@ class Experiment:
             root:
         """
         self.root = root
+        self.start_time = datetime.datetime.now()
         self.info = {"mode": "interactive" if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
                                            else "script"}
 
@@ -88,7 +89,7 @@ class Experiment:
         if os.path.isfile(f'{self.root}/meta_data.json') and not overwrite:
             raise OverwriteException('This experiment has been already run. Please set `overwrite` to True if you are '
                                      'sure to do so.')
-        self.start_time = datetime.datetime.now()
+        self.info['PyMatch-version'] = os.popen('pip show pymatch').read()
         self.info['start time'] = str(self.start_time)
         self.write_json(self.info)
 
@@ -100,7 +101,8 @@ class Experiment:
             None
 
         """
-        self.info["time_taken"] = str(datetime.datetime.now() - self.start_time)
+        self.info['finish time'] = str(datetime.datetime.now())
+        self.info['time taken'] = str(datetime.datetime.now() - self.start_time)
         self.write_json(self.info)
 
     def write_json(self, data, path='meta_data.json'):

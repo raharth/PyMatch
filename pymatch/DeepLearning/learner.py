@@ -7,7 +7,7 @@ import os
 import shutil
 import pandas as pd
 
-from pytorch_lib.utils import DataHandler
+from pymatch.utils import DataHandler
 
 
 class Learner(ABC):
@@ -25,15 +25,28 @@ class Learner(ABC):
                  dump_path='./tmp',
                  device='cpu'
                  ):
-        self.model = model  # neural network
+        """
+
+        Args:
+            model:              neural network
+            optimizer:          optimizer to optimize the model with
+            crit:               loss gunction
+            train_loader:       train loader
+            grad_clip:          gradient clipping
+            load_checkpoint:    determines if checkpoint should be leaded
+            name:               name of the learner, used for dumping
+            callbacks:          list of callbacks
+            dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
+            device:             device to run the learner on
+        """
+        self.model = model
         self.device = device
-        self.optimizer = optimizer  # optimizer for the network
-        self.crit = crit  # loss
+        self.optimizer = optimizer
+        self.crit = crit
 
         self.grad_clip = grad_clip
 
         self.train_loader = train_loader
-        self.val_loader = val_loader
 
         self.checkpoint_path = f'{dump_path}/checkpoint'
         self.early_stopping_path = f'{dump_path}/early_stopping'
@@ -48,12 +61,12 @@ class Learner(ABC):
         self.callbacks = [] if callbacks is None else callbacks
 
         self.train_dict = {'train_losses': [],                  # list of all training losses
-                           'val_losses': [],                    # list of all validation losses
-                           'val_epochs': [],                    # list of validated epochs
+                           # 'val_losses': [],                    # list of all validation losses
+                           # 'val_epochs': [],                    # list of validated epochs
                            'epochs_run': 0,                     # number of epochs the model has been trained
-                           'best_val_performance': np.inf,      # best validation performance
                            'best_train_performance': np.inf,    # best training performance
-                           'epochs_since_last_train_improvement': 0,
+                           'best_val_performance': np.inf,    # best training performance
+                           'epochs_since_last_val_improvement': 0   # @todo ugly shit, shouldnt be here
                            }
 
         if load_checkpoint:
@@ -97,7 +110,8 @@ class Learner(ABC):
     def create_state_dict(self):
         """
         Creates the state dictionary of a learner.
-        This should be redefined by each derived learner that introduces own members. Always call the parents method. This dictionary can then be extended by
+        This should be redefined by each derived learner that introduces own members. Always call the parents method.
+        This dictionary can then be extended by
         the derived learner's members
 
         Returns:
@@ -111,7 +125,7 @@ class Learner(ABC):
                       # 'val_loss': self.val_losses,
                       # 'val_epoch': self.val_epochs,
                       # 'best_train_performance': self.best_train_performance,
-                      # 'epochs_since_last_train_improvement': self.epochs_since_last_train_improvement
+                      # 'epochs_since_last_val_improvement': self.epochs_since_last_train_improvement
                       }
         return state_dict
 
@@ -158,19 +172,16 @@ class Learner(ABC):
         """
         if path is None:
             path = self.checkpoint_path
-        return '{}/{}_{}'.format(path, tag, self.name)
+        return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
-    def fit(self, epochs, device, checkpoint_int=10, validation_int=10, restore_early_stopping=False, early_termination=-1, verbose=1):
+    def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
         Trains the learner for a number of epochs.
 
         Args:
             epochs: number of epochs to train
             device: device to runt he model on
-            checkpoint_int: every checkpoint_int epochs the model is checkpointed
-            validation_int: every validation_int epochs the model is validated
             restore_early_stopping: restores best performing weights after training
-            early_termination: terminates if there is no improvement for n iterations
             verbose: verbosity
 
         Returns:
@@ -181,11 +192,7 @@ class Learner(ABC):
 
         for epoch in range(epochs):
 
-            # early termination
-            # if 0 < early_termination < self.train_dict['epochs_since_last_train_improvement']:
-            #     break
-
-            self.train_dict['epochs_since_last_train_improvement'] += 1
+            self.train_dict['epochs_since_last_val_improvement'] += 1   # @todo this shouldn't be here... since is is related to the callback
 
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
@@ -196,36 +203,11 @@ class Learner(ABC):
             # tracking training performance
             if train_loss < self.train_dict['best_train_performance']:
                 self.train_dict['best_train_performance'] = train_loss
-                self.train_dict['epochs_since_last_train_improvement'] = 0
-
-            # checkpointing
-            # if epoch % checkpoint_int == 0:
-            #     self.dump_checkpoint()
-
-            # tracking validation performance
-            # if epoch % validation_int == 0 and self.val_loader is not None and validation_int > 0:
-            #     if verbose == 1:
-            #         print('evaluating')
-            #     val_loss = self.validate(device=device, verbose=verbose)
-            #     self.train_dict['val_losses'] += [val_loss]
-            #     self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
-            #     if val_loss < self.train_dict['best_val_performance']:
-            #         self.train_dict['best_val_performance'] = val_loss
-            #         self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
             for cb in self.callbacks:
                 cb(model=self)
 
             self.train_dict['epochs_run'] += 1
-
-        if verbose == 1: # @todo code duplicate -> refactor
-            print('evaluating')
-        val_loss = self.validate(device=device, verbose=verbose)
-        self.train_dict['val_losses'] += [val_loss]
-        self.train_dict['val_epochs'] += [self.train_dict['epochs_run']]
-        if val_loss < self.train_dict['best_val_performance']:
-            self.train_dict['best_val_performance'] = val_loss
-            self.dump_checkpoint(path=self.early_stopping_path, tag='early_stopping')
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
@@ -277,19 +259,19 @@ class Learner(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def validate(self, device, verbose=0):
-        """
-        Validation of the validation data if provided
-
-        Args:
-            device: device to run it on 'cpu' or 'cuda'
-            verbose: verbosity of the learning
-
-        Returns:
-            loss
-        """
-        raise NotImplementedError
+    # @abstractmethod
+    # def validate(self, device, verbose=0):
+    #     """
+    #     Validation of the validation data if provided
+    #
+    #     Args:
+    #         device: device to run it on 'cpu' or 'cuda'
+    #         verbose: verbosity of the learning
+    #
+    #     Returns:
+    #         loss
+    #     """
+    #     raise NotImplementedError
 
 
 class ClassificationLearner(Learner):
@@ -309,7 +291,6 @@ class ClassificationLearner(Learner):
                                                     optimizer,
                                                     crit,
                                                     train_loader,
-                                                    val_loader,
                                                     grad_clip,
                                                     load_checkpoint,
                                                     name,
@@ -353,38 +334,38 @@ class ClassificationLearner(Learner):
             print('train loss: {:.4f} - train accuracy: {:.4f}'.format(loss, accuracy))
         return loss
 
-    def validate(self, device, verbose=0):
-        """
-        Validate the model on the validation data.
-
-        Args:
-            device: device to run the model on
-            verbose: verbosity
-
-        Returns:
-            validation loss
-
-        """
-        with torch.no_grad():
-            self.eval()
-            self.model.to(device)
-            loss = []
-            accuracies = []
-            for data, y in self.val_loader:
-                data = data.to(device)
-                y = y
-                y_pred = self.model(data)
-                loss += [self.crit(y_pred.to('cpu'), y)]
-
-                y_pred = y_pred.max(dim=1)[1].to('cpu')
-                accuracies += [(y_pred == y).float()]
-
-            loss = torch.stack(loss).mean().item()
-            accuracy = torch.cat(accuracies).mean().item()
-            self.train_dict['val_accuracy'] += [accuracy]
-            if verbose == 1:
-                print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-            return loss
+    # def validate(self, device, verbose=0):
+    #     """
+    #     Validate the model on the validation data.
+    #
+    #     Args:
+    #         device: device to run the model on
+    #         verbose: verbosity
+    #
+    #     Returns:
+    #         validation loss
+    #
+    #     """
+    #     with torch.no_grad():
+    #         self.eval()
+    #         self.model.to(device)
+    #         loss = []
+    #         accuracies = []
+    #         for data, y in self.val_loader:
+    #             data = data.to(device)
+    #             y = y
+    #             y_pred = self.model(data)
+    #             loss += [self.crit(y_pred.to('cpu'), y)]
+    #
+    #             y_pred = y_pred.max(dim=1)[1].to('cpu')
+    #             accuracies += [(y_pred == y).float()]
+    #
+    #         loss = torch.stack(loss).mean().item()
+    #         accuracy = torch.cat(accuracies).mean().item()
+    #         self.train_dict['val_accuracy'] += [accuracy]
+    #         if verbose == 1:
+    #             print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+    #         return loss
 
 
 class RegressionLearner(Learner):

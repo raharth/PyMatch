@@ -1,9 +1,9 @@
-from pytorch_lib.DeepLearning.models import AutoEncoder
-from pytorch_lib.DeepLearning.learner import RegressionLearner
+from pymatch.DeepLearning.models import AutoEncoder
+from pymatch.DeepLearning.learner import RegressionLearner
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytorch_lib.utils.Dataset import Dataset
+from pymatch.utils.Dataset import Dataset
 import pandas as pd
 
 

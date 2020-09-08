@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sn
 import json
 import sys
+import os
 
 
 def scale_confusion_matrix(confm):
@@ -38,3 +39,7 @@ def read_json(path):
 
 def interactive_python_mode():
     return sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
+
+
+def shut_down(s=30):
+    os.system(f"shutdown /s /t {s}")
