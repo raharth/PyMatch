@@ -20,8 +20,8 @@ class REINFORCELoss_moving_average(nn.Module):
 
     def forward(self, log_prob, rewards):
         # @todo this should be ok, but double check the computation
-        self.m_avg = self.m_avg + rewards.mean() / self.count
+        self.m_avg = (self.m_avg + rewards.mean() / self.count).item()
         self.count += 1
 
-        advantage = (rewards - self.m_avg)
+        advantage = (rewards - self.m_avg).detach()
         return -(log_prob * advantage).sum()

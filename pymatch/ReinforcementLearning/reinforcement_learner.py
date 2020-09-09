@@ -35,7 +35,7 @@ class ReinforcementLearner(ABC):
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path)
 
-    def train(self, episodes, device, checkpoint_int=10, restore_early_stopping=False, render=False, verbose=True):
+    def fit(self, episodes, device, checkpoint_int=10, restore_early_stopping=False, render=False, verbose=True):
         """
         Wrapper for
         Args:
@@ -49,7 +49,7 @@ class ReinforcementLearner(ABC):
         Returns:
 
         """
-        self.agent.fit()
+        self.agent.train()
 
         for episode in tqdm(range(episodes)):
             if verbose:

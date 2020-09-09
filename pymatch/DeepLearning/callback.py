@@ -43,36 +43,37 @@ class Validator(Callback):
         self.verbose = verbose
 
     def __call__(self, model):
-        train_mode = model.model.training
-        with torch.no_grad():
-            model.eval()
-            model.to(model.device)
-            loss = []
-            accuracies = []
-            for data, y in self.data_loader:
-                data = data.to(model.device)
-                y = y
-                y_pred = model.model(data)
-                loss += [model.crit(y_pred.to('cpu'), y)]
+        if model.train_dict['epochs_run'] % self.validation_int == 0:
+            train_mode = model.model.training
+            with torch.no_grad():
+                model.eval()
+                model.to(model.device)
+                loss = []
+                accuracies = []
+                for data, y in self.data_loader:
+                    data = data.to(model.device)
+                    y = y
+                    y_pred = model.model(data)
+                    loss += [model.crit(y_pred.to('cpu'), y)]
 
-                y_pred = y_pred.max(dim=1)[1].to('cpu')
-                accuracies += [(y_pred == y).float()]
+                    y_pred = y_pred.max(dim=1)[1].to('cpu')
+                    accuracies += [(y_pred == y).float()]
 
-            loss = torch.stack(loss).mean().item()
-            model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
-            model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
-            accuracy = torch.cat(accuracies).mean().item()
-            model.train_dict['val_accuracy'] = model.train_dict.get('val_accuracy', []) + [accuracy]
+                loss = torch.stack(loss).mean().item()
+                model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
+                model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
+                accuracy = torch.cat(accuracies).mean().item()
+                model.train_dict['val_accuracy'] = model.train_dict.get('val_accuracy', []) + [accuracy]
 
-        if loss < model.train_dict.get('best_val_performance', np.inf):
-            model.train_dict['best_train_performance'] = loss
-            model.train_dict['epochs_since_last_val_improvement'] = 0
+            if loss < model.train_dict.get('best_val_performance', np.inf):
+                model.train_dict['best_train_performance'] = loss
+                model.train_dict['epochs_since_last_val_improvement'] = 0
 
-        if self.verbose == 1:
-            print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-        if train_mode:  # reset to original mode
-            model.train()
-        return loss
+            if self.verbose == 1:
+                print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+            if train_mode:  # reset to original mode
+                model.train()
+            return loss
 
 
 class EarlyStopping(Validator):

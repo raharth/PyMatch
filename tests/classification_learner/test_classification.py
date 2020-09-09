@@ -92,5 +92,4 @@ reporter(pipeline, train_data.classes)
 plotter = cb.ConfusionMatrixPlotter(test_loader, img_path='tests/classification_learner')
 plotter(pipeline, train_data.classes)
 
-
 y_pred = pipeline.predict_dataloader(test_loader, device=device)

@@ -87,7 +87,7 @@ class Learner(ABC):
 
         """
         self.optimizer.zero_grad()
-        loss.backward()
+        loss.clone().backward(retain_graph=True)
         if self.grad_clip is not None:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
         self.optimizer.step()
