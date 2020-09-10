@@ -1,4 +1,6 @@
 import torch
+import os
+import shutil
 
 
 class Hat:
@@ -80,8 +82,43 @@ class EnsembleHatStd(Hat):
 
     def __call__(self, y, device='cpu', return_max=False):
         if return_max:
-            return y.mean(dim=0), y.std(dim=0), y.max(dim=0)[0]
-        return y.mean(dim=0), y.std(dim=0)
+            return y.mean(dim=1), y.std(dim=1), y.max(dim=1)[0]
+        return y.mean(dim=1), y.std(dim=1)
+
+
+class ConfidenceBoundHat(EnsembleHatStd):
+    def __init__(self, confidence_bound):
+        """
+        Computes the confidence bound on a given prediction.
+
+        Args:
+            confidence_bound:   confidence interval, can be a positive or negative float. If chosen positive it is the
+                                upper bound, if negative it is the lower confidence bound
+        """
+        super().__init__()
+        self.confidence_bound = confidence_bound
+
+    def __call__(self, y, device='cpu'):
+        y_mean, y_std = super.__call__(y, device)
+        return y_mean + self.confidence_bound * y_std
+
+
+class ConfidenceThresholdHat(ConfidenceBoundHat):
+    def __init__(self, confidence_bound, threshold, garbage_class=-1, categorical_output=False):
+        super().__init__(confidence_bound)
+        self.threshold = threshold
+        self.categorical_output = categorical_output
+        self.garbage_class = garbage_class
+
+    def __call__(self, y, device='cpu'):
+        if self.garbage_class == -1:
+            self.garbage_class = y.max() + 1
+        y_confident = super.__call__(y, device)
+        y_prob, y_class = y_confident.max(dim=-1)
+        y_class[y_prob < self.threshold] = self.garbage_class
+        if self.categorical_output:
+            y_class = torch.zeros(len(y_class), self.garbage_class + 1).scatter_(1, y_class.view(-1, 1), 1)
+        return y_class
 
 
 class ThresholdHat(Hat):
@@ -108,3 +145,38 @@ class EnsembleHat3Best(Hat):
         probs = probs[:, :3]
         classes = classes[:, :3]
         return classes, probs
+
+
+class ImageSorter(Hat):
+    def __init__(self, dataloader, target_folder='./sorted_images', idx_to_class=None):
+        if not isinstance(self.dataloader.sampler, torch.utils.data.sampler.SequentialSampler):
+            raise ValueError('Data loader is not sequential. Hint: Set DataLoader(..., shuffle=False)')
+        self.dataloader = dataloader
+        self.target_folder = target_folder
+
+        self.idx_to_class = {v: k for k, v in dataloader.dataset.class_to_idx.items()} \
+            if idx_to_class is None else idx_to_class
+
+
+        # creating target folders
+        for class_name in self.idx_to_class.values():
+            class_path = '{}/{}'.format(self.target_folder, class_name)
+            if not os.path.exists(class_path):
+                os.makedirs(class_path)
+
+    def __call__(self, y_pred, device='cpu'):
+        """
+        Pipeline element, that can sort images according to their label.
+
+        Args:
+            y_pred: prediction on the dataloader provided to the hat. This is assumed to be an integer indicating the
+                    class label
+            device: unnecessary for this pipeline element, but part of the interface
+
+        Returns:
+            the unchanged y_pred, to enable it as part of the pipeline
+
+        """
+        for img, label in zip(self.dataloader.dataset.imgs, y_pred):
+            shutil.copy(img[0].replace('\\', '/'), '{}/{}'.format(self.target_folder, self.idx_to_class[label]))
+        return y_pred

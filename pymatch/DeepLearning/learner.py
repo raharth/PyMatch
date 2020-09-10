@@ -281,7 +281,6 @@ class ClassificationLearner(Learner):
                  optimizer,
                  crit,
                  train_loader,
-                 val_loader=None,
                  grad_clip=None,
                  load_checkpoint=False,
                  name='',
@@ -379,7 +378,8 @@ class RegressionLearner(Learner):
                  grad_clip=None,
                  load_checkpoint=False,
                  name='',
-                 callbacks=None):
+                 callbacks=None,
+                 dump_path='./tmp'):
         super(RegressionLearner, self).__init__(model,
                                                 optimizer,
                                                 crit,
@@ -387,8 +387,9 @@ class RegressionLearner(Learner):
                                                 val_loader,
                                                 grad_clip,
                                                 load_checkpoint,
-                                                name,
-                                                callbacks=callbacks)
+                                                name=name,
+                                                callbacks=callbacks,
+                                                dump_path=dump_path)
 
     def fit_epoch(self, device, verbose=1):
         """
@@ -447,39 +448,56 @@ class RegressionLearner(Learner):
             return loss
 
 
-class ImageClassifier(ClassificationLearner):
-
-    def __init__(self, model, optimizer, crit, train_loader, val_loader=None, grad_clip=None, load_checkpoint=False, name='', callbacks=None):
-        super(ImageClassifier, self).__init__(model, optimizer, crit, train_loader, val_loader=val_loader, grad_clip=grad_clip, load_checkpoint=load_checkpoint,
-                                              name='', callbacks=callbacks)
-
-    def create_result_df(self, data_loader, device='cpu'):
-        # y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
-        y_pred = DataHandler.predict_data_loader(self.model, self.data_loader, device=device)
-        data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
-        return pd.DataFrame(data, columns=['img_path', 'label'])
-
-    @staticmethod
-    def sort_images(create_result_df, classes, output_root, class_mapping):
-        """
-        Sorting the images of the result DataFrame according to their predicted label.
-
-        !!! This may not be a torch.Subset!!!
-
-        Args:
-            create_result_df: result DataFrame that contains the path to the image and the assigned label
-            classes: all possible classes
-            output_root: root path for the output folders
-            class_mapping: mapping from output node to class label
-
-        Returns:
-
-        """
-        # creating output folders
-        for class_name in classes:
-            class_path = '{}/{}'.format(output_root, class_name)
-            if not os.path.exists(class_path):
-                os.makedirs(class_path)
-
-        for img_path, label in create_result_df.values:
-            shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))
+# class ImageClassifier(ClassificationLearner):
+#
+#     def __init__(self,
+#                  model,
+#                  optimizer,
+#                  crit,
+#                  train_loader,
+#                  grad_clip=None,
+#                  load_checkpoint=False,
+#                  name='',
+#                  callbacks=None,
+#                  dump_path='./tmp'
+#                  ):
+#         super(ImageClassifier, self).__init__(model,
+#                                               optimizer,
+#                                               crit,
+#                                               train_loader,
+#                                               grad_clip=grad_clip,
+#                                               load_checkpoint=load_checkpoint,
+#                                               name=name,
+#                                               callbacks=callbacks,
+#                                               dump_path=dump_path)
+#
+#     def create_result_df(self, data_loader, device='cpu'):
+#         # y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
+#         y_pred = DataHandler.predict_data_loader(self.model, data_loader, device=device)
+#         data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
+#         return pd.DataFrame(data, columns=['img_path', 'label'])
+#
+#     @staticmethod
+#     def sort_images(result_df, classes, output_root, class_mapping):
+#         """
+#         Sorting the images of the result DataFrame according to their predicted label.
+#
+#         !!! This may not be a torch.Subset!!!
+#
+#         Args:
+#             result_df: result DataFrame that contains the path to the image and the assigned label
+#             classes: all possible classes
+#             output_root: root path for the output folders
+#             class_mapping: mapping from output node to class label
+#
+#         Returns:
+#
+#         """
+#         # creating output folders
+#         for class_name in classes:
+#             class_path = '{}/{}'.format(output_root, class_name)
+#             if not os.path.exists(class_path):
+#                 os.makedirs(class_path)
+#
+#         for img_path, label in result_df.values:
+#             shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))
