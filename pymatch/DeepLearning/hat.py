@@ -82,8 +82,8 @@ class EnsembleHatStd(Hat):
 
     def __call__(self, y, device='cpu', return_max=False):
         if return_max:
-            return y.mean(dim=1), y.std(dim=1), y.max(dim=1)[0]
-        return y.mean(dim=1), y.std(dim=1)
+            return y.mean(dim=0), y.std(dim=0), y.max(dim=0)[0]
+        return y.mean(dim=0), y.std(dim=0)
 
 
 class ConfidenceBoundHat(EnsembleHatStd):
@@ -99,7 +99,7 @@ class ConfidenceBoundHat(EnsembleHatStd):
         self.confidence_bound = confidence_bound
 
     def __call__(self, y, device='cpu'):
-        y_mean, y_std = super.__call__(y, device)
+        y_mean, y_std = super().__call__(y, device)
         return y_mean + self.confidence_bound * y_std
 
 
@@ -113,7 +113,7 @@ class ConfidenceThresholdHat(ConfidenceBoundHat):
     def __call__(self, y, device='cpu'):
         if self.garbage_class == -1:
             self.garbage_class = y.max() + 1
-        y_confident = super.__call__(y, device)
+        y_confident = super().__call__(y, device)
         y_prob, y_class = y_confident.max(dim=-1)
         y_class[y_prob < self.threshold] = self.garbage_class
         if self.categorical_output:
