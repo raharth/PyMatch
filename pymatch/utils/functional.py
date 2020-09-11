@@ -4,6 +4,7 @@ import seaborn as sn
 import json
 import sys
 import os
+import numpy as np
 
 
 def scale_confusion_matrix(confm):
@@ -43,3 +44,22 @@ def interactive_python_mode():
 
 def shut_down(s=30):
     os.system(f"shutdown /s /t {s}")
+
+
+def sliding_window(window, values, index=None):
+    if index is None:
+        index = np.arange(len(values))
+    means = []
+    indices = []
+    hw = window / 2
+    cw = int(np.ceil(hw))
+    fw = int(np.floor(hw))
+    for i in range(fw, len(values) - fw):
+        indices += [index[i]]
+        means += [np.mean(values[i - fw: i + cw])]
+    return indices, means
+
+# values = np.arange(10)
+# index = None
+# window = 3
+# sliding_window(window, values)

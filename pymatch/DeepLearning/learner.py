@@ -47,7 +47,7 @@ class Learner(ABC):
         self.grad_clip = grad_clip
 
         self.train_loader = train_loader
-
+        self.dump_path = dump_path
         self.checkpoint_path = f'{dump_path}/checkpoint'
         self.early_stopping_path = f'{dump_path}/early_stopping'
 
@@ -204,10 +204,10 @@ class Learner(ABC):
             if train_loss < self.train_dict['best_train_performance']:
                 self.train_dict['best_train_performance'] = train_loss
 
+            self.train_dict['epochs_run'] += 1
+
             for cb in self.callbacks:
                 cb(model=self)
-
-            self.train_dict['epochs_run'] += 1
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')

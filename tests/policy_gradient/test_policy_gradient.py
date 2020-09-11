@@ -6,6 +6,7 @@ from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.ReinforcementLearning.memory import MemoryUpdater
 from models.PG1 import Model
 from pymatch.ReinforcementLearning.torch_gym import TorchGym
+from pymatch.ReinforcementLearning.callback import LastRewardPlotter, RewardPlotter, SmoothedRewardPlotter
 
 from my_utils import sliding_mean
 
@@ -26,13 +27,13 @@ learner = PolicyGradient(env=env,
                          n_samples=2048,
                          grad_clip=20.,
                          memory_size=1000,
-                         load_checkpoint=True,
+                         load_checkpoint=False,
                          name='test_pg',
-                         callbacks=None,
-                         dump_path='test/policy_gradient/tmp',
+                         callbacks=[LastRewardPlotter(), RewardPlotter(), SmoothedRewardPlotter(window=6)],
+                         dump_path='tests/policy_gradient/tmp',
                          device='cpu')
 
-learner.fit(5, 'cpu', restore_early_stopping=False, verbose=False)
+learner.fit(10, 'cpu', restore_early_stopping=False, verbose=False)
 
 
 

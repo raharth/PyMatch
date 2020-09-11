@@ -6,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
-from pymatch.DeepLearning.learner import Learner, ClassificationLearner
+from pymatch.DeepLearning.learner import Learner
 
 
 class PolicyGradient(Learner):
@@ -90,7 +90,9 @@ class PolicyGradient(Learner):
         loss = np.mean(losses)
         self.train_dict['train_losses'] += [loss]
         if verbose == 1:
-            print(f'train loss: {loss:.4f} - average reward: {np.mean(self.train_dict["rewards"]):.4f}')
+            print(f'epoch: {self.train_dict["epochs_run"]}\t'
+                  f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
+                  f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
         return loss
 
     def chose_action(self, observation):
@@ -101,44 +103,45 @@ class PolicyGradient(Learner):
         log_prob = dist.log_prob(action)
         return action.item(), log_prob
 
-    # def play_episode(self, episode_length=None, render=False):
-    #     """
-    #     Plays a single episode.
-    #     This might need to be changed when using a non openAI gym environment.
-    #
-    #     Args:
-    #         episode_length (int): max length of an episode
-    #         render (bool): render environment
-    #
-    #     Returns:
-    #         episode reward
-    #     """
-    #     observation = self.env.reset()
-    #     episode_reward = 0
-    #     step_counter = 0
-    #     terminate = False
-    #
-    #     while not terminate:
-    #         step_counter += 1
-    #         action, log_prob = self.chose_action(observation)
-    #         new_observation, reward, done, _ = self.env.step(action)
-    #
-    #         episode_reward += reward
-    #         self.memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
-    #         observation = new_observation
-    #         terminate = done or (episode_length is not None and step_counter >= episode_length)
-    #
-    #         if render:
-    #             self.env.render()
-    #         if done:
-    #             break
-    #
-    #     self.memory.cumul_reward(gamma=self.gamma)
-    #     self.memory.memorize(self.memory, self.memory.memory_cell_names)
-    #     self.rewards += [episode_reward]
-    #
-    #     if episode_reward > self.best_performance:
-    #         self.best_performance = episode_reward
-    #         self.dump_checkpoint(self.episodes_run, self.early_stopping_path)
-    #
-    #     return episode_reward
+    def play_episode(self, render=False):
+        """
+        Plays a single episode.
+        This might need to be changed when using a non openAI gym environment.
+
+        Args:
+            episode_length (int): max length of an episode
+            render (bool): render environment
+
+        Returns:
+            episode reward
+        """
+        observation = self.env.reset().detach()
+        episode_reward = 0
+        step_counter = 0
+        terminate = False
+        episode_memory = Memory(['log_prob', 'reward'])
+
+        while not terminate:
+            step_counter += 1
+            action, log_prob = self.chose_action(observation)
+            new_observation, reward, done, _ = self.env.step(action)
+
+            episode_reward += reward
+            episode_memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
+            observation = new_observation
+            terminate = done or (self.env.max_episode_length is not None
+                                 and step_counter >= self.env.max_episode_length)
+            if render:
+                self.env.render()
+            if done:
+                break
+
+        # self.memory.cumul_reward(gamma=self.gamma)
+        episode_memory.cumul_reward(gamma=self.gamma)
+        self.memory.memorize(episode_memory, episode_memory.memory_cell_names)
+        self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
+
+        if episode_reward > self.train_dict.get('best_performance', -np.inf):
+            self.train_dict['best_performance'] = episode_reward
+
+        return episode_reward
