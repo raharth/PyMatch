@@ -11,7 +11,7 @@ from my_utils import sliding_mean
 
 torch.autograd.set_detect_anomaly(True)
 model = Model(4, 2)
-env = TorchGym('CartPole-v1', max_episode_length=200)
+env = TorchGym('CartPole-v1', max_episode_length=5000)
 optim = torch.optim.SGD(model.parameters(), lr=.0001, momentum=.8)
 crit = REINFORCELoss()
 memory_updater = MemoryUpdater(memory_refresh_rate=.1)
@@ -22,16 +22,17 @@ learner = PolicyGradient(env=env,
                          memory_updater=memory_updater,
                          crit=crit,
                          gamma=.9,
-                         batch_size=128,
+                         batch_size=256,
                          n_samples=2048,
                          grad_clip=20.,
-                         load_checkpoint=False,
+                         memory_size=1000,
+                         load_checkpoint=True,
                          name='test_pg',
                          callbacks=None,
                          dump_path='test/policy_gradient/tmp',
                          device='cpu')
 
-learner.fit(500, 'cpu', restore_early_stopping=False, verbose=False)
+learner.fit(5, 'cpu', restore_early_stopping=False, verbose=False)
 
 
 

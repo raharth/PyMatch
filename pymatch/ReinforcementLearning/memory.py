@@ -192,9 +192,6 @@ class MemoryUpdater:
         return episode_reward
 
 
-d = MemoryUpdater(memory_refresh_rate=.1)
-
-
 # class PGMemory(Memory):
 #
 #     def __init__(self, memory_cell_names, memory_cell_space=None, buffer_size=None):

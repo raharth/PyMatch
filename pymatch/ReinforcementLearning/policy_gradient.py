@@ -94,7 +94,8 @@ class PolicyGradient(Learner):
         return loss
 
     def chose_action(self, observation):
-        probs = self.model(observation)
+        self.model.to(self.device)
+        probs = self.model(observation.to(self.device))
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         log_prob = dist.log_prob(action)
