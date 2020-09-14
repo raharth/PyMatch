@@ -180,6 +180,6 @@ class ImageSorter(Hat):
         if len(self.img_paths) < len(y_pred):
             raise IndexError('ImageSorter ran out of images. ImageSorter can only be used once.')
         for img, label in zip(self.img_paths, y_pred):
-            shutil.copy(img[0].replace('\\', '/'), '{}/{}'.format(self.target_folder, self.idx_to_class[label].item()))
+            shutil.copy(img[0].replace('\\', '/'), '{}/{}'.format(self.target_folder, self.idx_to_class[label.item()]))
         del self.img_paths[:len(y_pred)]
         return y_pred
