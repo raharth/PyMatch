@@ -149,9 +149,9 @@ class EnsembleHat3Best(Hat):
 
 class ImageSorter(Hat):
     def __init__(self, dataloader, target_folder='./sorted_images', idx_to_class=None):
-        if not isinstance(self.dataloader.sampler, torch.utils.data.sampler.SequentialSampler):
+        if not isinstance(dataloader.sampler, torch.utils.data.sampler.SequentialSampler):
             raise ValueError('Data loader is not sequential. Hint: Set DataLoader(..., shuffle=False)')
-        self.dataloader = dataloader
+        self.img_paths = dataloader.dataset.imgs
         self.target_folder = target_folder
 
         self.idx_to_class = {v: k for k, v in dataloader.dataset.class_to_idx.items()} \
@@ -177,6 +177,9 @@ class ImageSorter(Hat):
             the unchanged y_pred, to enable it as part of the pipeline
 
         """
-        for img, label in zip(self.dataloader.dataset.imgs, y_pred):
+        if len(self.img_paths) < len(y_pred):
+            raise IndexError('ImageSorter ran out of images. ImageSorter can only be used once.')
+        for img, label in zip(self.img_paths, y_pred):
             shutil.copy(img[0].replace('\\', '/'), '{}/{}'.format(self.target_folder, self.idx_to_class[label]))
+        del self.img_paths[:len(y_pred)]
         return y_pred
