@@ -38,7 +38,7 @@ class Ensemble:
             learner_args = {}
 
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
-        return torch.stack(preds, dim=1)
+        return torch.stack(preds, dim=0)
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
