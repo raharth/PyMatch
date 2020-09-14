@@ -170,7 +170,7 @@ class Ensemble:
             learner.train()
 
     def __call__(self, x, device='cpu'):
-        self.predict(x, device=device)
+        return self.predict(x, device=device)
 
 class BaysianEnsemble(Ensemble):
 
