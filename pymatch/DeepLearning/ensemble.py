@@ -169,6 +169,9 @@ class Ensemble:
         for learner in self.learners:
             learner.train()
 
+    def __call__(self, x, device='cpu'):
+        self.predict(x, device=device)
+
 class BaysianEnsemble(Ensemble):
 
     def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
