@@ -59,7 +59,30 @@ def sliding_window(window, values, index=None):
         means += [np.mean(values[i - fw: i + cw])]
     return indices, means
 
-# values = np.arange(10)
-# index = None
-# window = 3
-# sliding_window(window, values)
+
+class eval_mode:
+    def __init__(self, model):
+        self.training = model.model.training
+        self.model = model
+
+    def __enter__(self):
+        self.model.eval()
+
+    def __exit__(self, *args):
+        if self.training:
+            self.model.train()
+        return False
+
+
+class train_mode:
+    def __int__(self, model):
+        self.training = model.model.training
+        self.model = model
+
+    def __enter__(self):
+        self.model.train()
+
+    def __exit__(self, *args):
+        if not self.training:
+            self.model.eval()
+        return False

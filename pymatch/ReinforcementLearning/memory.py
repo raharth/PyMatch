@@ -2,18 +2,18 @@ import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 import numpy as np
-
-from pymatch.ReinforcementLearning.torch_gym import TorchGym
+from torch.utils.data.sampler import SubsetRandomSampler
 
 
 class Memory(Dataset):
 
     def __init__(self,
                  memory_cell_names,
+                 n_samples=None,
                  memory_cell_space=None,
                  buffer_size=None,
                  batch_size=64,
-                 gamma=1.0):
+                 gamma=.0):
         """
         Memory class for RL algorithm.
 
@@ -26,11 +26,13 @@ class Memory(Dataset):
         self.memory_cell_space = memory_cell_space
         self.memory_cell_names = memory_cell_names
         self.buffer_size = buffer_size
-        if gamma < 1.:
+        if gamma >= 1.:
             raise ValueError('gamma is larger then 1 which will lead to exponential growth in rewards')
         self.gamma = gamma
         self.memory = {}
         self.memory_reset()
+        self.batch_size = batch_size
+        self.n_samples = n_samples
 
     def memorize(self, values, cell_name: list):
         """
@@ -78,7 +80,7 @@ class Memory(Dataset):
         """
         self.memory = {key: [] for key in self.memory_cell_names}
 
-    def cumul_reward(self, cell_name='reward', gamma=.95):
+    def cumul_reward(self, cell_name='reward'):
         """
         Computes the cumulative reward of the memory.
 
@@ -93,7 +95,7 @@ class Memory(Dataset):
         Reward = []
         R = 0
         for r in reward.flip(0):
-            R = R * gamma + r.item()
+            R = R * self.gamma + r.item()
             Reward.insert(0, torch.tensor(R))
         self.memory[cell_name] = Reward
 
@@ -109,6 +111,16 @@ class Memory(Dataset):
     def sample_indices(self, n_samples):
         return np.random.choice(range(self.__len__()), n_samples)
 
+    def sample_loader(self, n_samples):
+        return torch.utils.data.DataLoader(
+            self,
+            batch_size=self.batch_size,
+            sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
+        )
+
+    def __iter__(self):
+        return iter(self.sample_loader(self.n_samples))
+
 
 class MemoryUpdater:
     def __init__(self, memory_refresh_rate):
@@ -122,14 +134,15 @@ class MemoryUpdater:
         self.memory_refresh_rate = memory_refresh_rate
 
     def __call__(self, agent):
-        reduce_to = int(len(agent.memory) * (1 - self.memory_refresh_rate))
-        agent.memory.reduce_buffer(reduce_to)
+        reduce_to = int(len(agent.train_loader) * (1 - self.memory_refresh_rate))
+        agent.train_loader.reduce_buffer(reduce_to)
         self.fill_memory(agent)
 
     def fill_memory(self, agent):
         reward, games = 0, 0
-        while len(agent.memory) < agent.memory.buffer_size:
+        while len(agent.train_loader) < agent.train_loader.buffer_size:
             reward += agent.play_episode()
             games += 1
-        agent.memory.reduce_buffer()
+        agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
+

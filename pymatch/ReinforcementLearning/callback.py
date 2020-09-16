@@ -3,6 +3,8 @@ from pymatch.DeepLearning.callback import Callback
 from pymatch.utils.functional import sliding_window
 from pymatch.ReinforcementLearning.memory import Memory
 import matplotlib.pyplot as plt
+from pymatch.utils.functional import eval_mode
+from pymatch.ReinforcementLearning.policy_gradient import GreedyValueSelection
 
 
 
@@ -79,8 +81,8 @@ class RewardPlotter(Callback):
         if model.train_dict['epochs_run'] % self.frequency == 0:
             plt.plot(model.train_dict['rewards'])
             plt.ylabel('rewards')
-            plt.xlabel('runs')
-            plt.title('Average rewards per memory update')
+            plt.xlabel('episodes')
+            plt.title('Average rewards')
             plt.tight_layout()
             plt.savefig(f'{model.dump_path}/rewards.png')
             plt.close()
@@ -96,9 +98,43 @@ class SmoothedRewardPlotter(Callback):
         if model.train_dict['epochs_run'] % self.frequency == 0 and \
                 len(model.train_dict['rewards']) >= self.window:
             plt.plot(*sliding_window(self.window, model.train_dict['rewards']))
-            plt.ylabel('rewards')
-            plt.xlabel('epochs/updates')
-            plt.title('Smoothed Average rewards per memory update')
+            plt.ylabel('averaged rewards')
+            plt.xlabel('episodes')
+            plt.title('Smoothed Average rewards')
             plt.tight_layout()
             plt.savefig(f'{model.dump_path}/smoothed_rewards.png')
             plt.close()
+
+
+class EnvironmentEvaluator(Callback):
+    def __init__(self, env, frequency=1, render=False):
+        super().__init__()
+        self.env = env
+        self.frequency = frequency
+        self.render = render
+        self.chose_action = GreedyValueSelection()
+
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.frequency == 0:
+            print('Evaluation environment...')
+            with torch.no_grad():
+                with eval_mode(model):
+                    terminate = False
+                    episode_reward = 0
+                    step_counter = 0
+                    observation = self.env.reset().detach()
+                    while not terminate:
+                        step_counter += 1
+                        action = self.chose_action(model, observation)
+                        new_observation, reward, done, _ = self.env.step(action)
+                        episode_reward += reward
+                        observation = new_observation
+                        terminate = done or (self.env.max_episode_length is not None
+                                             and step_counter >= self.env.max_episode_length)
+                        if self.render:
+                            self.env.render()
+                        # if done:
+                        #     break
+                    print(f'Evaluation reward for model: {episode_reward:.2f}')
+                    model.train_dict['val_reward'] = model.train_dict.get('val_reward', []) + [episode_reward]
+                    model.train_dict['val_epoch'] = model.train_dict.get('val_epoch', []) + [model.train_dict['epochs_run']]

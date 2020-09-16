@@ -71,7 +71,7 @@ class Learner(ABC):
         if load_checkpoint:
             self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
 
-    def __call__(self, data, device='cpu'):
+    def __call__(self, data, device=None):
         return self.forward(data=data, device=device)
 
     def _backward(self, loss):
@@ -86,7 +86,8 @@ class Learner(ABC):
 
         """
         self.optimizer.zero_grad()
-        loss.clone().backward(retain_graph=True)
+        loss.backward()
+        # loss.clone().backward(retain_graph=True)
         if self.grad_clip is not None:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
         self.optimizer.step()
@@ -221,7 +222,9 @@ class Learner(ABC):
     def to(self, device):
         self.model.to(device)
 
-    def forward(self, data, device='cpu', eval=True):
+    def forward(self, data, device=None, eval=True):
+        if device is None:
+            device = self.device
     # def predict(self, data, device='cpu'):
         """
         Predicting a batch as tensor.

@@ -9,7 +9,7 @@ tmp
 test.py
 
 # python package build files
-dist/*
+# dist/*
 *.egg-info
 
 experiments
