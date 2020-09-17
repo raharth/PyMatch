@@ -47,7 +47,7 @@ class AnkerLossClassification(_Loss):
 
 
 class OneHotBCELoss(_Loss):
-    # @todo something is off here. Multiclass BCE is probably not gonna work
+    # @todo what am I needing this for?
     def __init__(self, n_classes):
         super(OneHotBCELoss, self).__init__()
         self.n_classes = n_classes
@@ -58,3 +58,50 @@ class OneHotBCELoss(_Loss):
         target_onehot.scatter_(1, target.view(-1, 1), 1)
         return self.bce_loss(input, target_onehot)
 
+
+class DistributionEstimationLoss(_Loss):
+    def __init__(self):
+        """
+        This loss is used for a simple Regression task, where the output variable is assumed to be normal distributed.
+        A brief explanation can be found here:
+        https://www.inovex.de/blog/uncertainty-quantification-deep-learning/
+
+        The model is assumed to have two output parameters instead of a single one. The first defines the expected
+        value, while the second is the standard deviation.
+        """
+        super().__init__()
+
+    def forward(self, input, target, reduce='mean'):
+        """
+
+        Args:
+            input:      is expected to look like [[mu, sigma**2]]
+            target:     target variable
+            reduce:     reduce method, either `mean` or `sum`
+
+        Returns:
+            loss as torch tensor
+        """
+        mean = input[:, 0]
+        std = input[:, 1]
+        loss = (target - mean)**2/(2. * std) + std.log()/2.
+        if reduce == 'mean':
+            return loss.mean()
+        if reduce == 'sum':
+            return loss.sum()
+        raise ValueError(f"reduce has to be either set as `mean` or `sum`, but was set as {reduce}")
+
+
+class BrierLoss(_Loss):
+    def __init__(self):
+        """
+        The Brier Loss is the MSE over the probability distribution for classification, assuming the target as a one-hot
+        encoding.
+        """
+        super().__init__()
+        self.mse = torch.nn.MSELoss()
+
+    def forward(self, input, target):
+        target_onehot = torch.zeros((len(target), self.n_classes))
+        target_onehot.scatter_(1, target.view(-1, 1), 1)
+        return self.mse(input, target)
