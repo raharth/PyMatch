@@ -5,7 +5,7 @@ import json
 import sys
 import os
 import numpy as np
-
+import torch
 
 def scale_confusion_matrix(confm):
     return (confm.transpose() / confm.sum(1)).transpose()
@@ -86,3 +86,10 @@ class train_mode:
         if not self.training:
             self.model.eval()
         return False
+
+
+def one_hot_encoding(categorical_data, n_categories=None):
+    if n_categories is None:
+        n_categories = categorical_data.max().item()
+    encoding = torch.zeros(list(categorical_data.shape) + [n_categories + 1])
+    return encoding.scatter_(-1, categorical_data.unsqueeze(-1), 1)

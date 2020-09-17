@@ -1,32 +1,15 @@
 import torch
 import os
 import shutil
+from pymatch.utils.functional import one_hot_encoding
 
 
 class Hat:
-
     def __call__(self, y, device='cpu'):
         raise NotImplementedError
 
 
-# class DefaultClassHat(Hat):
-#
-#     def __init__(self):
-#         """
-#         Adding a default class to a sigmoid output. This is adding an additional output that sums up to 1 with all
-#         other output nodes. This is only useful if there is no softmax output. Also is might become less useful if
-#         there are many possible labels.
-#
-#         """
-#         super(DefaultClassHat, self).__init__()
-#
-#     def predict(self, y, device='cpu'):
-#         y_def = torch.clamp(1 - y.sum(1), min=0., max=1.).view(-1, 1)
-#         return torch.cat([y, y_def], dim=1)
-
-
 class MaxProbabilityHat(Hat):
-
     def __init__(self):
         """
         Predicts the a label from a probability distribution.
@@ -40,7 +23,6 @@ class MaxProbabilityHat(Hat):
 
 
 class MajorityHat(Hat):
-
     def __init__(self):
         super(MajorityHat, self).__init__()
 
@@ -61,7 +43,6 @@ class MajorityHat(Hat):
 
 
 class EnsembleHat(Hat):
-
     def __init__(self):
         """
         Reduces the ensemble predictions to a single average prediction with std
@@ -73,7 +54,6 @@ class EnsembleHat(Hat):
 
 
 class EnsembleHatStd(Hat):
-
     def __init__(self):
         """
         Reduces the ensemble predictions to a single average prediction with std
@@ -122,7 +102,6 @@ class ConfidenceThresholdHat(ConfidenceBoundHat):
 
 
 class ThresholdHat(Hat):
-
     def __init__(self, threshold=.5):
         super(ThresholdHat, self).__init__()
         self.threshold = threshold
@@ -133,7 +112,6 @@ class ThresholdHat(Hat):
 
 
 class EnsembleHat3Best(Hat):
-
     def __init__(self):
         """
         Predict the top 3 labels of a prediction by probability.
@@ -183,3 +161,48 @@ class ImageSorter(Hat):
             shutil.copy(img[0].replace('\\', '/'), '{}/{}'.format(self.target_folder, self.idx_to_class[label.item()]))
         del self.img_paths[:len(y_pred)]
         return y_pred
+
+
+class EntropyHat(Hat):
+    def __init__(self):
+        """
+        Computes the entropy over the probabilistic label distribution of an ensemble.
+        """
+        super().__init__()
+
+    def __call__(self, y_pred, device='cpu'):
+        """
+
+        Args:
+            y_pred:     probability distribution over classes by each model of the ensemble
+            device:     not needed
+
+        Returns:
+            torch tensor of entropy for label distribution over the models
+        """
+        y_labels = y_pred.max(2)[1]
+        counts = one_hot_encoding(y_labels)
+        p = counts/y_labels.shape[0]
+        entropy = (- p * torch.log(p + 1e-16)).sum(-1)
+        return entropy
+
+#
+# y_pred = torch.rand(size=(10,5,3))
+# for e in y_pred:
+#     y_sum = e.sum(1)
+#     for e2, s in zip(e, y_sum):
+#         e2 /= s
+#
+#
+# y_labels = y_pred.max(2)[1]
+# counts = one_hot_encoding(y_labels).sum(0)
+# p = counts / 10
+# (- p * torch.log(p + 1e-16)).sum(-1)
+#
+# counts = torch.tensor([[12, 0, 0],
+#                        [11,1,0],
+#                        [11,0,1],
+#                        [10,1,1],
+#                        [4,4,4]])
+# p = counts / 12.
+# (- p * torch.log(p + 1e-16)).sum(-1)

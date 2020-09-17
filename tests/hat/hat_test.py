@@ -1,6 +1,7 @@
 import torch
 import pymatch.DeepLearning.hat as pt_hat
 
+
 hat = pt_hat.MaxProbabilityHat()
 y = torch.tensor([[.2, .3, .5], [.1, .8, .1]])
 y_true = torch.tensor([2, 1])
