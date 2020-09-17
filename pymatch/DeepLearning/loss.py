@@ -103,5 +103,5 @@ class BrierLoss(_Loss):
 
     def forward(self, input, target):
         target_onehot = torch.zeros((len(target), input.shape[-1]))
-        target_onehot.scatter_(1, target.view(-1, 1), 1)
+        target_onehot.scatter_(1, target.view(-1, 1), 1).to(target.device)
         return self.mse(input, target)
