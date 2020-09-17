@@ -102,6 +102,6 @@ class BrierLoss(_Loss):
         self.mse = torch.nn.MSELoss()
 
     def forward(self, input, target):
-        target_onehot = torch.zeros((len(target), input.shape[-1]))
+        target_onehot = torch.zeros((len(target), input.shape[-1])).to(target.device)
         target_onehot.scatter_(1, target.view(-1, 1), 1)
-        return self.mse(input, target_onehot.to(target.device))
+        return self.mse(input, target_onehot)
