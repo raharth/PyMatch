@@ -129,7 +129,7 @@ class ImageSorter(Hat):
     def __init__(self, dataloader, target_folder='./sorted_images', idx_to_class=None):
         if not isinstance(dataloader.sampler, torch.utils.data.sampler.SequentialSampler):
             raise ValueError('Data loader is not sequential. Hint: Set DataLoader(..., shuffle=False)')
-        self.img_paths = dataloader.dataset.imgs
+        self.img_paths = list(dataloader.dataset.imgs)
         self.target_folder = target_folder
 
         self.idx_to_class = {v: k for k, v in dataloader.dataset.class_to_idx.items()} \
