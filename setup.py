@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='pymatch',
-      version='0.3.5',
+      version='0.3.6',
       description='PyTorch wrapper for Deep Learning',
       url='https://github.com/raharth/PyMatch',
       author='Jonas Goltz',
