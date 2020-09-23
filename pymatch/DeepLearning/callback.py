@@ -52,11 +52,11 @@ class Validator(Callback):
                 accuracies = []
                 for data, y in self.data_loader:
                     data = data.to(model.device)
-                    y = y
+                    y = y.to(model.device)
                     y_pred = model.model(data)
-                    loss += [model.crit(y_pred.to('cpu'), y)]
+                    loss += [model.crit(y_pred, y)]
 
-                    y_pred = y_pred.max(dim=1)[1].to('cpu')
+                    y_pred = y_pred.max(dim=1)[1]
                     accuracies += [(y_pred == y).float()]
 
                 loss = torch.stack(loss).mean().item()
