@@ -109,29 +109,29 @@ class Ensemble:
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
 
-    def run_validation(self, device='cpu'):
-        """
-        Validates the ensemble on the validation dataset.
-
-        Args:
-            device: device to run the evaluation on
-
-        Returns:
-            predicted and true labels for each learner
-
-        """
-        y_pred_learners = []
-        y_true_learners = []
-
-        for learner in self.learners:
-            y_pred = []
-            y_true = []
-            for X, y in learner.val_loader:
-                y_true += [y]
-                y_pred += [learner.forward(X, device=device)]
-            y_pred_learners += [torch.cat(y_pred)]
-            y_true_learners += [torch.cat(y_true)]
-        return y_pred_learners, y_true_learners
+    # def run_validation(self, device='cpu'):
+    #     """
+    #     Validates the ensemble on the validation dataset.
+    #
+    #     Args:
+    #         device: device to run the evaluation on
+    #
+    #     Returns:
+    #         predicted and true labels for each learner
+    #
+    #     """
+    #     y_pred_learners = []
+    #     y_true_learners = []
+    #
+    #     for learner in self.learners:
+    #         y_pred = []
+    #         y_true = []
+    #         for X, y in learner.val_loader:
+    #             y_true += [y]
+    #             y_pred += [learner.forward(X, device=device)]
+    #         y_pred_learners += [torch.cat(y_pred)]
+    #         y_true_learners += [torch.cat(y_true)]
+    #     return y_pred_learners, y_true_learners
 
     def resume_training(self, epochs, device='cpu', checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
         """

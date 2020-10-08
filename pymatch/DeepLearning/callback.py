@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
 
-from pymatch.utils.functional import scale_confusion_matrix
+from pymatch.utils.functional import scale_confusion_matrix, sliding_window
 from pymatch.utils.DataHandler import DataHandler
 from pymatch.utils.exception import TerminationException
 
@@ -163,6 +163,75 @@ class RegressionCurvePlotter(Callback):
         img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
         fig.savefig(img_path)
         plt.close(fig)
+
+
+class MetricPlotter(Callback):
+    def __init__(self, frequency=1, metric='rewards', x=None, x_label=None, y_label=None, title=None, name=None,
+                 smoothing_window=None):
+        super().__init__()
+        self.frequency = frequency
+        self.y = metric
+        self.x = x
+        self.y_label = y_label if y_label is not None else 'metric'
+        self.x_label = x_label if x_label is not None else 'iters'
+        self.title = title if title is not None else metric
+        self.name = name if name is not None else metric
+        self.smoothing_window = smoothing_window
+
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.frequency == 0:
+            if self.smoothing_window is None:
+                if self.x is None:
+                    plt.plot(model.train_dict[self.y])
+                else:
+                    plt.plot(model.train_dict[self.x], model.train_dict[self.y])
+            else:
+                if self.x is None:
+                    plt.plot(model.train_dict[self.y], label='metric', alpha=.5)
+                    plt.plot(*sliding_window(self.smoothing_window,
+                                             model.train_dict[self.y]), label='smoothed')
+                else:
+                    plt.plot(model.train_dict[self.x], model.train_dict[self.y], label='metric', alpha=.5)
+                    plt.plot(*sliding_window(self.smoothing_window,
+                                             model.train_dict[self.y],
+                                             index=model.train_dict.get(self.x, None)), label='smoothed')
+            plt.ylabel(self.y_label)
+            plt.xlabel(self.x_label)
+            plt.title(self.title)
+            plt.tight_layout()
+            plt.savefig(f'{model.dump_path}/{self.name}.png')
+            plt.close()
+
+
+class SmoothedMetricPlotter(Callback):
+    # @todo is this simply redundant?
+    def __init__(self, metric, frequency=1, window=10,
+                 x=None, x_label=None, y_label=None, title=None, name=None):
+        super().__init__()
+        self.frequency = frequency
+        self.y = metric
+        self.x = x
+        self.window = window
+        self.y_label = y_label if y_label is not None else 'metric'
+        self.x_label = x_label if x_label is not None else 'iters'
+        self.title = title if title is not None else metric
+        self.name = name if name is not None else metric
+
+    def __call__(self, model):
+        if model.train_dict['epochs_run'] % self.frequency == 0:
+            if self.x is None:
+                plt.plot(*sliding_window(self.window,
+                                         model.train_dict[self.y]))
+            else:
+                plt.plot(*sliding_window(self.window,
+                                         model.train_dict[self.y],
+                                         index=model.train_dict.get(self.x, None)))
+            plt.ylabel(self.y_label)
+            plt.xlabel(self.x_label)
+            plt.title(f'smoothed {self.title}')
+            plt.tight_layout()
+            plt.savefig(f'{model.dump_path}/smoothed_{self.name}.png')
+            plt.close()
 
 
 class EnsembleLearningCurvePlotter(Callback):

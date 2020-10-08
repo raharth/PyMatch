@@ -41,8 +41,8 @@ class Model(nn.Module):
         x = self.bn3(x)
         x = F.relu(x)
         x = self.fc2(x)
-        out = F.softmax(x, dim=-1)
-        return out
+        # out = F.softmax(x, dim=-1)
+        return x
 
 # training the model
 no_cuda = False

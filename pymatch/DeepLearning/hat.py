@@ -186,6 +186,13 @@ class EntropyHat(Hat):
         entropy = (- p * torch.log(p + 1e-16)).sum(-1)
         return entropy
 
+
+class InputRepeater:
+    def __init__(self, n_repeats):
+        self.n_repeats = n_repeats
+
+    def __call__(self, y):
+        return torch.stack(self.n_repeats * [y])
 #
 # y_pred = torch.rand(size=(10,5,3))
 # for e in y_pred:
@@ -206,3 +213,8 @@ class EntropyHat(Hat):
 #                        [4,4,4]])
 # p = counts / 12.
 # (- p * torch.log(p + 1e-16)).sum(-1)
+#
+# torch.stack(3*[torch.tensor([1,2,3])])
+#
+# rep = InputRepeater(3)
+# rep(torch.tensor([1,2,3]))

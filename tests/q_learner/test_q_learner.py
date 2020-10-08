@@ -3,16 +3,17 @@ import numpy as np
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.ReinforcementLearning.memory import MemoryUpdater
 from models.DQN1 import Model
-from pymatch.ReinforcementLearning.torch_gym import TorchGym
-import pymatch.ReinforcementLearning.callback as cb
-import pymatch.ReinforcementLearning.policy_gradient as pg
+from pymatch.ReinforcementLearning.torch_gym import TorchGym, CartPole
+import pymatch.ReinforcementLearning.callback as rcb
+import pymatch.DeepLearning.callback as cb
+import pymatch.ReinforcementLearning.learner as pg
 
 torch.autograd.set_detect_anomaly(True)
 
-model = Model(8, 4)
-# env = TorchGym('CartPole-v1', max_episode_length=5000)
-env = TorchGym('LunarLander-v2')
-optim = torch.optim.SGD(model.parameters(), lr=.001, momentum=.5)
+model = Model(4, 2)
+env = CartPole()
+# env = TorchGym('LunarLander-v2')
+optim = torch.optim.SGD(model.parameters(), lr=.01, momentum=.9)
 crit = torch.nn.MSELoss()
 memory_updater = MemoryUpdater(memory_refresh_rate=.1)
 
@@ -21,31 +22,28 @@ learner = pg.QLearner(env=env,
                       optimizer=optim,
                       memory_updater=memory_updater,
                       crit=crit,
-                      action_selector=pg.QActionSelection(temperature=2.),
+                      action_selector=pg.QActionSelection(temperature=.3),
                       # action_selector=pg.EpsilonGreedyActionSelection(action_space=np.arange(env.action_space.n),
                       #                                                 epsilon=.95),
                       gamma=.95,
-                      alpha=.1,
+                      alpha=.2,
                       batch_size=256,
                       n_samples=8000,
-                      grad_clip=20.,
-                      memory_size=1000,
+                      grad_clip=5.,
+                      memory_size=10000,
                       load_checkpoint=False,
                       name='test_Q',
-                      callbacks=[cb.LastRewardPlotter(),
-                                 cb.RewardPlotter(),
-                                 cb.SmoothedRewardPlotter(window=6),
-                                 cb.EnvironmentEvaluator(env=env, render=True, frequency=5)],
+                      callbacks=[
+                          rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=5),
+                          # rcb.AgentVisualizer(env=env, frequency=5),
+                          cb.MetricPlotter(frequency=1, metric='rewards', smoothing_window=100),
+                          cb.MetricPlotter(frequency=1, metric='train_losses', smoothing_window=100),
+                          cb.MetricPlotter(frequency=1, metric='avg_reward', smoothing_window=5),
+                          cb.MetricPlotter(frequency=5, metric='val_reward', x='val_epoch', smoothing_window=5),
+                      ],
                       dump_path='tests/q_learner/tmp',
                       device='cpu')
 
-learner.fit(100, 'cpu', restore_early_stopping=False, verbose=False)
+learner.fit(30, 'cpu', restore_early_stopping=False, verbose=False)
 
-# learner.load_checkpoint(learner.early_stopping_path)
-# learner.train(10, 'cpu', checkpoint_int=100, render=True, restore_early_stopping=False, verbose=False)
-#
-# plt.plot(sliding_mean(learner.rewards, 50))
-# plt.show()
-#
-# plt.plot(learner.rewards)
-# plt.show()
+env.close()
