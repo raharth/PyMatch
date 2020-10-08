@@ -1,21 +1,24 @@
 import torch
 from torch.utils.data.sampler import SubsetRandomSampler
-from torch.distributions import Categorical
+from torch.distributions import Categorical, MultivariateNormal
 import torch.nn.functional as F
 
 from tqdm import tqdm
 import numpy as np
 
-from pymatch.DeepLearning.hat import EnsembleHatStd
+import pymatch.DeepLearning.hat as hat
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.DeepLearning.learner import Learner
+from pymatch.utils.functional import one_hot_encoding, eval_mode
+from pymatch.DeepLearning.pipeline import Pipeline
 
 
 class PolicyGradientActionSelection:
     """
     Probability based selection strategy, used for Policy Gradient
     """
+
     def __call__(self, agent, observation):
         agent.model.to(agent.device)
         # agent.model.eval()
@@ -27,7 +30,7 @@ class PolicyGradientActionSelection:
 
 
 class BayesianDropoutPGActionSelection:
-    def __init__(self, predictions: int, reduce_hat=EnsembleHatStd()):
+    def __init__(self, predictions: int, reduce_hat=hat.EnsembleHatStd()):
         """
         Probability based selection strategy, used for Policy Gradient, using multiple drop out forward passes
         to estimate the reliability of the prediction.
@@ -93,9 +96,39 @@ class GreedyValueSelection:
     """
     Choosing the best possible option, necessary for evaluation
     """
+
     def __call__(self, agent, observation):
         qs = agent.model(observation.to(agent.device))
         return qs.argmax().item()
+
+
+class NormalThompsonSampling:
+    def __init__(self, pre_pipes: list, post_pipes: list):
+        """
+        Implementation of Thompson sampling based in the Normal distribution.
+        Estimates the distribution over a model, sampling from it.
+        Args:
+            pre_pipes:  pipeline elements before the agent
+            post_pipes: pipeline elements after the agent the last element of this list has to provide the
+                        parameterization of the distribution
+        @ todo  a better abstraction would be using a general distribution, defined in the constructor. Then the last
+                pipe element has to provide the final inputs to that distribution, right now it can only use the Normal
+                distribution but no other.
+                Why is this part of the sampling in the first place?
+        """
+        # self.repeater = hat.InputRepeater(n_iter)
+        self.pre_pipes = pre_pipes
+        self.post_pipes = post_pipes
+
+    def __call__(self, agent, observation):
+        pipeline = Pipeline(pipes=self.pre_pipes + [agent] + self.post_pipes)
+        with torch.no_grad():
+            with eval_mode(agent):
+                y_mean, y_std = pipeline(observation)
+        shape = y_mean.shape
+        dist = MultivariateNormal(loc=y_mean.view(-1),
+                                  covariance_matrix=y_std.view(-1)**2 * torch.eye(len(y_std.view(-1))))
+        return dist.sample().view(shape)
 
 
 class ReinforcementLearner(Learner):
@@ -319,22 +352,25 @@ class QLearner(ReinforcementLearner):
                  memory_size,
                  n_samples,
                  batch_size,
+                 memory=None,
                  grad_clip=None,
                  load_checkpoint=False,
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
                  device='cpu'):
+        if memory is None:
+            memory = Memory(['action', 'state', 'reward', 'new_state'],
+                            buffer_size=memory_size,
+                            n_samples=n_samples,
+                            gamma=gamma,
+                            batch_size=batch_size)
         super().__init__(model=model,
                          optimizer=optimizer,
                          crit=crit,
                          env=env,
                          gamma=gamma,
-                         memory=Memory(['action', 'state', 'reward', 'new_state'],
-                                       buffer_size=memory_size,
-                                       n_samples=n_samples,
-                                       gamma=gamma,
-                                       batch_size=batch_size),
+                         memory=memory,
                          memory_updater=memory_updater,
                          action_selector=action_selector,
                          grad_clip=grad_clip,
@@ -351,8 +387,6 @@ class QLearner(ReinforcementLearner):
         self.model.train()
         self.model.to(device)
 
-        losses = []
-
         for batch, (action, state, reward, new_state) in tqdm(enumerate(self.train_loader)):
             prediction = self.model(state.squeeze(1))
             with torch.no_grad():
@@ -362,13 +396,10 @@ class QLearner(ReinforcementLearner):
 
             for t, a, r, m in zip(target, action, reward, max_next):
                 # @todo this is ugly as fuck, there has to be a more efficient way
-                t[a.item()] += self.alpha * (r + self.gamma * m - t[a.item()])
-            # print(prediction.squeeze(1) - target.squeeze(1))
-            # raise NotImplementedError
+                t[a.item()] = (1 - self.alpha) * t[a.item()] + self.alpha * (r + self.gamma * m)
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
             self._backward(loss)
-            # print(f'weights: {self.model.fc1.weight.sum()}')
 
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
@@ -404,6 +435,129 @@ class QLearner(ReinforcementLearner):
             if done:
                 break
         self.train()
+        self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
+        self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
+
+        if episode_reward > self.train_dict.get('best_performance', -np.inf):
+            self.train_dict['best_performance'] = episode_reward
+
+        return episode_reward
+
+
+class SARSA(QLearner):
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 env,
+                 memory_updater,
+                 action_selector,
+                 gamma,
+                 alpha,
+                 memory_size,
+                 n_samples,
+                 batch_size,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='q_learner',
+                 callbacks=[],
+                 dump_path='./tmp',
+                 device='cpu'):
+        memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
+                        buffer_size=memory_size,
+                        n_samples=n_samples,
+                        gamma=gamma,
+                        batch_size=batch_size)
+        super().__init__(model=model,
+                         optimizer=optimizer,
+                         crit=crit,
+                         env=env,
+                         memory_updater=memory_updater,
+                         action_selector=action_selector,
+                         gamma=gamma,
+                         alpha=alpha,
+                         memory_size=memory_size,
+                         n_samples=n_samples,
+                         batch_size=batch_size,
+                         grad_clip=grad_clip,
+                         load_checkpoint=load_checkpoint,
+                         name=name,
+                         callbacks=callbacks,
+                         dump_path=dump_path,
+                         device=device,
+                         memory=memory)
+
+    def fit_epoch(self, device, verbose=1):
+        self.memory_updater(self)
+        self.model.train()
+        self.model.to(device)
+
+        for batch, (action, state, reward, new_state, new_action, terminal) in tqdm(enumerate(self.train_loader)):
+            prediction = self.model(state.squeeze(1))
+            new_action = one_hot_encoding(new_action)
+            with torch.no_grad():
+                # self.model.eval()
+                with eval_mode(self):
+                    next_Q = (self.model(new_state.squeeze(1)) * new_action).sum(1)
+            target = prediction.clone().detach()
+
+            for t, a, r, nq, term in zip(target, action, reward, next_Q, terminal):
+                if term:
+                    nq = torch.tensor(-0.)
+                t[a.item()] = (1 - self.alpha) * t[a.item()] + self.alpha * (r + self.gamma * nq)
+            loss = self.crit(prediction, target)
+            self.train_dict['train_losses'] += [loss.item()]
+            self._backward(loss)
+
+        if verbose == 1:
+            print(f'epoch: {self.train_dict["epochs_run"]}\t'
+                  f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
+                  f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
+        return loss
+
+    def play_episode(self, render=False):
+        state_old = self.env.reset().detach()
+        episode_reward = 0
+        step_counter = 0
+        terminate = False
+        episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'], gamma=self.gamma)
+        self.eval()
+
+        action_old = None
+        rewards_old = None
+        while not terminate:
+            with torch.no_grad():
+                action = self.chose_action(self, state_old)
+            state, reward, done, _ = self.env.step(action)
+
+            episode_reward += reward
+            if step_counter > 0:
+                episode_memory.memorize((action_old,
+                                         state_old,
+                                         torch.tensor(rewards_old).float(),
+                                         state,
+                                         action,
+                                         done),
+                                        ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
+            state_old = state
+            rewards_old = reward
+            action_old = action
+            step_counter += 1
+            terminate = done or (self.env.max_episode_length is not None  # @todo could be done better
+                                 and step_counter >= self.env.max_episode_length)
+            if render:  # @todo shouldn't be necessary
+                self.env.render()
+            if done:  # @todo shouldn't be necessary
+                break
+        episode_memory.memorize((action_old,
+                                 state_old,
+                                 torch.tensor(rewards_old).float(),
+                                 state,
+                                 action,
+                                 done),
+                                ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
+
+        self.train()  # @todo is this acutally necessary?
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
 
