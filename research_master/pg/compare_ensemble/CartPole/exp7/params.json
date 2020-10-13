@@ -1,0 +1,31 @@
+{
+    "overwrite": false,
+    "n_learner": 50,
+    "n_epochs": 200,
+    "factory_args": {
+        "model_args": {
+            "in_nodes": 4,
+            "out_nodes": 2
+        },
+        "env_args": {
+            "env_name": "CartPole-v1"
+        },
+        "optim_args": {
+            "lr": 0.001,
+            "momentum": 0.8
+        },
+        "memory_args": {
+            "memory_refresh_rate": 0.1
+        },
+        "learner_args": {
+            "gamma": 0.9,
+            "n_samples": 5000,
+            "batch_size": 500,
+            "grad_clip": 5.0,
+            "memory_size": 20000,
+            "name": "policy_gradient",
+            "load_checkpoint": false,
+            "device": "cpu"
+        }
+    }
+}

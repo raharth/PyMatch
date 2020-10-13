@@ -13,3 +13,5 @@ test.py
 *.egg-info
 
 experiments
+
+*.mdl
