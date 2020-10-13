@@ -48,14 +48,14 @@ class Learner(ABC):
 
         self.train_loader = train_loader
         self.dump_path = dump_path
-        self.checkpoint_path = f'{dump_path}/checkpoint'
-        self.early_stopping_path = f'{dump_path}/early_stopping'
+        # self.checkpoint_path = f'{dump_path}/checkpoint'
+        # self.early_stopping_path = f'{dump_path}/early_stopping'
 
         # creating folders
-        if not os.path.exists(self.checkpoint_path):
-            os.makedirs(self.checkpoint_path)
-        if not os.path.exists(self.early_stopping_path):
-            os.makedirs(self.early_stopping_path)
+        # if not os.path.exists(self.checkpoint_path):
+        #     os.makedirs(self.checkpoint_path)
+        # if not os.path.exists(self.early_stopping_path):
+        #     os.makedirs(self.early_stopping_path)
 
         self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
@@ -171,8 +171,8 @@ class Learner(ABC):
         Returns:
 
         """
-        if path is None:
-            path = self.checkpoint_path
+        # if path is None:
+        #     path = self.checkpoint_path
         return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
@@ -190,6 +190,7 @@ class Learner(ABC):
 
         """
         self.device = device
+        self.init_callbacks()
 
         for epoch in range(epochs):
 
@@ -213,9 +214,9 @@ class Learner(ABC):
                 except Exception as e:
                     print(f'callback {cb} failed with exception\n{e}')
 
-        if restore_early_stopping:
-            self.load_checkpoint(self.early_stopping_path, 'early_stopping')
-        self.dump_checkpoint(self.checkpoint_path)
+        # if restore_early_stopping:
+        #     self.load_checkpoint(self.early_stopping_path, 'early_stopping')
+        # self.dump_checkpoint(self.checkpoint_path)
 
     def eval(self):
         self.training = False
@@ -267,19 +268,9 @@ class Learner(ABC):
         """
         raise NotImplementedError
 
-    # @abstractmethod
-    # def validate(self, device, verbose=0):
-    #     """
-    #     Validation of the validation data if provided
-    #
-    #     Args:
-    #         device: device to run it on 'cpu' or 'cuda'
-    #         verbose: verbosity of the learning
-    #
-    #     Returns:
-    #         loss
-    #     """
-    #     raise NotImplementedError
+    def init_callbacks(self):
+        for cb in self.callbacks:
+            cb.start(self)
 
 
 class ClassificationLearner(Learner):

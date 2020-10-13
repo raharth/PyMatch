@@ -10,6 +10,7 @@ import seaborn as sn
 import wandb
 import numpy as np
 import torch
+import os
 
 
 class Callback:
@@ -29,10 +30,16 @@ class Checkpointer(Callback):
     def __init__(self, checkpoint_frequ=1):
         super().__init__()
         self.checkpoint_frequ = checkpoint_frequ
+        self.path = None
+
+    def start(self, model):
+        self.path = f'{model.dump_path}/checkpoint'
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.checkpoint_frequ == 0:
-            model.dump_checkpoint()
+            model.dump_checkpoint(path=self.path, tag='checkpoint')
 
 
 class Validator(Callback):
@@ -79,15 +86,23 @@ class Validator(Callback):
 class EarlyStopping(Validator):
     def __init__(self, data_loader, validation_int=1, verbose=1):
         super(EarlyStopping, self).__init__(data_loader, validation_int, verbose)
+        self.path = None
+
+    def start(self, model):
+        self.path = f'{model.dump_path}/early_stopping'
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
     def __call__(self, model):
+        if not os.path.exists(model.early_stopping_path):
+            os.makedirs(model.early_stopping_path)
         if model.train_dict['epochs_run'] % self.validation_int == 0:
             if self.verbose == 1:
                 print('evaluating')
             val_loss = Validator.__call__(self, model=model)
             if val_loss < model.train_dict['best_val_performance']:
                 model.train_dict['best_val_performance'] = val_loss
-                model.dump_checkpoint(path=model.early_stopping_path, tag='early_stopping')
+                model.dump_checkpoint(path=self.path, tag='early_stopping')
 
 
 class EarlyTermination(Callback):
@@ -170,37 +185,44 @@ class MetricPlotter(Callback):
                  smoothing_window=None):
         super().__init__()
         self.frequency = frequency
-        self.y = metric
-        self.x = x
+        self.y = metric if isinstance(metric, list) else [metric]
+        self.x = x if isinstance(x, list) else [x]
+        if len(self.x) != len(self.y):
+            raise ValueError(f'metric and x have to have the same length but where x: {self.x} - y: {self.y}')
         self.y_label = y_label if y_label is not None else 'metric'
         self.x_label = x_label if x_label is not None else 'iters'
-        self.title = title if title is not None else metric
-        self.name = name if name is not None else metric
+        self.title = title if title is not None else ' '.join(self.y)
+        self.name = name if name is not None else '_'.join(self.y)
         self.smoothing_window = smoothing_window
 
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
-            if self.smoothing_window is None:
-                if self.x is None:
-                    plt.plot(model.train_dict[self.y])
-                else:
-                    plt.plot(model.train_dict[self.x], model.train_dict[self.y])
-            else:
-                if self.x is None:
-                    plt.plot(model.train_dict[self.y], label='metric', alpha=.5)
-                    plt.plot(*sliding_window(self.smoothing_window,
-                                             model.train_dict[self.y]), label='smoothed')
-                else:
-                    plt.plot(model.train_dict[self.x], model.train_dict[self.y], label='metric', alpha=.5)
-                    plt.plot(*sliding_window(self.smoothing_window,
-                                             model.train_dict[self.y],
-                                             index=model.train_dict.get(self.x, None)), label='smoothed')
+            for x, y in zip(self.x, self.y):
+                self.plot(model, x, y)
             plt.ylabel(self.y_label)
             plt.xlabel(self.x_label)
             plt.title(self.title)
+            plt.legend(framealpha=.3)
             plt.tight_layout()
             plt.savefig(f'{model.dump_path}/{self.name}.png')
             plt.close()
+
+    def plot(self, model, x, y):
+        if self.smoothing_window is None:
+            if x is None:
+                plt.plot(model.train_dict[y])
+            else:
+                plt.plot(model.train_dict[x], model.train_dict[y])
+        else:
+            if x is None:
+                plt.plot(model.train_dict[y], label=y, alpha=.5)
+                plt.plot(*sliding_window(self.smoothing_window,
+                                         model.train_dict[y]), label=f'smoothed {y}')
+            else:
+                plt.plot(model.train_dict[x], model.train_dict[y], label=y, alpha=.5)
+                plt.plot(*sliding_window(self.smoothing_window,
+                                         model.train_dict[y],
+                                         index=model.train_dict.get(x, None)), label=f'smoothed {y}')
 
 
 class SmoothedMetricPlotter(Callback):

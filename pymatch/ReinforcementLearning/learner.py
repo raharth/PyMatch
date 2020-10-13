@@ -102,7 +102,7 @@ class GreedyValueSelection:
         self.post_pipeline = post_pipeline
 
     def __call__(self, agent, observation):
-        for pipe in self.post_pipeline:
+        for pipe in self.pre_pipeline:
             observation = pipe(observation)
         qs = agent(observation.to(agent.device))
         for pipe in self.post_pipeline:

@@ -7,8 +7,6 @@ from pymatch.ReinforcementLearning.torch_gym import TorchGym
 from pymatch.utils.experiment import Experiment
 from pymatch.utils.functional import interactive_python_mode
 from pymatch.DeepLearning.ensemble import Ensemble
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 if interactive_python_mode():
@@ -42,26 +40,3 @@ learner = Ensemble(model_class=Model,
 learner.fit(**params['fit'])
 # learner.resume_training(params['n_epochs'], 'cpu', restore_early_stopping=False, verbose=False)
 experiment.finish()
-
-# val_rewards = np.array([learner.train_dict['val_reward'] for learner in learner.learners])
-# # val_rewards2 = val_rewards[:5, :]
-# plt.title(f'average validation reward over time for {params["n_learner"]} Agents')
-# plt.xlabel('epochs')
-# plt.ylabel('average reward')
-# plt.plot(val_rewards.mean(0), label='agent average')
-# for v in val_rewards:
-#     plt.plot(v, alpha=.1, color='grey')
-# plt.plot(learner.train_dict['val_reward'], label='ensemble')
-# plt.legend()
-# plt.tight_layout()
-# plt.savefig(f'{root}/avg_val_rewards')
-# plt.show()
-# plt.close()
-
-viz = cb.AgentVisualizer(env=TorchGym(**params['factory_args']['env_args']),
-                   frequency=1,
-                   action_selector=GreedyValueSelection(
-                       post_pipeline=[EnsembleHat()]
-                   ))
-learner.train_dict['epochs_run'] = 0
-viz(learner)

@@ -75,34 +75,41 @@ class SmoothedRewardPlotter(Callback):
 
 
 class EnvironmentEvaluator(Callback):
-    def __init__(self, env, frequency=1, n_evaluations=1, action_selector=GreedyValueSelection()):
+    def __init__(self,
+                 env,
+                 frequency=1,
+                 n_evaluations=1,
+                 action_selector=GreedyValueSelection(),
+                 metric_name='val_reward',
+                 epoch_name='val_epoch'):
         super().__init__()
         self.env = env
         self.frequency = frequency
         self.action_selector = action_selector
         self.n_evaluations = n_evaluations
+        self.metric_name = metric_name
+        self.epoch_name = epoch_name
 
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
             print('Evaluation environment...')
-            with torch.no_grad():
-                with eval_mode(model):
-                    episode_rewards = []
-                    for _ in tqdm(range(self.n_evaluations)):
-                        terminate = False
-                        episode_reward = 0
-                        observation = self.env.reset().detach()
-                        while not terminate:
-                            action = self.action_selector(model, observation)
-                            new_observation, reward, done, _ = self.env.step(action)
-                            episode_reward += reward
-                            observation = new_observation
-                            terminate = done
-                        episode_rewards += [episode_reward]
+            with eval_mode(model):
+                episode_rewards = []
+                for _ in tqdm(range(self.n_evaluations)):
+                    terminate = False
+                    episode_reward = 0
+                    observation = self.env.reset().detach()
+                    while not terminate:
+                        action = self.action_selector(model, observation)
+                        new_observation, reward, done, _ = self.env.step(action)
+                        episode_reward += reward
+                        observation = new_observation
+                        terminate = done
+                    episode_rewards += [episode_reward]
 
             print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}')
-            model.train_dict['val_reward'] = model.train_dict.get('val_reward', []) + [np.mean(episode_rewards)]
-            model.train_dict['val_epoch'] = model.train_dict.get('val_epoch', []) + [model.train_dict['epochs_run']]
+            model.train_dict[self.metric_name] = model.train_dict.get(self.metric_name, []) + [np.mean(episode_rewards)]
+            model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [model.train_dict['epochs_run']]
 
 
 class AgentVisualizer(Callback):
