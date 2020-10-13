@@ -95,10 +95,18 @@ class EpsilonGreedyActionSelection:
 class GreedyValueSelection:
     """
     Choosing the best possible option, necessary for evaluation
+    @todo abstract pre and post-pipeline
     """
+    def __init__(self, pre_pipeline=[], post_pipeline=[]):
+        self.pre_pipeline = pre_pipeline
+        self.post_pipeline = post_pipeline
 
     def __call__(self, agent, observation):
-        qs = agent.model(observation.to(agent.device))
+        for pipe in self.post_pipeline:
+            observation = pipe(observation)
+        qs = agent(observation.to(agent.device))
+        for pipe in self.post_pipeline:
+            qs = pipe(qs)
         return qs.argmax().item()
 
 
@@ -188,7 +196,7 @@ class ReinforcementLearner(Learner):
     def fit_epoch(self, device, verbose=1):
         raise NotImplementedError
 
-    def play_episode(self, render=False):
+    def play_episode(self):
         raise NotImplementedError
 
 
@@ -274,6 +282,7 @@ class PolicyGradient(ReinforcementLearner):
             losses += [loss.item()]
         loss = np.mean(losses)
         self.train_dict['train_losses'] += [loss]
+        # self.train_dict['epochs_run'] += 1
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
                   f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
@@ -407,7 +416,7 @@ class QLearner(ReinforcementLearner):
                   f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
         return loss
 
-    def play_episode(self, render=False):
+    def play_episode(self):
         observation = self.env.reset().detach()
         episode_reward = 0
         step_counter = 0
@@ -430,10 +439,7 @@ class QLearner(ReinforcementLearner):
             observation = new_observation
             terminate = done or (self.env.max_episode_length is not None
                                  and step_counter >= self.env.max_episode_length)
-            if render:
-                self.env.render()
-            if done:
-                break
+
         self.train()
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
@@ -515,7 +521,7 @@ class SARSA(QLearner):
                   f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
         return loss
 
-    def play_episode(self, render=False):
+    def play_episode(self):
         state_old = self.env.reset().detach()
         episode_reward = 0
         step_counter = 0
@@ -545,10 +551,8 @@ class SARSA(QLearner):
             step_counter += 1
             terminate = done or (self.env.max_episode_length is not None  # @todo could be done better
                                  and step_counter >= self.env.max_episode_length)
-            if render:  # @todo shouldn't be necessary
-                self.env.render()
-            if done:  # @todo shouldn't be necessary
-                break
+
+        # memorize final step
         episode_memory.memorize((action_old,
                                  state_old,
                                  torch.tensor(rewards_old).float(),

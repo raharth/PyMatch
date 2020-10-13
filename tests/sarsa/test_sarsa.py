@@ -22,20 +22,20 @@ learner = rl.SARSA(env=env,
                    optimizer=optim,
                    memory_updater=memory_updater,
                    crit=crit,
-                   action_selector=rl.QActionSelection(temperature=.4),
-                   # action_selector=rl.EpsilonGreedyActionSelection(action_space=np.arange(env.action_space.n),
-                   #                                                 epsilon=.95),
+                   # action_selector=rl.QActionSelection(temperature=.4),
+                   action_selector=rl.EpsilonGreedyActionSelection(action_space=np.arange(env.action_space.n),
+                                                                   epsilon=.95),
                    gamma=.95,
                    alpha=.3,
                    batch_size=512,
-                   n_samples=80000,
+                   n_samples=5000,
                    grad_clip=5.,
-                   memory_size=10000,
+                   memory_size=2000,
                    load_checkpoint=False,
                    name='test_SARSA',
                    callbacks=[
                        rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=5),
-                       # rcb.AgentVisualizer(env=env, frequency=5),
+                       rcb.AgentVisualizer(env=env, frequency=5),
                        cb.MetricPlotter(frequency=1, metric='rewards', smoothing_window=100),
                        cb.MetricPlotter(frequency=1, metric='train_losses', smoothing_window=100),
                        cb.MetricPlotter(frequency=1, metric='avg_reward', smoothing_window=5),
@@ -43,7 +43,7 @@ learner = rl.SARSA(env=env,
                    ],
                    dump_path='tests/sarsa/tmp',
                    device='cpu')
-learner.load_checkpoint(learner.early_stopping_path)
+# learner.load_checkpoint(learner.early_stopping_path)
 learner.fit(300, 'cpu', restore_early_stopping=False, verbose=False)
 
 env.close()

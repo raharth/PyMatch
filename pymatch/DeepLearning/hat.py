@@ -50,7 +50,7 @@ class EnsembleHat(Hat):
         super(EnsembleHat, self).__init__()
 
     def __call__(self, y, device='cpu'):
-        return y.mean(dim=1)
+        return y.mean(dim=0)
 
 
 class EnsembleHatStd(Hat):

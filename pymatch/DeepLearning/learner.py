@@ -38,6 +38,7 @@ class Learner(ABC):
             dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
             device:             device to run the learner on
         """
+        self.training = True
         self.model = model
         self.device = device
         self.optimizer = optimizer
@@ -207,16 +208,21 @@ class Learner(ABC):
             self.train_dict['epochs_run'] += 1
 
             for cb in self.callbacks:
-                cb(model=self)
+                try:
+                    cb(model=self)
+                except Exception as e:
+                    print(f'callback {cb} failed with exception\n{e}')
 
         if restore_early_stopping:
             self.load_checkpoint(self.early_stopping_path, 'early_stopping')
         self.dump_checkpoint(self.checkpoint_path)
 
     def eval(self):
+        self.training = False
         self.model.eval()
 
     def train(self):
+        self.training = True
         self.model.train()
 
     def to(self, device):

@@ -39,7 +39,12 @@ def read_json(path):
 
 
 def interactive_python_mode():
-    return sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
+    is_interactive = sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
+    if is_interactive:
+        print('interactive mode')
+    else:
+        print('script mode')
+    return is_interactive
 
 
 def shut_down(s=30):
@@ -62,15 +67,19 @@ def sliding_window(window, values, index=None):
 
 class eval_mode:
     def __init__(self, model):
-        self.training = model.model.training
+        # self.training = model.model.training
+        self.training = model.training
         self.model = model
+        self.no_grad = torch.no_grad()
 
     def __enter__(self):
+        self.no_grad.__enter__()
         self.model.eval()
 
     def __exit__(self, *args):
         if self.training:
             self.model.train()
+        self.no_grad.__exit__()
         return False
 
 

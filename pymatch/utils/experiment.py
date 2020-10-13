@@ -64,17 +64,18 @@ class Experiment:
         import_path = self.root.replace('/', '.')
         return locate(f'{import_path}.{source_file}.{source_function}')
 
-    def document_script(self, script_path):
+    def document_script(self, script_path, overwrite=False):
         """
         Saves the training script.
 
         Args:
             script_path:    path to training script
+            overwrite:      bool to overwrite a file
 
         Returns:
             None
         """
-        if os.path.isfile(f'{self.root}/train_script.py'):
+        if os.path.isfile(f'{self.root}/train_script.py') and not overwrite:
             raise OverwriteException('There is already a stored script. Please remove the script before re-running')
         copyfile(script_path, f'{self.root}/train_script.py')
 

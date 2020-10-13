@@ -75,11 +75,11 @@ class SmoothedRewardPlotter(Callback):
 
 
 class EnvironmentEvaluator(Callback):
-    def __init__(self, env, frequency=1, n_evaluations=1):
+    def __init__(self, env, frequency=1, n_evaluations=1, action_selector=GreedyValueSelection()):
         super().__init__()
         self.env = env
         self.frequency = frequency
-        self.chose_action = GreedyValueSelection()
+        self.action_selector = action_selector
         self.n_evaluations = n_evaluations
 
     def __call__(self, model):
@@ -93,24 +93,24 @@ class EnvironmentEvaluator(Callback):
                         episode_reward = 0
                         observation = self.env.reset().detach()
                         while not terminate:
-                            action = self.chose_action(model, observation)
+                            action = self.action_selector(model, observation)
                             new_observation, reward, done, _ = self.env.step(action)
                             episode_reward += reward
                             observation = new_observation
                             terminate = done
                         episode_rewards += [episode_reward]
 
-            print(f'Evaluation reward for model: {np.mean(episode_rewards):.2f}')
+            print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}')
             model.train_dict['val_reward'] = model.train_dict.get('val_reward', []) + [np.mean(episode_rewards)]
             model.train_dict['val_epoch'] = model.train_dict.get('val_epoch', []) + [model.train_dict['epochs_run']]
 
 
 class AgentVisualizer(Callback):
-    def __init__(self, env, frequency=1):
+    def __init__(self, env, frequency=1, action_selector=GreedyValueSelection()):
         super().__init__()
         self.env = env
         self.frequency = frequency
-        self.chose_action = GreedyValueSelection()
+        self.action_selector = action_selector
 
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
@@ -121,7 +121,7 @@ class AgentVisualizer(Callback):
                     episode_reward = 0
                     observation = self.env.reset().detach()
                     while not terminate:
-                        action = self.chose_action(model, observation)
+                        action = self.action_selector(model, observation)
                         new_observation, reward, done, _ = self.env.step(action)
                         episode_reward += reward
                         observation = new_observation
@@ -129,3 +129,22 @@ class AgentVisualizer(Callback):
                         self.env.render()
 
             print(f'Visual evaluation reward for model: {episode_reward:.2f}')
+
+
+class EnsembleRewardPlotter(Callback):
+    def __init__(self):
+        super().__init__()
+
+    def __call__(self, model):
+        val_rewards = np.array([learner.train_dict['val_reward'] for learner in model.learners])
+        plt.title(f'average validation reward over time for {len(model.learners)} Agents')
+        plt.xlabel('epochs')
+        plt.ylabel('average reward')
+        plt.plot(val_rewards.mean(0), label='agent average')
+        for v in val_rewards:
+            plt.plot(v, alpha=.1, color='grey')
+        plt.plot(model.train_dict['val_reward'], label='ensemble')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f'{model.path}/avg_ensemble_val_rewards.png')
+        plt.close()

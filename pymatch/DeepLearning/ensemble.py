@@ -5,7 +5,7 @@ from pymatch.utils.exception import TerminationException
 
 class Ensemble:
 
-    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[], save_memory=True):
+    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[], save_memory=False):
         self.learners = []
         for i in range(n_model):
             t_args = dict(trainer_args)
@@ -14,6 +14,11 @@ class Ensemble:
         self.epochs_run = 0
         self.callbacks = callbacks
         self.save_memory = save_memory
+        self.train_dict = {}
+        self.path = trainer_args['learner_args'].get('dump_path', 'tmp')
+        self.training = True
+        self.device = 'cpu'
+        self.name = 'ensemble'
 
     def predict(self, x, device='cpu', return_prob=False, return_certainty=False, learner_args=None):
         """
@@ -40,7 +45,7 @@ class Ensemble:
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=0)
 
-    def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
+    def fit(self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -57,22 +62,52 @@ class Ensemble:
             None
 
         """
+        epoch_iter = self.partition_learning_steps(epochs, learning_partition)
+
         for learner in self.learners:
             for cb in learner.callbacks:
                 cb.start(learner)
-            if verbose == 1:
-                print('Trainer {}'.format(learner.name))
-            try:
-                learner.fit(epochs=epochs,
-                            device=device,
-                            restore_early_stopping=restore_early_stopping)
-            except TerminationException as te:
-                print(te)
-            if self.save_memory:
-                del learner
-                torch.cuda.empty_cache()
-        for cb in self.callbacks:
-            cb.__call__(self)
+
+        for run_epochs in epoch_iter:
+            for learner in self.learners:
+                if verbose == 1:
+                    print('Trainer {}'.format(learner.name))
+                try:
+                    learner.fit(epochs=run_epochs,
+                                device=device,
+                                restore_early_stopping=restore_early_stopping)
+                except TerminationException as te:
+                    print(te)
+
+                if self.save_memory and learning_partition < 1:
+                    del learner
+                    torch.cuda.empty_cache()
+            self.train_dict['epochs_run'] = self.train_dict.get('epochs_run', 0) + 1
+            for cb in self.callbacks:
+                try:
+                    cb.__call__(self)
+                except Exception as e:
+                    print(f'Ensemble callback {cb} failed with exception:\n{e}')
+                    raise e
+
+    def partition_learning_steps(self, epochs, learning_partition):
+        """
+        Divides the entire epochs to run into shorter trainings phases. This is used to train multiple agents
+        simultaneously.
+        Args:
+            epochs:
+            learning_partition:
+
+        Returns:
+
+        """
+        if learning_partition > 0:
+            epoch_iter = [learning_partition for _ in range(epochs // learning_partition)]
+            if epochs % learning_partition > 0:
+                epoch_iter += [epochs % learning_partition]
+        else:
+            epoch_iter = [epochs]
+        return epoch_iter
 
     def dump_checkpoint(self, path=None, tag='checkpoint'):
         """
@@ -87,6 +122,8 @@ class Ensemble:
         """
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
+        path = self.get_path(path=path, tag=tag)
+        torch.save(self.train_dict, path)
 
     def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
         """
@@ -108,32 +145,10 @@ class Ensemble:
                     raise e
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
+        checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
+        self.train_dict = checkpoint['train_dict']
 
-    # def run_validation(self, device='cpu'):
-    #     """
-    #     Validates the ensemble on the validation dataset.
-    #
-    #     Args:
-    #         device: device to run the evaluation on
-    #
-    #     Returns:
-    #         predicted and true labels for each learner
-    #
-    #     """
-    #     y_pred_learners = []
-    #     y_true_learners = []
-    #
-    #     for learner in self.learners:
-    #         y_pred = []
-    #         y_true = []
-    #         for X, y in learner.val_loader:
-    #             y_true += [y]
-    #             y_pred += [learner.forward(X, device=device)]
-    #         y_pred_learners += [torch.cat(y_pred)]
-    #         y_true_learners += [torch.cat(y_true)]
-    #     return y_pred_learners, y_true_learners
-
-    def resume_training(self, epochs, device='cpu', checkpoint_int=10, validation_int=10, restore_early_stopping=False, verbose=1):
+    def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
         """
         The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
 
@@ -151,27 +166,54 @@ class Ensemble:
         """
         for learner in self.learners:
             train_epochs = epochs - learner.train_dict['epochs_run']
-            if verbose == 1:
+            if train_epochs > 0:
                 print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
-            learner.fit(epochs=train_epochs, device=device, checkpoint_int=checkpoint_int,
-                        validation_int=validation_int, restore_early_stopping=restore_early_stopping)
-            del learner
+                learner.fit(epochs=train_epochs,
+                            device=device,
+                            restore_early_stopping=restore_early_stopping,
+                            verbose=verbose)
+            else:
+                print(f'Trainer {learner.name} - was already trained')
+
+            if self.save_memory:
+                del learner
+                torch.cuda.empty_cache()
 
     def to(self, device):
+        self.device = device
         for learner in self.learners:
             learner.to(device)
 
     def eval(self):
+        self.training = False
         for learner in self.learners:
             learner.eval()
 
     def train(self):
+        self.training = True
         for learner in self.learners:
             learner.train()
 
     def __call__(self, x, device='cpu'):
         return self.predict(x, device=device)
 
+    def get_path(self, path, tag):
+        """
+        Returns the path for dumping or loading a checkpoint.
+
+        Args:
+            path: target folder
+            tag: additional name tag
+
+        Returns:
+
+        """
+        if path is None:
+            path = self.path
+        return '{}/{}_{}.mdl'.format(path, tag, 'ensemble')
+
+
+# @ todo is this actually still in use?
 class BaysianEnsemble(Ensemble):
 
     def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
@@ -193,5 +235,3 @@ class BaysianEnsemble(Ensemble):
         for y_p, y_s in zip(y_pred, y_std):
             y_confidence += [y_s[y_p]]
         return y_pred, y_prob, torch.stack(y_confidence)
-
-
