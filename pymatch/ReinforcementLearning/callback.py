@@ -4,7 +4,7 @@ from pymatch.utils.functional import sliding_window
 from pymatch.ReinforcementLearning.memory import Memory
 import matplotlib.pyplot as plt
 from pymatch.utils.functional import eval_mode
-from pymatch.ReinforcementLearning.learner import GreedyValueSelection
+from pymatch.ReinforcementLearning.selection_policy import GreedyValueSelection
 import numpy as np
 from tqdm import tqdm
 

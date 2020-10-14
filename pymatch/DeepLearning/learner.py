@@ -198,7 +198,7 @@ class Learner(ABC):
 
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
-                print('\nepoch: {}{}'.format(self.train_dict['epochs_run'], name))
+                print('\nepoch: {}{}'.format(self.train_dict['epochs_run'], name), flush=True)
 
             train_loss = self.fit_epoch(device)
 
