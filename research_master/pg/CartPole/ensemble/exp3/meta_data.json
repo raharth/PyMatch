@@ -1,0 +1,7 @@
+{
+  "mode": "script",
+  "PyMatch-version": "Name: pymatch\nVersion: 0.3.0\nSummary: PyTorch wrapper for Deep Learning\nHome-page: https://github.com/raharth/PyMatch\nAuthor: Jonas Goltz\nAuthor-email: goltz.jonas@googlemail.com\nLicense: MIT\nLocation: d:\\projects\\pymatch\nRequires: tqdm, numpy, torch, torchvision, pandas, matplotlib, seaborn, scikit-learn\nRequired-by: \n",
+  "start time": "2020-10-08 21:16:00.852997",
+  "finish time": "2020-10-08 23:51:53.145863",
+  "time taken": "2:35:52.292866"
+}
