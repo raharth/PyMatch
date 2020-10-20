@@ -276,6 +276,7 @@ class QLearner(ReinforcementLearner):
         self.model.to(device)
 
         for batch, (action, state, reward, new_state) in tqdm(enumerate(self.train_loader)):
+            action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(self.device), new_state.to(self.device)
             prediction = self.model(state.squeeze(1))
             with torch.no_grad():
                 self.model.eval()
