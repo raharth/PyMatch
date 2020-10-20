@@ -153,5 +153,5 @@ class EnsembleRewardPlotter(Callback):
         plt.plot(model.train_dict['val_reward'], label='ensemble')
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f'{model.path}/avg_ensemble_val_rewards.png')
+        plt.savefig(f'{model.dump_path}/avg_ensemble_val_rewards.png')
         plt.close()

@@ -10,8 +10,8 @@ from pymatch.utils.functional import interactive_python_mode
 from pymatch.DeepLearning.ensemble import Ensemble
 
 if interactive_python_mode():
-    path_scipt = 'research_master/pg/policy_gradient.py'
-    root = 'research_master/pg/compare_ensemble/LunarLander/exp22'
+    path_scipt = 'research_master/train_boosting.py'
+    root = 'research_master/pg/boosting/CartPole/exp36'
 else:
     path_scipt = sys.argv[0]
     root = sys.argv[1]
@@ -21,6 +21,10 @@ factory = experiment.get_factory()
 params = experiment.get_params()
 params['factory_args']['learner_args']['dump_path'] = root
 Model = experiment.get_model_class()
+
+Core = experiment.get_model_class(source_file='core', source_class='Core')
+params['factory_args']['core'] = Core(**params['core_args'])
+
 experiment.document_script(path_scipt, overwrite=params['overwrite'])
 experiment.start(overwrite=params['overwrite'])
 
@@ -31,14 +35,12 @@ learner = Ensemble(model_class=Model,
                    callbacks=[
                        cb.Checkpointer(),
                        rcb.EnvironmentEvaluator(
-                           # env=TorchGym(**params['factory_args']['env_args']),
-                           env=CartPole(),
+                           env=CartPole(**params['factory_args']['env_args']),
                            n_evaluations=10,
                            action_selector=GreedyValueSelection(
                                post_pipeline=[EnsembleHat()]
                            )),
                        rcb.EnsembleRewardPlotter()])
-# learner.load_checkpoint(path=f'{root}/checkpoint', tag='checkpoint')
+
 learner.fit(**params['fit'])
-# learner.resume_training(params['n_epochs'], 'cpu', restore_early_stopping=False, verbose=False)
 experiment.finish()

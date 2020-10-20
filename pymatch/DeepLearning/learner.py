@@ -48,29 +48,16 @@ class Learner(ABC):
 
         self.train_loader = train_loader
         self.dump_path = dump_path
-        # self.checkpoint_path = f'{dump_path}/checkpoint'
-        # self.early_stopping_path = f'{dump_path}/early_stopping'
-
-        # creating folders
-        # if not os.path.exists(self.checkpoint_path):
-        #     os.makedirs(self.checkpoint_path)
-        # if not os.path.exists(self.early_stopping_path):
-        #     os.makedirs(self.early_stopping_path)
 
         self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
 
         self.train_dict = {'train_losses': [],                  # list of all training losses
-                           # 'val_losses': [],                    # list of all validation losses
-                           # 'val_epochs': [],                    # list of validated epochs
                            'epochs_run': 0,                     # number of epochs the model has been trained
                            'best_train_performance': np.inf,    # best training performance
                            'best_val_performance': np.inf,    # best training performance
                            'epochs_since_last_val_improvement': 0   # @todo ugly shit, shouldnt be here
                            }
-
-        if load_checkpoint:
-            self.load_checkpoint(self.checkpoint_path, tag='checkpoint')
 
     def __call__(self, data, device=None):
         return self.forward(data=data, device=device)
@@ -88,7 +75,6 @@ class Learner(ABC):
         """
         self.optimizer.zero_grad()
         loss.backward()
-        # loss.clone().backward(retain_graph=True)
         if self.grad_clip is not None:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
         self.optimizer.step()
@@ -122,11 +108,6 @@ class Learner(ABC):
         state_dict = {'model_state_dict': self.model.state_dict(),
                       'optimizer_state_dict': self.optimizer.state_dict(),
                       'train_dict': self.train_dict,
-                      # 'loss': self.losses,
-                      # 'val_loss': self.val_losses,
-                      # 'val_epoch': self.val_epochs,
-                      # 'best_train_performance': self.best_train_performance,
-                      # 'epochs_since_last_val_improvement': self.epochs_since_last_train_improvement
                       }
         return state_dict
 
@@ -171,9 +152,9 @@ class Learner(ABC):
         Returns:
 
         """
-        # if path is None:
-        #     path = self.checkpoint_path
-        return '{}/{}_{}.mdl'.format(path, tag, self.name)
+        if path is None:
+            path = self.dump_path
+        return f'{path}/{tag}_{self.name}.mdl'
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
@@ -214,10 +195,6 @@ class Learner(ABC):
                 except Exception as e:
                     print(f'callback {cb} failed with exception\n{e}')
 
-        # if restore_early_stopping:
-        #     self.load_checkpoint(self.early_stopping_path, 'early_stopping')
-        # self.dump_checkpoint(self.checkpoint_path)
-
     def eval(self):
         self.training = False
         self.model.eval()
@@ -232,7 +209,6 @@ class Learner(ABC):
     def forward(self, data, device=None, eval=True):
         if device is None:
             device = self.device
-    # def predict(self, data, device='cpu'):
         """
         Predicting a batch as tensor.
 
@@ -332,39 +308,6 @@ class ClassificationLearner(Learner):
             print('train loss: {:.4f} - train accuracy: {:.4f}'.format(loss, accuracy))
         return loss
 
-    # def validate(self, device, verbose=0):
-    #     """
-    #     Validate the model on the validation data.
-    #
-    #     Args:
-    #         device: device to run the model on
-    #         verbose: verbosity
-    #
-    #     Returns:
-    #         validation loss
-    #
-    #     """
-    #     with torch.no_grad():
-    #         self.eval()
-    #         self.model.to(device)
-    #         loss = []
-    #         accuracies = []
-    #         for data, y in self.val_loader:
-    #             data = data.to(device)
-    #             y = y
-    #             y_pred = self.model(data)
-    #             loss += [self.crit(y_pred.to('cpu'), y)]
-    #
-    #             y_pred = y_pred.max(dim=1)[1].to('cpu')
-    #             accuracies += [(y_pred == y).float()]
-    #
-    #         loss = torch.stack(loss).mean().item()
-    #         accuracy = torch.cat(accuracies).mean().item()
-    #         self.train_dict['val_accuracy'] += [accuracy]
-    #         if verbose == 1:
-    #             print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-    #         return loss
-
 
 class RegressionLearner(Learner):
 
@@ -444,58 +387,3 @@ class RegressionLearner(Learner):
             if verbose == 1:
                 print('val loss: {:.4f}'.format(loss))
             return loss
-
-
-# class ImageClassifier(ClassificationLearner):
-#
-#     def __init__(self,
-#                  model,
-#                  optimizer,
-#                  crit,
-#                  train_loader,
-#                  grad_clip=None,
-#                  load_checkpoint=False,
-#                  name='',
-#                  callbacks=None,
-#                  dump_path='./tmp'
-#                  ):
-#         super(ImageClassifier, self).__init__(model,
-#                                               optimizer,
-#                                               crit,
-#                                               train_loader,
-#                                               grad_clip=grad_clip,
-#                                               load_checkpoint=load_checkpoint,
-#                                               name=name,
-#                                               callbacks=callbacks,
-#                                               dump_path=dump_path)
-#
-#     def create_result_df(self, data_loader, device='cpu'):
-#         # y_pred, y_true = self.predict_data_loader(data_loader, device=device, return_true=True)
-#         y_pred = DataHandler.predict_data_loader(self.model, data_loader, device=device)
-#         data = np.stack((np.array(data_loader.dataset.samples)[:, 0], y_pred), 1)
-#         return pd.DataFrame(data, columns=['img_path', 'label'])
-#
-#     @staticmethod
-#     def sort_images(result_df, classes, output_root, class_mapping):
-#         """
-#         Sorting the images of the result DataFrame according to their predicted label.
-#
-#         !!! This may not be a torch.Subset!!!
-#
-#         Args:
-#             result_df: result DataFrame that contains the path to the image and the assigned label
-#             classes: all possible classes
-#             output_root: root path for the output folders
-#             class_mapping: mapping from output node to class label
-#
-#         Returns:
-#
-#         """
-#         # creating output folders
-#         for class_name in classes:
-#             class_path = '{}/{}'.format(output_root, class_name)
-#             if not os.path.exists(class_path):
-#                 os.makedirs(class_path)
-#
-#         for img_path, label in result_df.values:
-#             shutil.copy(img_path, '{}/{}'.format(output_root, class_mapping[label]))

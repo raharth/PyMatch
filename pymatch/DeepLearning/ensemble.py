@@ -15,7 +15,7 @@ class Ensemble:
         self.callbacks = callbacks
         self.save_memory = save_memory
         self.train_dict = {}
-        self.path = trainer_args['learner_args'].get('dump_path', 'tmp')
+        self.dump_path = trainer_args['learner_args'].get('dump_path', 'tmp')
         self.training = True
         self.device = 'cpu'
         self.name = 'ensemble'
@@ -64,7 +64,11 @@ class Ensemble:
         """
         epoch_iter = self.partition_learning_steps(epochs, learning_partition)
 
+        for cb in self.callbacks:
+            cb.start(self)
+
         for learner in self.learners:
+            # @todo extract a learner.start_callbacks()
             for cb in learner.callbacks:
                 cb.start(learner)
 
@@ -209,8 +213,8 @@ class Ensemble:
 
         """
         if path is None:
-            path = self.path
-        return '{}/{}_{}.mdl'.format(path, tag, 'ensemble')
+            path = self.dump_path
+        return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
 
 # @ todo is this actually still in use?

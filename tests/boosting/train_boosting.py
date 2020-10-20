@@ -10,8 +10,8 @@ from pymatch.DeepLearning.ensemble import Ensemble
 
 
 if interactive_python_mode():
-    path_scipt = 'research_master/train_boosting.py'
-    root = 'research_master/pg/boosting/CartPole/exp36'
+    path_scipt = 'tests/boosting/train_boosting.py'
+    root = 'tests/boosting/exp'
 else:
     path_scipt = sys.argv[0]
     root = sys.argv[1]
@@ -24,10 +24,6 @@ Model = experiment.get_model_class()
 
 core = experiment.get_model_class(source_file='core', source_class='Core')(**params['core_args'])
 params['factory_args']['core'] = core
-
-experiment.document_script(path_scipt, overwrite=params['overwrite'])
-experiment.start(overwrite=params['overwrite'])
-
 
 learner = Ensemble(model_class=Model,
                    trainer_factory=factory,
@@ -47,4 +43,3 @@ learner = Ensemble(model_class=Model,
 # learner.load_checkpoint(f'{root}/checkpoint')
 learner.fit(**params['fit'])
 # learner.resume_training(params['n_epochs'], 'cpu', restore_early_stopping=False, verbose=False)
-experiment.finish()

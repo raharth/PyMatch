@@ -13,7 +13,7 @@ class REINFORCELoss(nn.Module):
 
 class REINFORCELoss_moving_average(nn.Module):
     def __init__(self):
-        super(REINFORCELoss, self).__init__()
+        super(REINFORCELoss_moving_average, self).__init__()
         self.m_avg = torch.zeros(1)
         self.m_avg2 = torch.zeros(1)
         self.count = torch.zeros(1)

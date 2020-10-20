@@ -279,13 +279,14 @@ class QLearner(ReinforcementLearner):
             action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(self.device), new_state.to(self.device)
             prediction = self.model(state.squeeze(1))
             with torch.no_grad():
-                self.model.eval()
+                self.model.eval()   # @todo this might cause trouble with the MC Dropout implementation
                 max_next = self.model(new_state.squeeze(1)).max(dim=1)[0]
             target = prediction.clone().detach()
 
+            # @todo this is ugly as fuck, there has to be a more efficient way
             for t, a, r, m in zip(target, action, reward, max_next):
-                # @todo this is ugly as fuck, there has to be a more efficient way
                 t[a.item()] = (1 - self.alpha) * t[a.item()] + self.alpha * (r + self.gamma * m)
+
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
             self._backward(loss)
