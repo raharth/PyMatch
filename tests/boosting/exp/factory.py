@@ -26,6 +26,7 @@ def factory(Model, core, model_args, env_args, optim_args, memory_args, learner_
                        crit=crit,
                        action_selector=sp.QActionSelection(temperature=.3),
                        callbacks=[
+                           cb.Checkpointer(),
                            rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=1),
                        ],
                        **learner_args)

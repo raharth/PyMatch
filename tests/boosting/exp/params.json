@@ -1,6 +1,6 @@
 {
-    "overwrite": false,
-    "n_learner": 50,
+    "overwrite": true,
+    "n_learner": 1,
     "factory_args": {
         "model_args": {
             "out_nodes": 2
