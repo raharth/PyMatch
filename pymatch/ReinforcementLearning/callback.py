@@ -80,14 +80,14 @@ class EnvironmentEvaluator(Callback):
                  frequency=1,
                  n_evaluations=1,
                  action_selector=GreedyValueSelection(),
-                 metric_name='val_reward',
+                 metrics=None,  # 'val_reward',
                  epoch_name='val_epoch'):
         super().__init__()
         self.env = env
         self.frequency = frequency
         self.action_selector = action_selector
         self.n_evaluations = n_evaluations
-        self.metric_name = metric_name
+        self.metrics = {'val_reward': np.mean} if metrics is None else metrics
         self.epoch_name = epoch_name
 
     def __call__(self, model):
@@ -108,7 +108,8 @@ class EnvironmentEvaluator(Callback):
                     episode_rewards += [episode_reward]
 
             print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}')
-            model.train_dict[self.metric_name] = model.train_dict.get(self.metric_name, []) + [np.mean(episode_rewards)]
+            for name, func in self.metrics.items():
+                model.train_dict[name] = model.train_dict.get(name, []) + [func(episode_rewards)]
             model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [model.train_dict['epochs_run']]
 
 
@@ -139,18 +140,21 @@ class AgentVisualizer(Callback):
 
 
 class EnsembleRewardPlotter(Callback):
-    def __init__(self):
+    def __init__(self, metrics=None):
         super().__init__()
+        self.metrics = {'val_reward_mean': 'val_epoch'} if metrics is None else metrics
 
     def __call__(self, model):
         val_rewards = np.array([learner.train_dict['val_reward'] for learner in model.learners])
         plt.title(f'average validation reward over time for {len(model.learners)} Agents')
         plt.xlabel('epochs')
         plt.ylabel('average reward')
-        plt.plot(val_rewards.mean(0), label='agent average')
+        plt.plot(val_rewards.mean(0), label='agent mean')
+        plt.plot(np.median(val_rewards, axis=0), label='agent median')
         for v in val_rewards:
             plt.plot(v, alpha=.1, color='grey')
-        plt.plot(model.train_dict['val_reward'], label='ensemble')
+        for y, x in self.metrics.items():
+            plt.plot(model.train_dict[x], model.train_dict[y], label=f'ensemble {y}')
         plt.legend()
         plt.tight_layout()
         plt.savefig(f'{model.dump_path}/avg_ensemble_val_rewards.png')

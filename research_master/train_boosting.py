@@ -1,5 +1,5 @@
 import sys
-
+import numpy as np
 from pymatch.DeepLearning.hat import EnsembleHat
 import pymatch.DeepLearning.callback as cb
 import pymatch.ReinforcementLearning.callback as rcb
@@ -39,8 +39,11 @@ learner = Ensemble(model_class=Model,
                            n_evaluations=10,
                            action_selector=GreedyValueSelection(
                                post_pipeline=[EnsembleHat()]
-                           )),
-                       rcb.EnsembleRewardPlotter()])
+                           ),
+                           metrics={'val_reward_mean': np.mean, 'val_reward_std': np.std}
+                       ),
+                       rcb.EnsembleRewardPlotter(metrics={'val_reward_mean': 'val_epoch',
+                                                          })])
 
 learner.fit(**params['fit'])
 experiment.finish()

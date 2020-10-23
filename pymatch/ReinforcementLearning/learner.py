@@ -1,21 +1,18 @@
 import torch
-from torch.utils.data.sampler import SubsetRandomSampler
-from torch.distributions import Categorical, MultivariateNormal
-import torch.nn.functional as F
-
 from tqdm import tqdm
 import numpy as np
-
-import pymatch.DeepLearning.hat as hat
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.DeepLearning.learner import Learner
 from pymatch.utils.functional import one_hot_encoding, eval_mode
-from pymatch.DeepLearning.pipeline import Pipeline
 import pymatch.ReinforcementLearning.selection_policy as sp
+import copy
 
-
-
+import pymatch.DeepLearning.hat as hat
+from pymatch.DeepLearning.pipeline import Pipeline
+from torch.utils.data.sampler import SubsetRandomSampler
+from torch.distributions import Categorical, MultivariateNormal
+import torch.nn.functional as F
 
 
 class ReinforcementLearner(Learner):
@@ -235,11 +232,11 @@ class QLearner(ReinforcementLearner):
                  env,
                  memory_updater,
                  action_selector,
-                 gamma,
                  alpha,
-                 memory_size,
-                 n_samples,
-                 batch_size,
+                 gamma,
+                 memory_size=None,
+                 n_samples=None,
+                 batch_size=None,
                  memory=None,
                  grad_clip=None,
                  load_checkpoint=False,
@@ -247,8 +244,40 @@ class QLearner(ReinforcementLearner):
                  callbacks=[],
                  dump_path='./tmp',
                  device='cpu'):
+        """
+        Deep Q-Learning algorithm, as introduced by http://arxiv.org/abs/1312.5602
+        Args:
+            model:              pytorch graph derived from torch.nn.Module
+            optimizer:          optimizer
+            crit:               loss function
+            env:                environment to interact with
+            memory_updater:     object that iteratively updates the memory
+            action_selector:    policy after which actions are selected, it has to be a stochastic one to be used in
+                                learning
+            alpha:              TD-learning rate @todo this might be dropped in a future implementation
+            gamma:              disount factor for future rewards
+            memory_size:        size of the replay memory (number of memories to be hold)
+            n_samples:          number of samples to be drawn from the memory each update
+            batch_size:         batch size when updating
+            memory:             alternatively the memory can be explicitly specified, instead by (memory_size,
+                                n_samples, batch_size)
+            grad_clip:          gradient_clipping
+            load_checkpoint:    loading previous checkpoint @todo might be dropped in the future
+            name:               name for the learner
+            callbacks:          list of callbacks to be called during training
+            dump_path:          path to root folder, where the model and its callbacks is dumping stuff to
+            device:             device on which the learning has to be performed
+        """
+        if memory is None and (memory_size is None or n_samples is None or batch_size is None):
+            raise ValueError('Learner lacks the memory, it has to be explicitly given, or defined by the params:'
+                             '`memory_size`, `n_samples`, `batch_size`')
+        if memory is not None and (memory_size is not None or
+                                   n_samples is not None or
+                                   batch_size is not None):
+            raise ValueError('Ambiguous memory specification, either `memory` or `memory_size`, `n_samples`, '
+                             '`batch_size` have to be provided')
         if memory is None:
-            memory = Memory(['action', 'state', 'reward', 'new_state'],
+            memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'],
                             buffer_size=memory_size,
                             n_samples=n_samples,
                             gamma=gamma,
@@ -275,17 +304,16 @@ class QLearner(ReinforcementLearner):
         self.model.train()
         self.model.to(device)
 
-        for batch, (action, state, reward, new_state) in tqdm(enumerate(self.train_loader)):
-            action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(self.device), new_state.to(self.device)
+        for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
+            action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
+                self.device), new_state.to(self.device)
             prediction = self.model(state.squeeze(1))
-            with torch.no_grad():
-                self.model.eval()   # @todo this might cause trouble with the MC Dropout implementation
-                max_next = self.model(new_state.squeeze(1)).max(dim=1)[0]
             target = prediction.clone().detach()
+            max_next = self.get_max_Q_for_states(new_state)
 
-            # @todo this is ugly as fuck, there has to be a more efficient way
-            for t, a, r, m in zip(target, action, reward, max_next):
-                t[a.item()] = (1 - self.alpha) * t[a.item()] + self.alpha * (r + self.gamma * m)
+            mask = one_hot_encoding(action).type(torch.BoolTensor)
+            target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
+                        reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)))
 
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
@@ -297,31 +325,37 @@ class QLearner(ReinforcementLearner):
                   f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
         return loss
 
+    def get_max_Q_for_states(self, states):
+        with eval_mode(self):  # @todo we might have trouble with the MC Dropout here
+            max_Q = self.model(states.squeeze(1)).max(dim=1)[0]
+        return max_Q
+
     def play_episode(self):
         observation = self.env.reset().detach()
         episode_reward = 0
         step_counter = 0
         terminate = False
-        episode_memory = Memory(['action', 'state', 'reward', 'new_state'], gamma=self.gamma)
-        self.eval()
+        episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
+        # self.eval()
+        with eval_mode(self):
+            while not terminate:
+                step_counter += 1
+                with torch.no_grad():
+                    action = self.chose_action(self, observation)
+                new_observation, reward, done, _ = self.env.step(action)
 
-        while not terminate:
-            step_counter += 1
-            with torch.no_grad():
-                action = self.chose_action(self, observation)
-            new_observation, reward, done, _ = self.env.step(action)
+                episode_reward += reward
+                episode_memory.memorize((action,
+                                         observation,
+                                         torch.tensor(reward).float(),
+                                         new_observation,
+                                         done),
+                                        ['action', 'state', 'reward', 'new_state', 'terminal'])
+                observation = new_observation
+                terminate = done or (self.env.max_episode_length is not None
+                                     and step_counter >= self.env.max_episode_length)
 
-            episode_reward += reward
-            episode_memory.memorize((action,
-                                     observation,
-                                     torch.tensor(reward).float(),
-                                     new_observation),
-                                    ['action', 'state', 'reward', 'new_state'])
-            observation = new_observation
-            terminate = done or (self.env.max_episode_length is not None
-                                 and step_counter >= self.env.max_episode_length)
-
-        self.train()
+        # self.train()
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
 
@@ -329,6 +363,98 @@ class QLearner(ReinforcementLearner):
             self.train_dict['best_performance'] = episode_reward
 
         return episode_reward
+
+
+class DoubleQLearner(QLearner):
+    def __init__(self,
+                 model,
+                 optimizer,
+                 crit,
+                 env,
+                 memory_updater,
+                 action_selector,
+                 alpha,
+                 gamma,
+                 tau,
+                 memory_size=None,
+                 n_samples=None,
+                 batch_size=None,
+                 memory=None,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='q_learner',
+                 callbacks=[],
+                 dump_path='./tmp',
+                 device='cpu'):
+        """
+        Double Deep Q-Learning algorithm, as introduced in `Deep Reinforcement Learning with Double Q-Learning` by
+        Hasselt et al.
+
+        Args:
+            model:              pytorch graph derived from torch.nn.Module
+            optimizer:          optimizer
+            crit:               loss function
+            env:                environment to interact with
+            memory_updater:     object that iteratively updates the memory
+            action_selector:    policy after which actions are selected, it has to be a stochastic one to be used in
+                                learning
+            alpha:              TD-learning rate @todo this might be dropped in a future implementation
+            gamma:              discount factor for future rewards
+            tau:                update for target network, if provided as ]0,1[ it constantly updates the weights of the
+                                target network by the fraction defined by tau. If provides as an integer it keeps the
+                                weights fixed and sets the target weights every tau epochs to the online weights.
+            memory_size:        size of the replay memory (number of memories to be hold)
+            n_samples:          number of samples to be drawn from the memory each update
+            batch_size:         batch size when updating
+            memory:             alternatively the memory can be explicitly specified, instead by (memory_size,
+                                n_samples, batch_size)
+            grad_clip:          gradient_clipping
+            load_checkpoint:    loading previous checkpoint @todo might be dropped in the future
+            name:               name for the learner
+            callbacks:          list of callbacks to be called during training
+            dump_path:          path to root folder, where the model and its callbacks is dumping stuff to
+            device:             device on which the learning has to be performed
+        """
+        super().__init__(
+            model=model,
+            optimizer=optimizer,
+            crit=crit,
+            env=env,
+            memory_updater=memory_updater,
+            action_selector=action_selector,
+            alpha=alpha,
+            gamma=gamma,
+            memory_size=memory_size,
+            n_samples=n_samples,
+            batch_size=batch_size,
+            memory=memory,
+            grad_clip=grad_clip,
+            load_checkpoint=load_checkpoint,
+            name=name,
+            callbacks=callbacks,
+            dump_path=dump_path,
+            device=device)
+        self.target_model = copy.deepcopy(model)
+        self.tau = tau
+
+    def get_max_Q_for_states(self, states):
+        with eval_mode(self):  # @todo we might have trouble with the MC Dropout here
+            max_Q = self.target_model(states.squeeze(1)).max(dim=1)[0]
+        return max_Q
+
+    def fit_epoch(self, device, verbose=1):
+        loss = super(DoubleQLearner, self).fit_epoch(device=device, verbose=verbose)
+        self.update_target_network()
+        return loss
+
+    def update_target_network(self):
+        if self.tau < 1.:
+            for params_target, params_online in zip(self.target_model.parameters(), self.model.parameters()):
+                params_target.data.copy_(self.tau * params_online.data + params_target.data * (1.0 - self.tau))
+        else:
+            if self.train_dict['epochs_run'] % self.tau == 0:
+                for params_target, params_online in zip(self.target_model.parameters(), self.model.parameters()):
+                    params_target.data.copy_(params_online.data)
 
 
 class SARSA(QLearner):
@@ -382,10 +508,8 @@ class SARSA(QLearner):
         for batch, (action, state, reward, new_state, new_action, terminal) in tqdm(enumerate(self.train_loader)):
             prediction = self.model(state.squeeze(1))
             new_action = one_hot_encoding(new_action)
-            with torch.no_grad():
-                # self.model.eval()
-                with eval_mode(self):
-                    next_Q = (self.model(new_state.squeeze(1)) * new_action).sum(1)
+            with eval_mode(self):
+                next_Q = (self.model(new_state.squeeze(1)) * new_action).sum(1)
             target = prediction.clone().detach()
 
             for t, a, r, nq, term in zip(target, action, reward, next_Q, terminal):
@@ -408,12 +532,11 @@ class SARSA(QLearner):
         step_counter = 0
         terminate = False
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'], gamma=self.gamma)
-        self.eval()
 
         action_old = None
         rewards_old = None
         while not terminate:
-            with torch.no_grad():
+            with eval_mode(self):
                 action = self.chose_action(self, state_old)
             state, reward, done, _ = self.env.step(action)
 
@@ -442,7 +565,6 @@ class SARSA(QLearner):
                                  done),
                                 ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
 
-        self.train()  # @todo is this acutally necessary?
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
 

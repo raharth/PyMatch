@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.DeepLearning.hat import EnsembleHat
 import pymatch.DeepLearning.callback as cb
 import pymatch.ReinforcementLearning.callback as rcb
@@ -24,6 +25,9 @@ Model = experiment.get_model_class()
 experiment.document_script(path_scipt, overwrite=params['overwrite'])
 experiment.start(overwrite=params['overwrite'])
 
+memory = Memory(['action', 'state', 'reward', 'new_state'], **params['memory_args'])
+params['factory_args']['learner_args']['memory'] = memory
+
 learner = Ensemble(model_class=Model,
                    trainer_factory=factory,
                    trainer_args=params['factory_args'],
@@ -39,6 +43,7 @@ learner = Ensemble(model_class=Model,
                            metrics={'val_reward_mean': np.mean, 'val_reward_std': np.std}
                        ),
                        rcb.EnsembleRewardPlotter()])
+
 # learner.load_checkpoint(path=f'{root}/checkpoint', tag='checkpoint')
 learner.fit(**params['fit'])
 # learner.resume_training(params['n_epochs'], 'cpu', restore_early_stopping=False, verbose=False)

@@ -14,7 +14,7 @@ class Ensemble:
         self.epochs_run = 0
         self.callbacks = callbacks
         self.save_memory = save_memory
-        self.train_dict = {}
+        self.train_dict = {'epochs_run': 0}
         self.dump_path = trainer_args['learner_args'].get('dump_path', 'tmp')
         self.training = True
         self.device = 'cpu'
@@ -86,13 +86,13 @@ class Ensemble:
                 if self.save_memory and learning_partition < 1:
                     del learner
                     torch.cuda.empty_cache()
-            self.train_dict['epochs_run'] = self.train_dict.get('epochs_run', 0) + 1
             for cb in self.callbacks:
                 try:
                     cb.__call__(self)
                 except Exception as e:
                     print(f'Ensemble callback {cb} failed with exception:\n{e}')
                     raise e
+            self.train_dict['epochs_run'] = self.train_dict.get('epochs_run', 0) + 1
 
     def partition_learning_steps(self, epochs, learning_partition):
         """
