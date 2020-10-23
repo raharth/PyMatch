@@ -1,0 +1,36 @@
+{
+    "overwrite": true,
+    "factory_args": {
+        "model_args": {
+            "in_nodes": 4,
+            "out_nodes": 2
+        },
+        "env_args": {},
+        "optim_args": {
+            "lr": 0.01,
+            "momentum": 0.5
+        },
+        "memory_args": {
+            "memory_refresh_rate": 0.1
+        },
+        "learner_args": {
+            "gamma": 0.95,
+            "alpha": 0.2,
+            "n_samples": 8000,
+            "batch_size": 256,
+            "grad_clip": 5.0,
+            "memory_size": 10000,
+            "name": "DDQN",
+            "load_checkpoint": false,
+            "device": "cpu",
+            "tau": 1
+        },
+        "crit_args": {}
+    },
+    "fit": {
+        "epochs": 500,
+        "device": "cpu",
+        "restore_early_stopping": false,
+        "verbose": false
+    }
+}
