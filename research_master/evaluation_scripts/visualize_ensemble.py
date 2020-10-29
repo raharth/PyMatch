@@ -2,7 +2,7 @@ import sys
 
 from pymatch.DeepLearning.hat import EnsembleHat
 import pymatch.ReinforcementLearning.callback as cb
-from pymatch.ReinforcementLearning.learner import GreedyValueSelection
+from pymatch.ReinforcementLearning.selection_policy import GreedyValueSelection
 from pymatch.ReinforcementLearning.torch_gym import TorchGym
 from pymatch.utils.experiment import Experiment
 from pymatch.utils.functional import interactive_python_mode
@@ -39,5 +39,4 @@ viz = cb.AgentVisualizer(env=TorchGym(**params['factory_args']['env_args']),
                          action_selector=GreedyValueSelection(
                              post_pipeline=[EnsembleHat()]
                          ))
-learner.train_dict['epochs_run'] = 0
 viz(learner)

@@ -11,11 +11,11 @@ class TorchGym:
         self.max_episode_length = max_episode_length
 
     def reset(self):
-        return torch.tensor(self.env.reset()).float().unsqueeze(0)
+        return torch.tensor(self.env.reset()).float().unsqueeze(0)      # @todo why am I doing this?
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        observation = torch.tensor(observation).float().unsqueeze(0)
+        observation = torch.tensor(observation).float().unsqueeze(0)    # @todo why am I doing this?
         return observation, reward, done, info
 
     def render(self, mode='human', **kwargs):

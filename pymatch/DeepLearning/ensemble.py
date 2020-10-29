@@ -150,7 +150,7 @@ class Ensemble:
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
         checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
-        self.train_dict = checkpoint['train_dict']
+        self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
         """

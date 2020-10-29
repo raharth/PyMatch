@@ -123,18 +123,17 @@ class AgentVisualizer(Callback):
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
             print('Visualizing environment...')
-            with torch.no_grad():
-                with eval_mode(model):
-                    terminate = False
-                    episode_reward = 0
-                    observation = self.env.reset().detach()
-                    while not terminate:
-                        action = self.action_selector(model, observation)
-                        new_observation, reward, done, _ = self.env.step(action)
-                        episode_reward += reward
-                        observation = new_observation
-                        terminate = done
-                        self.env.render()
+            with eval_mode(model):
+                terminate = False
+                episode_reward = 0
+                observation = self.env.reset().detach()
+                while not terminate:
+                    action = self.action_selector(model, observation)
+                    new_observation, reward, done, _ = self.env.step(action)
+                    episode_reward += reward
+                    observation = new_observation
+                    terminate = done
+                    self.env.render()
 
             print(f'Visual evaluation reward for model: {episode_reward:.2f}')
 

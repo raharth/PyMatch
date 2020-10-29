@@ -3,9 +3,10 @@ import torch
 
 class Pipeline:
 
-    def __init__(self, pipes, pipe_args=None):
+    def __init__(self, pipes, pipe_args=None, device='cpu'):
         self.pipes = pipes
         self.pipe_args = pipe_args if pipe_args is not None else [None for _ in range(len(pipes))]
+        self.device = device
 
     def __call__(self, X, device='cpu'):
         # for pipe, pipe_arg in zip(self.pipes, self.pipe_args):
@@ -36,6 +37,7 @@ class Pipeline:
                 pipe.eval()
 
     def to(self, device):
+        self.device = device
         for pipe in self.pipes:
             if hasattr(pipe, "to"):
                 pipe.to(device)

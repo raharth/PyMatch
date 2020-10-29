@@ -185,17 +185,15 @@ class PolicyGradient(ReinforcementLearner):
         while not terminate:
             step_counter += 1
             action, log_prob = self.chose_action(self, observation)
-            new_observation, reward, done, _ = self.env.step(action)
+            new_observation, reward, terminate, _ = self.env.step(action)
 
             episode_reward += reward
             episode_memory.memorize((log_prob, torch.tensor(reward).float()), ['log_prob', 'reward'])
             observation = new_observation
-            terminate = done or (self.env.max_episode_length is not None
-                                 and step_counter >= self.env.max_episode_length)
-            if render:
-                self.env.render()
-            # if done:
-            #     break
+            # terminate = done or (self.env.max_episode_length is not None
+            #                      and step_counter >= self.env.max_episode_length)
+            # if render:
+            #     self.env.render()
 
         episode_memory.cumul_reward()
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
@@ -457,7 +455,7 @@ class DoubleQLearner(QLearner):
                     params_target.data.copy_(params_online.data)
 
 
-class SARSA(QLearner):
+class SARSA(DoubleQLearner):
     def __init__(self,
                  model,
                  optimizer,
@@ -470,6 +468,7 @@ class SARSA(QLearner):
                  memory_size,
                  n_samples,
                  batch_size,
+                 tau,
                  grad_clip=None,
                  load_checkpoint=False,
                  name='q_learner',
@@ -489,9 +488,10 @@ class SARSA(QLearner):
                          action_selector=action_selector,
                          gamma=gamma,
                          alpha=alpha,
-                         memory_size=memory_size,
-                         n_samples=n_samples,
-                         batch_size=batch_size,
+                         tau=tau,
+                         memory_size=None,
+                         n_samples=None,
+                         batch_size=None,
                          grad_clip=grad_clip,
                          load_checkpoint=load_checkpoint,
                          name=name,
@@ -505,25 +505,30 @@ class SARSA(QLearner):
         self.model.train()
         self.model.to(device)
 
-        for batch, (action, state, reward, new_state, new_action, terminal) in tqdm(enumerate(self.train_loader)):
+        for batch, (action, state, reward, next_state, next_action, terminal) in tqdm(enumerate(self.train_loader)):
+            action, state, reward, next_state = action.to(self.device), state.to(self.device), reward.to(
+                self.device), next_state.to(self.device)
             prediction = self.model(state.squeeze(1))
-            new_action = one_hot_encoding(new_action)
-            with eval_mode(self):
-                next_Q = (self.model(new_state.squeeze(1)) * new_action).sum(1)
+            next_action = one_hot_encoding(next_action).to(self.device)
+            with eval_mode(self):   # @todo this is not working with DDQN so far
+                next_Q = (self.target_model(next_state.squeeze(1)) * next_action).sum(1)
             target = prediction.clone().detach()
 
-            for t, a, r, nq, term in zip(target, action, reward, next_Q, terminal):
-                if term:
-                    nq = torch.tensor(-0.)
-                t[a.item()] = (1 - self.alpha) * t[a.item()] + self.alpha * (r + self.gamma * nq)
+            mask = one_hot_encoding(action).type(torch.BoolTensor)
+            target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
+                    reward + self.gamma * next_Q * (1. - terminal.type(torch.FloatTensor)))
+
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
             self._backward(loss)
+
+        self.update_target_network()
 
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
                   f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
                   f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
+
         return loss
 
     def play_episode(self):
@@ -534,35 +539,33 @@ class SARSA(QLearner):
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'], gamma=self.gamma)
 
         action_old = None
-        rewards_old = None
+
         while not terminate:
             with eval_mode(self):
                 action = self.chose_action(self, state_old)
-            state, reward, done, _ = self.env.step(action)
+            state, reward, terminate, _ = self.env.step(action)
 
             episode_reward += reward
             if step_counter > 0:
                 episode_memory.memorize((action_old,
                                          state_old,
-                                         torch.tensor(rewards_old).float(),
+                                         torch.tensor(reward_old).float(),
                                          state,
                                          action,
-                                         done),
+                                         False),
                                         ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
             state_old = state
-            rewards_old = reward
+            reward_old = reward
             action_old = action
             step_counter += 1
-            terminate = done or (self.env.max_episode_length is not None  # @todo could be done better
-                                 and step_counter >= self.env.max_episode_length)
 
         # memorize final step
         episode_memory.memorize((action_old,
                                  state_old,
-                                 torch.tensor(rewards_old).float(),
+                                 torch.tensor(reward_old).float(),
                                  state,
                                  action,
-                                 done),
+                                 True),
                                 ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
 
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
