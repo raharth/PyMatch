@@ -17,7 +17,8 @@ def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, 
 
     optim = torch.optim.SGD(model.parameters(), **optim_args)
     crit = torch.nn.MSELoss()
-    learner_args['name'] = name
+    l_args = dict(learner_args)
+    l_args['name'] = f"{learner_args['name']}_{name}"
 
     return pg.QLearner(env=env,
                        model=model,

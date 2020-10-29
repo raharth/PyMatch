@@ -7,7 +7,7 @@
         },
         "env_args": {},
         "optim_args": {
-            "lr": 0.01,
+            "lr": 0.001,
             "momentum": 0.5
         },
         "memory_args": {
@@ -16,19 +16,19 @@
         "learner_args": {
             "gamma": 0.95,
             "alpha": 0.2,
-            "n_samples": 8000,
-            "batch_size": 256,
+            "n_samples": 20000,
+            "batch_size": 512,
             "grad_clip": 5.0,
             "memory_size": 10000,
-            "name": "DDQN",
+            "name": "sarsa",
             "load_checkpoint": false,
             "device": "cpu",
-            "tau": 1
+            "tau": 10
         },
         "crit_args": {}
     },
     "fit": {
-        "epochs": 500,
+        "epochs": 200,
         "device": "cpu",
         "restore_early_stopping": false,
         "verbose": false
