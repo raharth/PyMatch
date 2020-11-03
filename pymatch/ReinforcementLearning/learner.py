@@ -309,7 +309,7 @@ class QLearner(ReinforcementLearner):
             target = prediction.clone().detach()
             max_next = self.get_max_Q_for_states(new_state)
 
-            mask = one_hot_encoding(action).type(torch.BoolTensor)
+            mask = one_hot_encoding(action, n_categories=self.env.action_space).type(torch.BoolTensor)
             target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
                         reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)))
 

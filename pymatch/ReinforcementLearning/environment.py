@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 from gym.envs.classic_control import rendering
@@ -7,7 +9,7 @@ class Environment:
     def __init__(self, action_space, observation_space, max_length):
         self.action_space = action_space
         self.observation_space = observation_space
-        self.max_length = max_length
+        self.max_episode_length = max_length
         self.steps = 0
 
         # viewer parameters
@@ -28,8 +30,8 @@ class Environment:
 
 
 class LavaWorld(Environment):
-    def __init__(self, size, horizon, p=.15, max_length=100, randomized=False, wall=False, rgb=False):
-        super().__init__(4, observation_space=(horizon, horizon), max_length=max_length)
+    def __init__(self, size, horizon, p=.15, max_length=100, randomized=False, wall=False, rgb=False, living_penalty=.01):
+        super().__init__(action_space=4, observation_space=(horizon, horizon), max_length=max_length)
         self.size = size
         self.horizon = horizon
         self.p = p
@@ -40,6 +42,7 @@ class LavaWorld(Environment):
         self.randomized = randomized
         self.wall = wall
         self.rgb = rgb
+        self.living_penalty = living_penalty
         self.action_map = {0: torch.tensor([-1, 0]),
                            1: torch.tensor([0, 1]),
                            2: torch.tensor([1, 0]),
@@ -62,7 +65,7 @@ class LavaWorld(Environment):
         return self.observe(), self.reward(), self.done(), ''
 
     def done(self):
-        return (self.steps >= self.max_length) or (self.map[tuple(self.position)].item() in [-1, 1])
+        return (self.steps >= self.max_episode_length) or (self.map[tuple(self.position)].item() in [-1, 1])
 
     def observe(self):
         """
@@ -128,11 +131,12 @@ class LavaWorld(Environment):
         Returns:
 
         """
-        # if self.world[tuple(self.position)] == -1:
-        if self.done():
-            return -1.
-        return (1. - torch.norm((self.position - self.goal).type(torch.float), 1)
-                / torch.norm(torch.tensor([20, 20.]), 1)).item()
+        return self.world[tuple(self.position)] - self.living_penalty
+
+        # if self.done():
+        #     pass
+        # return (1. - torch.norm((self.position - self.goal).type(torch.float), 1)
+        #         / torch.norm(torch.tensor([20, 20.]), 1)).item() - self.living_penalty
 
     def init_goal(self):
         """
@@ -140,7 +144,7 @@ class LavaWorld(Environment):
         Returns:
 
         """
-        self.goal = torch.tensor(self.size) + self.horizon - 1
+        self.goal = torch.tensor(self.size) + self.horizon
         self.map[tuple(self.goal)] = 1.  # self.color_map[1.] if self.rgb else 1.
 
     def init_position(self):
@@ -150,7 +154,7 @@ class LavaWorld(Environment):
         Returns:
             None
         """
-        self.position = torch.tensor([self.horizon, self.horizon])
+        self.position = torch.tensor([self.horizon + 1, self.horizon + 1])
 
     def init_world(self, size):
         """
@@ -163,7 +167,7 @@ class LavaWorld(Environment):
             None
         """
         world = self.create_map(size)
-        self.map = nn.functional.pad(world, [self.horizon] * 4, value=-1.)
+        self.map = nn.functional.pad(world, [self.horizon + 1] * 4, value=-1.)
         self.init_goal()
         if self.rgb:
             self.world = self.colorize_map()
@@ -176,6 +180,7 @@ class LavaWorld(Environment):
         return world
 
     def render(self, mode='human'):
+        time.sleep(0.1)
         if self.viewer is None:
             self.screen_height, self.screen_width = torch.tensor(self.map.shape) * self.field_size
             self.viewer = rendering.Viewer(self.screen_width, self.screen_height)
@@ -257,8 +262,10 @@ class LavaWorld1(LavaWorld):
 # import time
 #
 # #
-# env = LavaWorld(horizon=2, size=(7, 8), randomized=False, rgb=True)
-# env.reset()
+env = LavaWorld(size=[10, 10], horizon=2, randomized=False, rgb=False)
+env.reset()
+env.step(1)
+env.observe()
 # env.colorize_map()
 # import matplotlib.pyplot as plt
 # #

@@ -362,28 +362,28 @@ class RegressionLearner(Learner):
             print('train loss: {:.4f}'.format(loss))
         return loss
 
-    def validate(self, device, verbose=0):
-        """
-        Validate the model on the validation data.
-
-        Args:
-            device: device to run the model on
-            verbose: verbosity
-
-        Returns:
-            validation loss
-
-        """
-        with torch.no_grad():
-            self.eval()
-            self.model.to(device)
-            loss = []
-            for data, y in self.val_loader:
-                data = data.to(device)
-                y_pred = self.model(data).to('cpu')
-                loss += [self.crit(y_pred, y)]
-
-            loss = torch.stack(loss).mean().item()
-            if verbose == 1:
-                print('val loss: {:.4f}'.format(loss))
-            return loss
+    # def validate(self, device, verbose=0):
+    #     """
+    #     Validate the model on the validation data.
+    #
+    #     Args:
+    #         device: device to run the model on
+    #         verbose: verbosity
+    #
+    #     Returns:
+    #         validation loss
+    #
+    #     """
+    #     with torch.no_grad():
+    #         self.eval()
+    #         self.model.to(device)
+    #         loss = []
+    #         for data, y in self.val_loader:
+    #             data = data.to(device)
+    #             y_pred = self.model(data).to('cpu')
+    #             loss += [self.crit(y_pred, y)]
+    #
+    #         loss = torch.stack(loss).mean().item()
+    #         if verbose == 1:
+    #             print('val loss: {:.4f}'.format(loss))
+    #         return loss
