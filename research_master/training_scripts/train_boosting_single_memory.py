@@ -29,7 +29,7 @@ params['factory_args']['core'] = Core(**params['core_args'])
 experiment.document_script(path_scipt, overwrite=params['overwrite'])
 experiment.start(overwrite=params['overwrite'])
 
-memory = Memory(['action', 'state', 'reward', 'new_state'], **params['memory_args'])
+memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], **params['memory_args'])
 params['factory_args']['learner_args']['memory'] = memory
 
 learner = Ensemble(model_class=Model,

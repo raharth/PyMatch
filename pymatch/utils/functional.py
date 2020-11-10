@@ -84,7 +84,7 @@ class eval_mode:
 
 
 class train_mode:
-    def __int__(self, model):
+    def __init__(self, model):
         self.training = model.model.training
         self.model = model
 

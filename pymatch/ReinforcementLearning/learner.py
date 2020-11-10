@@ -4,7 +4,7 @@ import numpy as np
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.DeepLearning.learner import Learner
-from pymatch.utils.functional import one_hot_encoding, eval_mode
+from pymatch.utils.functional import one_hot_encoding, eval_mode, train_mode
 import pymatch.ReinforcementLearning.selection_policy as sp
 import copy
 
@@ -86,6 +86,7 @@ class PolicyGradient(ReinforcementLearner):
                  batch_size,
                  crit=REINFORCELoss(),
                  action_selector=sp.PolicyGradientActionSelection(),
+                 memory=None,
                  memory_size=1000,
                  gamma=.95,
                  grad_clip=None,
@@ -115,16 +116,26 @@ class PolicyGradient(ReinforcementLearner):
             dump_path:          dump path for the model and the callbacks
             device:             device to run the model on
         """
+        if memory is None and (memory_size is None or n_samples is None or batch_size is None):
+            raise ValueError('Learner lacks the memory, it has to be explicitly given, or defined by the params:'
+                             '`memory_size`, `n_samples`, `batch_size`')
+        if memory is not None and (memory_size is not None or
+                                   n_samples is not None or
+                                   batch_size is not None):
+            raise ValueError('Ambiguous memory specification, either `memory` or `memory_size`, `n_samples`, '
+                             '`batch_size` have to be provided')
+        if memory is None:
+            memory = Memory(['log_prob', 'reward'],
+                            buffer_size=memory_size,
+                            n_samples=n_samples,
+                            gamma=gamma,
+                            batch_size=batch_size)
         super().__init__(model=model,
                          optimizer=optimizer,
                          crit=crit,
                          env=env,
                          gamma=gamma,
-                         memory=Memory(['log_prob', 'reward'],
-                                       buffer_size=memory_size,
-                                       n_samples=n_samples,
-                                       gamma=gamma,
-                                       batch_size=batch_size),
+                         memory=memory,
                          memory_updater=memory_updater,
                          action_selector=action_selector,
                          grad_clip=grad_clip,
@@ -190,10 +201,6 @@ class PolicyGradient(ReinforcementLearner):
             episode_reward += reward
             episode_memory.memorize((log_prob, torch.tensor(reward).float()), ['log_prob', 'reward'])
             observation = new_observation
-            # terminate = done or (self.env.max_episode_length is not None
-            #                      and step_counter >= self.env.max_episode_length)
-            # if render:
-            #     self.env.render()
 
         episode_memory.cumul_reward()
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
@@ -309,13 +316,26 @@ class QLearner(ReinforcementLearner):
             target = prediction.clone().detach()
             max_next = self.get_max_Q_for_states(new_state)
 
-            mask = one_hot_encoding(action, n_categories=self.env.action_space).type(torch.BoolTensor)
+            mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor)
             target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                        reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)))
+                    reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)))
 
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
             self._backward(loss)
+
+        # This is using the DQL loss defined in 'Asynchronous Methods for Deep Reinforcement Learning' by Mnih et al.,
+        # though this is not working
+        # for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
+        #     action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
+        #         self.device), new_state.to(self.device)
+        #     prediction = self.model(state.squeeze(1))
+        #     max_next = self.get_max_Q_for_states(new_state)
+        #     mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor)
+        #
+        #     loss = self.crit(gamma=self.gamma, pred=prediction[mask], max_next=max_next, reward=reward)
+        #     self.train_dict['train_losses'] += [loss.item()]
+        #     self._backward(loss)
 
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
@@ -334,26 +354,22 @@ class QLearner(ReinforcementLearner):
         step_counter = 0
         terminate = False
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
-        # self.eval()
         with eval_mode(self):
             while not terminate:
                 step_counter += 1
                 with torch.no_grad():
                     action = self.chose_action(self, observation)
-                new_observation, reward, done, _ = self.env.step(action)
+                new_observation, reward, terminate, _ = self.env.step(action)
 
                 episode_reward += reward
                 episode_memory.memorize((action,
                                          observation,
                                          torch.tensor(reward).float(),
                                          new_observation,
-                                         done),
+                                         terminate),
                                         ['action', 'state', 'reward', 'new_state', 'terminal'])
                 observation = new_observation
-                terminate = done or (self.env.max_episode_length is not None
-                                     and step_counter >= self.env.max_episode_length)
 
-        # self.train()
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
 
@@ -510,7 +526,7 @@ class SARSA(DoubleQLearner):
                 self.device), next_state.to(self.device)
             prediction = self.model(state.squeeze(1))
             next_action = one_hot_encoding(next_action).to(self.device)
-            with eval_mode(self):   # @todo this is not working with DDQN so far
+            with eval_mode(self):  # @todo this is not working with DDQN so far
                 next_Q = (self.target_model(next_state.squeeze(1)) * next_action).sum(1)
             target = prediction.clone().detach()
 
@@ -569,6 +585,144 @@ class SARSA(DoubleQLearner):
                                 ['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'])
 
         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
+        self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
+
+        if episode_reward > self.train_dict.get('best_performance', -np.inf):
+            self.train_dict['best_performance'] = episode_reward
+
+        return episode_reward
+
+
+class A3C(PolicyGradient):
+    def __init__(self,
+                 critics,
+                 env,
+                 model,
+                 optimizer,
+                 memory_updater,
+                 n_samples,
+                 batch_size,
+                 crit=REINFORCELoss(),
+                 action_selector=sp.PolicyGradientActionSelection(),
+                 memory=None,
+                 memory_size=1000,
+                 gamma=.95,
+                 grad_clip=None,
+                 load_checkpoint=False,
+                 name='',
+                 callbacks=None,
+                 dump_path='./tmp',
+                 device='cpu'):
+        if memory is None and (memory_size is None or n_samples is None or batch_size is None):
+            raise ValueError('Learner lacks the memory, it has to be explicitly given, or defined by the params:'
+                             '`memory_size`, `n_samples`, `batch_size`')
+        if memory is not None and (memory_size is not None or
+                                   n_samples is not None or
+                                   batch_size is not None):
+            raise ValueError('Ambiguous memory specification, either `memory` or `memory_size`, `n_samples`, '
+                             '`batch_size` have to be provided')
+        if memory is None:
+            memory = Memory(['log_prob', 'reward', 'state'],
+                            buffer_size=memory_size,
+                            n_samples=n_samples,
+                            gamma=gamma,
+                            batch_size=batch_size)
+        super().__init__(env=env,
+                         model=model,
+                         optimizer=optimizer,
+                         memory_updater=memory_updater,
+                         n_samples=None,
+                         batch_size=None,
+                         crit=crit,
+                         action_selector=action_selector,
+                         memory=memory,
+                         memory_size=None,
+                         gamma=gamma,
+                         grad_clip=grad_clip,
+                         load_checkpoint=load_checkpoint,
+                         name=name,
+                         callbacks=callbacks,
+                         dump_path=dump_path,
+                         device=device)
+        self.critics = critics  # @todo probably create it in here
+
+    def fit_epoch(self, device, verbose=1):
+        if verbose:
+            print('fitting actor')
+        actor_loss = self.fit_epoch_actor(device=device, verbose=verbose)
+        if verbose:
+            print('fitting critics')
+        critics_loss = self.critics.fit_epoch(device=device, verbose=verbose)
+        return (actor_loss + critics_loss) / 2
+
+    def fit_epoch_actor(self, device, verbose=1):
+        """
+        Train a single epoch.
+
+        Args:
+            device: device t-o run it on 'cpu' or 'cuda'
+            verbose: verbosity of the learning
+
+        Returns:
+            current loss
+        """
+        self.memory_updater(self)
+        self.model.train()
+        self.model.to(device)
+
+        losses = []
+        with train_mode(self):
+            for batch, (log_prob, reward, state) in tqdm(enumerate(self.train_loader)):
+                log_prob, reward = log_prob.to(device), reward.to(device)
+                loss = self.crit(log_prob, reward, baseline=self.critics.get_max_Q_for_states(state))
+                self._backward(loss)
+                losses += [loss.item()]
+        loss = np.mean(losses)
+        self.train_dict['train_losses'] += [loss]
+        # self.train_dict['epochs_run'] += 1
+        if verbose == 1:
+            print(f'epoch: {self.train_dict["epochs_run"]}\t'
+                  f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
+                  f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
+        return loss
+
+    def play_episode(self, render=False):
+        """
+        Plays a single episode.
+        This might need to be changed when using a non openAI gym environment.
+
+        Args:
+            render (bool): render environment
+
+        Returns:
+            episode reward
+        """
+        observation = self.env.reset().detach()
+        episode_reward = 0
+        step_counter = 0
+        terminate = False
+        episode_memory_pg = Memory(['log_prob', 'reward', 'state'], gamma=self.gamma)
+        episode_memory_q = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
+
+        while not terminate:
+            step_counter += 1
+            action, log_prob = self.chose_action(self, observation)
+            new_observation, reward, terminate, _ = self.env.step(action)
+
+            episode_reward += reward
+            episode_memory_pg.memorize((log_prob, torch.tensor(reward).float(), observation),
+                                       ['log_prob', 'reward', 'state'])
+            episode_memory_q.memorize((action,
+                                       observation,
+                                       torch.tensor(reward).float(),
+                                       new_observation,
+                                       terminate),
+                                      ['action', 'state', 'reward', 'new_state', 'terminal'])
+            observation = new_observation
+
+        episode_memory_pg.cumul_reward()
+        self.train_loader.memorize(episode_memory_pg, episode_memory_pg.memory_cell_names)
+        self.critics.train_loader.memorize(episode_memory_q, episode_memory_q.memory_cell_names)
         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
 
         if episode_reward > self.train_dict.get('best_performance', -np.inf):

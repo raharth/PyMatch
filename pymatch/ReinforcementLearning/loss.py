@@ -6,9 +6,10 @@ class REINFORCELoss(nn.Module):
     def __init__(self):
         super(REINFORCELoss, self).__init__()
 
-    def forward(self, log_prob, rewards):
-        advantage = (rewards - rewards.mean())
-        return -(log_prob * advantage).sum()
+    def forward(self, log_prob, rewards, baseline=None):
+        if baseline is None:
+            baseline = rewards.mean()
+        return -(log_prob * rewards - baseline).sum()
 
 
 class REINFORCELoss_moving_average(nn.Module):
@@ -25,3 +26,15 @@ class REINFORCELoss_moving_average(nn.Module):
 
         advantage = (rewards - self.m_avg).detach()
         return -(log_prob * advantage).sum()
+
+
+class DQNLoss(nn.Module):
+    """
+    Loss according to 'Asynchronous Methods for Deep Reinforcement Learning' by Mnih et al.
+    Strangely, this is not properly learning though...
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, gamma, pred, max_next, reward):
+        return (reward + gamma * max_next - pred).mean() ** 2

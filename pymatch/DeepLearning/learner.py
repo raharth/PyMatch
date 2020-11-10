@@ -184,7 +184,7 @@ class Learner(ABC):
             train_loss = self.fit_epoch(device)
 
             # tracking training performance
-            if train_loss < self.train_dict['best_train_performance']:
+            if train_loss < self.train_dict.get('best_train_performance', -np.inf):
                 self.train_dict['best_train_performance'] = train_loss
 
             self.train_dict['epochs_run'] += 1
