@@ -41,7 +41,7 @@
 	\noindent\hrulefill
 	\begin{center}
 		\LARGE{\textsc{
-			Uncertainty Estimation in Deep Reinforcement Learning\\
+			Reviewing Uncertainty Estimation \\in Deep Reinforcement Learning\\
 		}}
 	\end{center}
 	\vspace{0.1cm}
@@ -75,174 +75,208 @@
 		\end{tabular}
 	\end{center}
 
-
-%    \title{Uncertainty Awareness and Risk Aversion in Deep Reinforcement Learning}
-%    \date{\today}
-%    \author{
-%        Jonas Goltz / Prof. Dr. Spieler \\
-%        Fakultät 07\\
-%        Hochschule München\\
-%        goltz.jonas@googlemail.com\\
-%        }
-%    \maketitle
 	\newpage
 
-%    \begin{abstract}
-%
-%    \end{abstract}
 	\tableofcontents
+
 	\newpage
 
     \thispagestyle{fancy}
 
 
     \section{Introduction}\label{sec:introduction}
-    \lipsum[1]
+    In recent years Reinforcement Learning (RL) and Deep Reinforcement Learning (DRL) have shown to be one of the most powerful tools when it comes to complex problem solving in game like environments as Atari Games~\cite{mnih_asynchronous_2016}~\cite{mnih_human-level_2015}~\cite{van_hasselt_deep_2015}, Chess, shogi, Go~\cite{silver_general_2018} or StarCraft~\cite{vinyals_grandmaster_2019}, even comparable to, or outperforming, human capabilities.
+	It has been show, that a single algorithm can learn different games from scratch without any additional input besides the rules of the game~\cite{silver_general_2018}.
+	With the rapid progress in the recent years, it is to expect that DRL is going to play an important role in applications like autonomous driving and automization tasks in factoring as discussed by Bicchi et al.~\cite{bicchi_safety_nodate}.
+	This assumption gives motivation to study uncertainty in DLR for various reasons.\\
+	Whenever algorithms have direct impact on humans or the environment it should be ensured that they do not pose a risk to either of them nor to themselves, which becomes even more important as soon as they have a physical appearance in the form of a robot.
+	In DLR there are two main sources of uncertainty, the first is the environment itself.
+	Many environments are either stochastic or have a high variance - or even both.
+	The second source of uncertainty is the model that learns, since even with perfect information there is no way to guarantee that a learning model picked up the underlying patter correctly, neither can we know if the model had sufficient data.
+	In addition, in real applications the model might encounter previously unseen situations or even distribution shifts, to which the model has no appropriate answer.
+	As discussed by some authors before especially modern DL has the tendency to overly confident in its predictions in the previously mentioned scenarios~\cite{gal_dropout_2016}.
+	The topic of uncertainty in DL as well as in RL have been studied before and various techniques and approaches have been suggested.
+	Unfortunately many of them are not applicable to DLR, since they either require the ground truth for the training data, or are based on specific RL algorithms like value- or policy-iteration, which are white box approaches and not generally applicable, especially not to DL.
+	In addition the the previously mentioned aspects, there is a second application for uncertainty, which focuses on sample efficiency - a topic especially important when it comes to highly complex environments, as previously discussed by Silva et al.~\cite{da_silva_uncertainty-aware_2020}.
+	Uncertainty can also be used to stir exploration as described by Pearce et al.~\cite{pearce_uncertainty_2018}.
+	This becomes even more crucial when we move to continuous environments, which we typically face in real life scenarios.\\
 
-	\subsection{Motivation}\label{subsec:motivation}
-	\lipsum[2]
+	Therefore, in this report we will investigate commonly used uncertainty estimation methods applicable to DLR and compare them on different learning frameworks on simple tasks provided by OpenAi gym.\\
+
+	The report is structured as following - first we will dive into the different learning frameworks used for this report and give a brief introduction and summary over them.
+	The learning frameworks use in this project are: Policy Gradient, Deep Q-Learning, Double Deep Q-Learning, Asynchronous Advantage Actor-Critics, SARSA.
+	We will then briefly explain the three most commonly used approaches for DLR, which are ensembling methods, Monte-Carlo Dropout and Boosting, before we dive into the practical implementation of the learning frameworks and uncertainty estimators used in this project.
+	We will close this report by analyzing the different approaches in combination with the different learning frameworks, comparing them to each other.
 
 	\section{Learning Frameworks}\label{sec:learning-frameworks}
 	Reinforcement Learning (RL) is defined as learning through feedback from interacting with an environment.
 	In this work we will only give a very brought overview of the general topic of RL as far as it is necessary to understand the adaption made for Deep Reinforcement Learning (DRL) and the implementation.
-	We assume the reader to be familiar with the overall concepts of RL and Markov Decision Processes.
+	We assume the reader to be familiar with the overall concepts of RL and Markov Decision Processes and we stay with the standard notation for those fields.
 	For an introduction to RL we refer to Sutton and Barto~\cite{sutton_introduction_1998}.\\
 
 	In general there are two different subtypes of RL algorithms, Policy Learning (PL) and Value Learning (VL).
-	VL learns the expected value $v \in V$ as mapping $F: S \rightarrow V$ or $F: S \times A \rightarrow V$, with the state space	$S$ and the action space $A$.
-	The policy $\pi$ is the derived from the estimated values using some heuristic as $\epsilon$-greedy or the softmax heuristic.\\
+	VL learns the values  $v \in V$ of states or actions, a proxy for the expected reward.
+	There are two subtypes of VL, where either values of states, or values of actions in a state are learned as mapping $F: S \rightarrow V$ or $F: S \times A \rightarrow V$, with the state space $S$ and the action space $A$.
+	The values of state-action function are often called Q-values.
+	The policy $\pi$ is derived from the estimated values for states or actions using some heuristic as $\epsilon$-greedy or the softmax heuristic.\\
+
 	In difference to that PL does not take the intermediate step of learning values, but directly learns the policy $\pi$ itself, approximating the mapping $F : S \times A \rightarrow [0, 1]$, represented as a probability distribution over the actions.
-	This difference it crucial when it comes to exploration strategies, since it can be freely chosen in VL, but is inherent to the agent in PL.\\
+	It does so by maximizing the probability for actions yielding a large reward, while minimizing the probability for actions that lead to smaller rewards.
+	This difference it crucial when it comes to exploration strategies, since in VL the exploration strategy can be freely chosen, while it is inherent to the agent in PL, hence cannot be chosen arbitrarily.\\
+
+	There is a second differentiation between RL algorithms, which is on-policy or off-policy learning.
+	Off-policy learning means, that the agent is able to learn from experiences generated following a different policy than the currently policy of the agent.
+	On-policy learning means, that the samples to learn from have to be generated using the current policy of the agent.
+	This strict restriction, can be partially dropped in practical applications, as long as the current policy does not deviate too much from the sample policy.\\
 
 	In general $F$ can be learned by any function approximator, in the most simple case of a small discrete state and action space this can even be done by a look-up table.
 	In DRL a neural network is used as a function approximator, utilizing their extraordinary generalization and feature extraction capabilities even in high dimensional and continuous spaces.\\
-	In the following sections we briefly introduce some of the most common learning frameworks used in DRL.
+	In this work we focus on some of the most commonly used learning frameworks in DRL, which we briefly introduce in the upcoming sections.\\
+
 
 	\subsection{REINFORCE}\label{subsec:policy-gradient}
 	The REINFORCE algorithm also know as Policy Gradient (PG) is part of the PL family.
-	Generally spoken it uses the reward for an action to modify the probability distribution over the actions, actions that yield an higher reward become more likely while those less promising become less likely.
-	The precise mathematics can be found in~\cite[Sutton]{sutton_introduction_1998} and~\cite[Williams]{williams_simple_1992}.
+	Generally spoken it uses the reward for an action to modify the probability distribution over the actions.
+	Actions that yield an higher reward become more likely while those less promising become less likely.
+	The precise mathematics can be found in~\cite{sutton_introduction_1998} and~\cite{williams_simple_1992}.
 	Implementing the update function
 	\[\theta \leftarrow \theta + \alpha \nabla \mathcal{L}\]
 	with
 	\[\nabla \mathcal{L} \approx \frac{1}{N} \sum^N_{i=1} \sum^T_{t=1} \nabla \log(\pi(a|s))\mathcal{R}\]
 	with
-	\[ \mathcal{R} = (\sum_{t'=t}^T r(s_{i, t'}|a_{i, t'})) \]
+	\[ \mathcal{R} = \sum_{t'=t}^T r(s_{i, t'}|a_{i, t'}) \]
 	where $\mathcal{R}$ is called the advantage.
-	The REINFORCE algorithm can be stabilized by using a reward baseline, subtracting the expected reward from the actual received one, replacing the reward $\mathcal{R}$ with the so called advantage $\mathcal{R}'$
+	In its raw form the REINFORCE algorithm has the disadvantage of being dependent on the scaling and shifting of the rewards, which potentially makes learning very slow.
+	It can be stabilized by using a reward baseline, subtracting the expected reward from the actual reward received, replacing the reward $\mathcal{R}$ with the so called advantage $\mathcal{R}'$
 	\begin{equation}\label{eq:advantage}
-		\mathcal{R}' = \sum_{t'=t}^T r(s_{i, t'}|a_{i, t'})) - \mathbb{E}[r(s, a)]
+		\mathcal{R}' = \sum_{t'=t}^T r(s_{i, t'}|a_{i, t'}) - \mathbb{E}[r(s, a)]
 	\end{equation}
 %	look this up the math looks somehow odd
-
-	REINFORCE is an on-policy RL algorithm.
+	REINFORCE is an on-policy RL algorithm, but it can benefit from ast experience using importance sampling, which means that past samples have to be weighted by the quotient $\frac{\pi_{old}(s)}{\pi_{new}(s)}$.
+	If the current policy does not deviate from the sample policy by a lot this means that $\frac{\pi_{old}(s)}{\pi_{new}(s)} \approx 1$, which can be therefore dropped.
+	This is a very fuzzy rule and the time horizon has to be handled carefully.
 
 	\subsection{Deep Q-Learning}\label{subsec:deep-q-learning}
 	Deep Q-Learning (DQN) was introduced by Mnih et al.~\cite{mnih_human-level_2015} and belongs to the family of VL algorithms, hence approximating the Q-Function $Q$ of a state-action pair.
 	It does so by using Temporal Difference Learning (TD)
-	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,(r + \gamma \max_{a'}Q(s', a'))\]
+	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,\Big(r + \gamma \max_{a'}Q(s', a')\Big)\]
 	where $\alpha$ is the learning rate, $\gamma$ is the discount factor, $s'$ is the next state reached after taking action $a$.
-	DQN belongs to the family of off-policy algorithms.
+	The network receives the current state and outputs the values for all possible actions to take.
+	DQN belongs to the family of off-policy algorithms, a property that is exploited by Double Deep Q-Learning, which will be introduced in section~\ref{subsec:double-deep-q-learning}.
 	
 	\subsection{Double Deep Q-Learning}\label{subsec:double-deep-q-learning}
-	Double Deep Q-Learning (DDQN)~\cite{van_hasselt_deep_2015} is a derivation of the DQN framework.
-	In difference to standard DQN it uses its property as an off-policy algorithm implementing replay memory and in addition a so called target network.
+	Double Deep Q-Learning (DDQN)~\cite{van_hasselt_deep_2015} is a derivation of the DQN algorithm as introduced above in section~\ref{subsec:deep-q-learning}.
+	In difference to standard DQN it uses its property as an off-policy algorithm implementing a replay memory and in addition a so called target network.
 	The replay memory is used to store previous experiences to learn from.
-	Each iteration, the agent updates a part of the memory with new episodes and then samples from its memory to update it weights.
-	This decouples the memories used in a forwad pass, which stabilizes the learning process and increases the sample efficiency, since the agent can learn from the same memory multiple times.
-	Replay memories have the drawback that they can only be used by an off-policy algorithm as DQN.\\
+	Each iteration, the agent updates a part of the memory with new episodes and then samples from its memory to update its weights.
+	This decouples the memories used in a forward pass from each other, which stabilizes the learning process.
+	It also increases the sample efficiency, since the agent can learn from the same memories multiple times.\\
 
 	In addition DDQN uses a target network parametrized by $\theta'$, which is used to evaluate the Q-Function for the next state $s'$.
 	Hence, the update function becomes
-	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,(r + \gamma \max_{a'}Q'(s', a'))\]
+	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,\Big(r + \gamma \max_{a'}Q'(s', a')\Big)\]
 	where $Q'$ is parametrized by $\theta'$.
 	In the default implementation $\theta'$ is periodically set to $\theta$ every couple of iterations, but it can also be dragged behind the main network with the update rule.
 	\[\theta' \leftarrow (1 - \delta) \theta' + \delta \theta\]
 	where $\delta \in [0,1]$ is the update fraction for the target network.
-	This stabilizes learning by fixing the target Q-values for several consecutive steps, therefore making it easier for the network to learn.
+	This stabilizes learning by fixing the target Q-values for several consecutive steps, therefore making it easier for the network to learn.\\
 
 	\subsection{SARSA}\label{subsec:sarsa}
 	SARSA, as introduced by Sutton~\cite{sutton_introduction_1998}, also belongs to the family of VL, but in difference to DQN it is a on-policy algorithm, implementing the update function
-	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,(r + \gamma Q'(s', a'))\]
-	where $a'$ is the actual taken action in the new state $s'$, which gives the name State Action Reward new State new Action.
+	\[Q(s,a) \leftarrow (1-\alpha)\, Q(s,a) + \alpha\,\Big(r + \gamma Q'(s', a')\Big)\]
+	where $a'$ is the actual taken action in the new state $s'$, which gives the name State, Action, Reward, new State, new Action.
 	Interestingly, regardless of its on-policy property, it can be implemented using a replay memory, as long as  old memories are replaced recently enough so that the weights have not diverged too much from those, when the memory was collected.\\
-	The SARSA framework has the interesting property of being able to incorporate aleatoric uncertainty into the learning process, therefore avoiding potentially risky situations as shown by Sutton~\cite{sutton_introduction_1998}.
+	The SARSA framework has the interesting property of being able to incorporate aleatoric uncertainty that stems from the environment into the learning process, therefore avoiding potentially risky situations as shown by Sutton~\cite{sutton_introduction_1998}.\\
 
 	\subsection{A3C}\label{subsec:a3c}
 	The Asynchronous Advantage Actor Critic (A3C) by Mnih et al.~\cite{mnih_asynchronous_2016} is an extension of the actor-critics algorithm by Konda et al.~\cite{konda_actor-critic_2000}.
-	The fundamental idea of actor-critics algorithms is to replace the advantage~\ref{eq:advantage} by a learned function approximation, in other words a DQN in the setting of DRL.
+	A3C consists of two networks, a REINFORCE agent and a DQN, and a common memory
+	The fundamental idea of actor-critics algorithms is to replace the advantage from Equation~\ref{eq:advantage} by a learned function approximation, represented by the DQN agent.
+	In this case asynchronous refers to its property of a partially off-policy algorithm, meaning that it can also learn from past experiences.
 
 	\section{Uncertainty}\label{sec:uncertainty}
-	There are two different types of uncertainty in Reinforcement Learning.
-	Aleatoric uncertainty arising from the uncertainty/stochasticity of the environment.
-	Epistemic uncertainty arises from the uncertainty of the learning process.
-	Differentiating between the two of them is important, since e.g. even an infinitely powerful learner, will only be able to prevent epistemic uncertainty, but can never reduce aleatoric uncertainty.
-%	Write some more about it and why this is important, also cite some source
+	There are two different types of uncertainty in Reinforcement Learning as described by Clements et al.~\cite{clements_estimating_2020}.
+	First, aleatoric uncertainty arising from the uncertainty/stochasticity of the environment, second epistemic uncertainty arises from the uncertainty of the learning process.
+	It is worth mentioning, that in this context the sensory of the agent is considered as part of the environment, meaning that it is viewed as part of the aleatoric uncertainty.
+	Differentiating between the two of them is important, since a learner has no impact on the aleatoric uncertainty, regardless of how powerful the framework it uses is.
+	For example, even an infinitely powerful learner, will only be able to prevent epistemic uncertainty, meaning that it never makes the - in a probabilistic sense - wrong decision.
+	Regard of that, it is not able to reduce or affect the stochasticity of the environment or its sensory.
+	It is to stress, that most DL uncertainty estimation techniques try to estimate the epistemic uncertainty, inherent to the model, which in turn also is the uncertainty typically underestimated by DL.\\
 
 	\subsection{Uncertainty Estimation}\label{subsec:uncertainty-estimation}
-	In modern RL and DL there are several ways of approximating and adjusting for uncertainty, but not all of those methods developed for either of them are applicable for DRL.
+	In modern RL and DL there are several ways of approximating and adjusting for uncertainty, unfortunately not all of those methods developed for either of them are applicable for DRL.
 	The most commonly used approaches of uncertainty estimation in DLR, essentially boil down to different versions of ensemble methods.
-	The following sections introduce three different types of uncertainty estimation in DL, which are applicable to RL.
+	The following sections introduce three different types of uncertainty estimation in DL, which are broadly applied in DRL.\\
 
 	\subsection{Ensemble}\label{subsec:ensemble}
-	Ensemble methods are a commonly used approach in which several usually weak learners are combined to obtain a strong learner.
+	Ensemble methods are a commonly used approach in which several usually weak learners are combined to obtain a strong learner. % cite some reference
 	When using it in the context of DL an ensemble usually refers to a set of models, that were trained on different folds of the same data, aggregating their predictions either by averaging over the models or by applying a majority vote.
-	When aggregating the models you can either estimate a variance over the prediction when using the average, or computing the entropy in case of a majority vote.
-	For the sake of simplicity we refer to both, variance and entropy, as variance.
-	In the context of DRL, ensembling means to train multiple agents on the same environment using different replay memories for each individual agent.
+	When aggregating the models you can either estimate a variance over the prediction when using the average, or computing the entropy in case of labels as it is the case in majority voting.
+	For the sake of simplicity we refer to both, variance and entropy, as variance. %really wanna keep that?
+	The variance is then used as an approximation of the uncertainty of the model, the higher the variance, the less certain the model is about the prediction.
+	In the context of DRL, ensembling means to train multiple agents on the same environment using different replay memories for each individual agent.\\
 
 	\subsection{MC-Dropout}\label{subsec:mc-dropout}
-	MC-Dropout as introduced by Gal et al.~\cite{gal_dropout_2016}, takes the point of view of dropout as an infinite ensemble technique where the different models of the ensemble share certain sections of their weights.
-	In MC-Dropout one uses the dropout not only during training but also during inference, propagating the same input through different sub-graphs of the model.
-	The obtained multiple predictions on the same output can then be aggregated in the same way as for a regular ensemble.
+	MC-Dropout as introduced by Gal et al.~\cite{gal_dropout_2016}, takes the point of view of dropout as an infinite ensemble technique where the different models of the ensemble share certain intersections of their weights.
+	In MC-Dropout one uses the dropout not only during training but also during inference, propagating the same input through different sub-graphs of the model to obtain multiple predictions of the same data points.
+	The obtained predictions are then aggregated in the same way as for a regular ensemble, by either using averages and standard deviations or majority voting and entropy.\\
 
 	\subsection{Bootstrapping}\label{subsec:bootstrapping}
 	In standard Machine Learning, bootstrapping refers to resampling your data with replacement, to train multiple models each on its individual resampled data set.
 	In DL bootstrapping is implemented in a slightly different way as introduced by Osband et al.
 	~\cite{osband_deep_2016}.
-	Instead of using several independent models, bootstrapping in DL means to train several models with a common core, but multiple heads each on different subsets of the data.
-	This minimizes the computation computational costs, by a single forward pass through the core, with only the multiple heads increasing the computational complexity.
+	Instead of using several independent models, bootstrapping in DL trains several models with a common core, but multiple heads each on different subsets of the data.
+	This minimizes the computational costs, by a single forward pass through the core, with only the multiple heads increasing the computational complexity.\\
 
 	\section{Implementation}\label{sec:implementation}
 	In this section we will focus on the technical implementation of the learning frameworks and certainty evaluation methods mentioned before.
+	First we will have a brief look at the advantages and disadvantages of the two main frameworks currently used in DL, before we dive into the framework developed in the context, but not limited to, this project.\\
 
 	\subsection{Tensorflow vs. PyTorch}\label{subsec:tensorflow-vs.-pytorch}
-	There are two main frameworks to work with in DL, Tensorflow developed by Google and PyTorch developed by facebook.
-	For this section we will focus on the aspects which are important when developing Neural Networks and neglect aspects relevant for deployment.\\
+	There are two main Python frameworks to work with in DL, Tensorflow developed by Google and PyTorch developed by facebook.
+	For this section we will focus on the aspects which are important when developing and implementing Neural Networks and neglect aspects relevant for deployment of such models.\\
 
 %	static vs dynamic
-	Both of them are highly performant and much used frameworks but they take a different approach in the backend.
-	While Tensorflow compiles to a single C or CUDA block, PyTorch uses the approach of a script language only calling C and CUDA routines.
-	From that follows, that Tensorflow works with static, pre-compiled graphs, while PyTorch is able to work with entirely dynamic graphs, that can be change anytime during runtime.
-	Though the dynamic of PyTorch comes with the disadvantage of a slightly worse performance in term of run time, making PyTorch slower then Tensorflow.\\
+	Both of them are highly performant and much used frameworks.
+	Even though they both implement the same logic, they take a different approach in the backend.
+	While Tensorflow compiles to a single C or CUDA block which is then executed at once, PyTorch uses the approach of a script language only calling precompiled C and CUDA routines.
+	From that follows, that Tensorflow works with static, precompiled graphs, while PyTorch is able to work with entirely dynamic graphs, that can be change anytime during runtime.
+	Though, the dynamic of PyTorch comes with the disadvantage of a slightly worse performance in term of run time, making PyTorch slower then Tensorflow.\\
 
 %	device
-	Another difference is the device handling where PyTorch gives you full control over the device to be used for code execution, meaning that you can switch back and forth between the CPU and potentially multiple different GPU in a single forward pass, while Tensorflow defines the device for the entire session.
+	Another difference is the handling of the device to run the model on, where device refers to the CPU or one or multiple GPUs.
+	PyTorch gives you full dynamic control over the device to be used for code execution, meaning that you may switch back and forth between the devices in a single forward pass, while Tensorflow defines the device for the entire session.
 	This might not seem to be a fundamental difference, but it can have advantages over being fixed on a single device.
-	Though, it comes with the drawback of the necessity to handle the devices manually, which we will come back to later.\\
+	On the other hand, this comes with the drawback of the necessity to handle the devices manually, when working with PyTorch.\\
 
 %	debugging
 	Having a dynamic graph as PyTorch has a large advantage when it comes to debugging.
-	Essentially you have access to all tensors all the time during the execution, it is even possible to step through every single step of the forward pass by setting breaking points.
+	Essentially you have access to all tensors all times during the execution.
+	It is also possible to step through every single step of the forward pass by setting breaking points, or manually executing them, for example in an iPython session.
 	Unfortunately, this is not possible with Tensorflow, which essentially is a black box with very limited access, making debugging a very tedious process.
 %	Visulization
-	Tensorflow counters that problem by providing a very handy visualization tool called tensorboard, which enables you to plot distributions and metrics during runtime.
-	PyTorch itself does not provide a tool like that by itself, but there are similar tools that can be used with PyTorch.\\
+	Tensorflow counters this problem by providing a very handy visualization tool called tensorboard, which enables you to plot distributions and metrics during runtime.
+	PyTorch itself does not provide a tool like that by itself, but there are similar tools that can be used with it.\\
 
 %	Tedious code
 	One disadvantage of Tensorflow is the sometimes tedious handling of input tensors and sessions.
 	For this reason Tensorflow introduced the keras framework, a wrapper around tensorflow taking over most of the tensor and session handling necessary in Tensorflow.
-	Though, it comes with disadvantages when it comes to more complex network architectures, while not solving the black box problem mentioned before.
+	Though, it comes with disadvantages when it comes to more complex network architectures, making it either complicated to implement those architectures or very slow in execution, even compared to the slower PyTorch. % this comes from some medium article...
+	Nevertheless, keras simplifies the use of Tensorflow by a lot.
 	Unfortunately, PyTorch has no similar wrapper abstracting the learning frameworks, an aspect which we will come back to in section~\ref{subsec:pymatch}.\\
 
-	Since we are not working with extremely large models for which runtime might become an important factor, we value flexibility and access to the model over speed, hence choosing PyTorch as our framework.\\
+	For this project and the framework we develop, we decided to go with PyTorch.\\
+	This is due to us not using extremely large models for which runtime might become an important factor.
+	On the scale used in this project an efficient implementation around the framework is of far bigger importance than the performance of the learning framework itself.
+	Also, we value flexibility and access to the model over speed, so that we have the most possible access to the model and weights during all times.\\
 
 	\subsection{PyMatch}\label{subsec:pymatch}
-	In this project we work with multiple different DRL frameworks and a couple of different uncertainty estimators in combination with a number of different environments.
+	In this project we work with multiple different DRL frameworks and in combination with different uncertainty estimators on a number of different environments.
 	This makes it a very tedious and error-prone work to implement all learning frameworks with the different uncertainty estimators, where the same code snippets have to be written over and over again.
 	As mentioned before PyTorch has no abstraction layer for learning frameworks as rudimentary provided by keras for Tensorflow, for which reason we introduce PyMatch, a learning framework abstraction build around PyMatch.
 	In difference to keras PyMatch does not solely aim to take over the tedious data- and graph-handling as keras does, but it is meant to abstract the learning framework in a modular way, while not restricting the model architecture in any way.
-	The core idea of PyMatch is to build everything from exchangeable modules using a fixed interface between them, making code as reusable as possible.\\
+	The core idea of PyMatch is to build everything from exchangeable modules using a fixed interface between them, making code as reusable as possible.
+	PyMatch comes with a versioned installable, making it easy to distribute ensuring reproducibility of experiments.\\
 
 	\subsubsection{Learner}
 	The fundamental abstraction core of PyMatch the the so called Learner.
@@ -251,39 +285,53 @@
 	It also provides an easy way of storing and loading your model, including the optimizer and the loss, restoring their states.
 	It also holds a member train\_dict which can be used to store all kinds of metrics and values over the training process.
 	This train\_dict is also stored and loaded automatically, which frees the user of annoying and unnecessary data-loss or juggling saving and loading operations all over the learning script.
-	In addition Learners can be moved and trained on devices, so the tiresome swapping of variables from and to devices is handled by the Learner itself.
-	Each learning task can be implemented as a Learner, for this project it means that all learning frameworks mentioned in~\ref{sec:learning-frameworks} as its own Learner implementation, building upon each other.
+	In addition Learners can be moved and trained on devices, so the tiresome manual swapping of variables from and to devices is handled by the Learner itself.
+	Each learning task can be implemented as a Learner, for this project it means that all learning frameworks mentioned in Section~\ref{sec:learning-frameworks} has its own Learner implementation, building upon each other.
 
 	\subsubsection{Reinforcement Learners}
 	Since this work is focussing on DRL we will describe the DRL Learners, also called Agents, in more depth.
-	For the most simple DRL Agents, there are just few changes to make.
+	For the most simple DRL Agents, there are just few changes to make compared to a standard supervised task.
 	First, instead of a standard data loader as in data driven learning frameworks, Agents have a memory, an environment they are interacting with and an action selection strategy.
-	Memories provide the same interface as standard data loaders, but they are meant to change over time.
-	In addition they provide additional functionality as storing and discounting rewards.
+	Memories provide the same interface as standard data loaders, but they are meant to change over time, providing additional functionality as storing and discounting rewards.
 	They also have a defined length and refresh rate.
 	The second change made for Agents is that they define they way how the agent interacts with their environment.
-	This includes the way they interact, select their actions based on their strategy and the way they store memories.
-	We have implemented all learning frameworks mentioned in~\ref{sec:learning-frameworks}, building upon the general Learner as well as on eachother\\
+	This includes the way they act, select their actions based on their strategy and the way they store memories or discount their rewards over time.
+	We have implemented all learning frameworks mentioned in~\ref{sec:learning-frameworks}, building upon the general Learner as well as on each other.\\
 	
 	
 %	environments
 	For our Agents we have chose to follow the interface implemented by the popular openAI gym~\cite{openai_gym_nodate} environments.
 	This means that our agents work with any environment that implements the same interface without any further adjustments.
 %	action selection
-	For action selection we have implemented several different strategies.
-	\begin{itemize}
-		\item A greedy action selection, which is primarily used for evaluation purpose
-		\item An $\epsilon$-greedy approach, taking a random action with the probability $\epsilon$
-		\item A what we call distributional action selection, assuming a discrete or continuous probability distribution over the actions to sample from, as used for a Policy Gradient
-		\item A softmax action selection, controlled by a temperature parameter, which can be used with all kinds of value based agents
-		\item Thompson sampling, assuming a set of values with a confidence bound, sampling them for the respective Gaussian distribution
-	\end{itemize}
-	Those strategies can be used in any combination with our agents, though not all possible combinations make sense mathematically.
-	For example combining a Policy gradient with a $\epsilon$-greedy-action selection is not a reasonable thing to do.
+	For action selection we have implemented several strategies.\\
+
+	First of all the greedy action selection, which always takes the best action according to the current policy.
+	This strategy is not meant to be used during learning, since it lacks exploration, hence an agent using this strategy will never learn.
+	This strategy is solely meant to be used during evaluation of an agent.\\
+
+	We have also implemented an $\epsilon$-greedy selection strategy, which is the most basic strategy suggested by Sutton and Barto~\cite{sutton_introduction_1998}.
+	It always chooses the best possible action, with the exception of a probability of $\epsilon$, where it selects a random action.\\
+
+	For agents directly learning the policy, we have implemented a simple sampling strategy, either discrete or continuous, where an action is selected based on the distribution provided by the prediction of the agent.\\
+
+	As a slightly more advances selection strategy of value based learners we have also implemented a softmax action selection strategy, where actions are selected based on the distribution of the values.
+	The randomness of this strategy is controlled by a temperature parameter.
+	This strategy implements the function
+	\[\frac{e^{t \cdot v_i }}{\sum_J e^{t \cdot v_j}}\]\\
+
+	The last selection strategy implemented is Thompson Sampling, which is closely related to the Bayesian framework.
+	This strategy assumes the posterior of the value function to be known, from which the state-action-values are then sampled.
+	In our case this can be approximated by the variance over the predicted values function, meaning the output of the agents model.\\
+
+	The strategies implemented can be used in any combination with our agents, though not all possible combinations make mathematically sense.
+	For example combining a Policy gradient with a $\epsilon$-greedy-action selection is not a reasonable thing to do, since we violate the on-policy requirement of the agent. %assumption? property? better words?
+
+%%%%%%%%%%%%%%%% proof read from here on
 
 	\subsubsection{Experiments}
-	PyMatch provides a very simple experiment documentation class, which exist in two versions: a homebrew one, storing everything on your local machine and one that uses the weights and bias (wandb) interface, monitoring even the hardware of your machine.
-	Though to use wandb you need to create your own account.
+	PyMatch provides a very simple experiment documentation class, which exist in two versions: a local one, storing everything on your local machine and one that uses the weights and bias (wandb) interface~\cite{noauthor_weights_nodate}, monitoring even the hardware of your machine.
+	Experiments are meant to make experiments reproducible, reading and storing parameters, architecture and training script from and to the local drives.
+%	Though to use wandb you need to create your own account.
 	PyMatch Experiments are designed to be used with three files defining the experiment:
 	\begin{enumerate}
 		\item a model-file: This file contains the nn.Module only requiring a defined foward() method
@@ -373,4 +421,3 @@
 	\bibliography{references}
 	\bibliographystyle{plain}
 \end{document}
-
