@@ -43,4 +43,3 @@ class CartPole(TorchGym):
         if self.steps == 500:
             reward = 0
         return observation, reward, done, info
-
