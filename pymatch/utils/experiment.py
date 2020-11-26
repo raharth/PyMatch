@@ -7,10 +7,11 @@ import sys
 import wandb
 from pymatch.DeepLearning.learner import Learner
 from pymatch.utils.exception import OverwriteException
+from pymatch.utils.hardware_monitor import HardwareMonitor
 
 
 class Experiment:
-    def __init__(self, root):
+    def __init__(self, root, hw_monitor=False, hw_sleep=30, hw_path_extension='monitoring.csv'):
         """
         Experiment class, used for documenting experiments in a standardized manner.
 
@@ -21,6 +22,7 @@ class Experiment:
         self.start_time = datetime.datetime.now()
         self.info = {"mode": "interactive" if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
                                            else "script"}
+        self.hw_monitor = HardwareMonitor(path=f'{root}/{hw_path_extension}', sleep=hw_sleep) if hw_monitor else None
 
     def get_params(self, param_source='params.json'):
         """
@@ -93,6 +95,8 @@ class Experiment:
         self.info['PyMatch-version'] = os.popen('pip show pymatch').read()
         self.info['start time'] = str(self.start_time)
         self.write_json(self.info)
+        if self.hw_monitor is not None:
+            self.hw_monitor.monitor()
 
     def finish(self):
         """
@@ -105,6 +109,8 @@ class Experiment:
         self.info['finish time'] = str(datetime.datetime.now())
         self.info['time taken'] = str(datetime.datetime.now() - self.start_time)
         self.write_json(self.info)
+        if self.hw_monitor is not None:
+            self.hw_monitor.terminate = True
 
     def write_json(self, data, path='meta_data.json'):
         """

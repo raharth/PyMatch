@@ -97,7 +97,7 @@
 	As discussed by some authors before especially modern DL has the tendency to overly confident in its predictions in the previously mentioned scenarios~\cite{gal_dropout_2016}.
 	The topic of uncertainty in DL as well as in RL have been studied before and various techniques and approaches have been suggested.
 	Unfortunately many of them are not applicable to DLR, since they either require the ground truth for the training data, or are based on specific RL algorithms like value- or policy-iteration, which are white box approaches and not generally applicable, especially not to DL.
-	In addition the the previously mentioned aspects, there is a second application for uncertainty, which focuses on sample efficiency - a topic especially important when it comes to highly complex environments, as previously discussed by Silva et al.~\cite{da_silva_uncertainty-aware_2020}.
+	In addition the previously mentioned aspects, there is a second application for uncertainty, which focuses on sample efficiency - a topic especially important when it comes to highly complex environments, as previously discussed by Silva et al.~\cite{da_silva_uncertainty-aware_2020}.
 	Uncertainty can also be used to stir exploration as described by Pearce et al.~\cite{pearce_uncertainty_2018}.
 	This becomes even more crucial when we move to continuous environments, which we typically face in real life scenarios.\\
 
@@ -138,7 +138,7 @@
 	The REINFORCE algorithm also know as Policy Gradient (PG) is part of the PL family.
 	Generally spoken it uses the reward for an action to modify the probability distribution over the actions.
 	Actions that yield an higher reward become more likely while those less promising become less likely.
-	The precise mathematics can be found in~\cite{sutton_introduction_1998} and~\cite{williams_simple_1992}.
+	The precise mathematics can be found in Barto and Sutton~\cite{sutton_introduction_1998} and and Williams et al.~\cite{williams_simple_1992}.
 	Implementing the update function
 	\[\theta \leftarrow \theta + \alpha \nabla \mathcal{L}\]
 	with
@@ -152,7 +152,7 @@
 		\mathcal{R}' = \sum_{t'=t}^T r(s_{i, t'}|a_{i, t'}) - \mathbb{E}[r(s, a)]
 	\end{equation}
 %	look this up the math looks somehow odd
-	REINFORCE is an on-policy RL algorithm, but it can benefit from ast experience using importance sampling, which means that past samples have to be weighted by the quotient $\frac{\pi_{old}(s)}{\pi_{new}(s)}$.
+	REINFORCE is an on-policy RL algorithm, but it can benefit from past experience using importance sampling, which means that past samples have to be weighted by the quotient $\frac{\pi_{old}(s)}{\pi_{new}(s)}$.
 	If the current policy does not deviate from the sample policy by a lot this means that $\frac{\pi_{old}(s)}{\pi_{new}(s)} \approx 1$, which can be therefore dropped.
 	This is a very fuzzy rule and the time horizon has to be handled carefully.
 
@@ -190,7 +190,7 @@
 
 	\subsection{A3C}\label{subsec:a3c}
 	The Asynchronous Advantage Actor Critic (A3C) by Mnih et al.~\cite{mnih_asynchronous_2016} is an extension of the actor-critics algorithm by Konda et al.~\cite{konda_actor-critic_2000}.
-	A3C consists of two networks, a REINFORCE agent and a DQN, and a common memory
+	A3C consists of two networks, a REINFORCE agent and a DQN, and a common memory.
 	The fundamental idea of actor-critics algorithms is to replace the advantage from Equation~\ref{eq:advantage} by a learned function approximation, represented by the DQN agent.
 	In this case asynchronous refers to its property of a partially off-policy algorithm, meaning that it can also learn from past experiences.
 
@@ -279,9 +279,9 @@
 	PyMatch comes with a versioned installable, making it easy to distribute ensuring reproducibility of experiments.\\
 
 	\subsubsection{Learner}
-	The fundamental abstraction core of PyMatch the the so called Learner.
+	The fundamental abstraction core of PyMatch the so called Learner.
 	A Learner is simply a hull around a network (torch.nn.Module), a dataloader, a loss function and an optimizer.
-	As with keras a Learner provides a fit() method, that trains the model on the provided data with the the given loss and optimizer.
+	As with keras a Learner provides a fit() method, that trains the model on the provided data with the given loss and optimizer.
 	It also provides an easy way of storing and loading your model, including the optimizer and the loss, restoring their states.
 	It also holds a member train\_dict which can be used to store all kinds of metrics and values over the training process.
 	This train\_dict is also stored and loaded automatically, which frees the user of annoying and unnecessary data-loss or juggling saving and loading operations all over the learning script.
@@ -326,67 +326,96 @@
 	The strategies implemented can be used in any combination with our agents, though not all possible combinations make mathematically sense.
 	For example combining a Policy gradient with a $\epsilon$-greedy-action selection is not a reasonable thing to do, since we violate the on-policy requirement of the agent. %assumption? property? better words?
 
-%%%%%%%%%%%%%%%% proof read from here on
-
 	\subsubsection{Experiments}
-	PyMatch provides a very simple experiment documentation class, which exist in two versions: a local one, storing everything on your local machine and one that uses the weights and bias (wandb) interface~\cite{noauthor_weights_nodate}, monitoring even the hardware of your machine.
-	Experiments are meant to make experiments reproducible, reading and storing parameters, architecture and training script from and to the local drives.
+	A fundamental concept in research is the reproducibility of experiments, which usually involves tedious hyperparameter documentation.
+%	Experiments are meant to make experiments reproducible, reading and storing parameters, architecture and training script from and to the local drives.
+	Therefore, PyMatch provides a rudimentary experiment documentation class, reading and writing all necessary parameters and scripts from the file system and storing them safely.
+	Even though not required, we recommend to use the suggested structure, since it ensures that all experiments can be reproduced any time, without the loss of hyperparameters or model architectures.
+%	which support local and cloud based storage, with the cloud-based version building upon weights and bias interface~\cite{noauthor_weights_nodate}, also monitoring the hardware of the machine.
 %	Though to use wandb you need to create your own account.
-	PyMatch Experiments are designed to be used with three files defining the experiment:
+	PyMatch Experiments are designed to be used with four files defining the experiment:
 	\begin{enumerate}
-		\item a model-file: This file contains the nn.Module only requiring a defined foward() method
-    	\item a factory-file: This file contains a factory method for the Learner, i.e. it defines how the Learner is created which loss and crit are used etc.
-    	\item a parameter-file: This file defines all additional hyper-parameter that are necessary to create and train the model
+		\item model-file
+		\item parameter-file
+		\item factory-file
+		\item train-script
 	\end{enumerate}
 
-	All three files can be easily loaded by a simple call of the Experiment class, provided by PyMatch.
-	Using this structure enables the user to use a single training script for all experiment runs and it ensures that an experiment always stays reproducible.
-	In addition the Experiment class can store the training script in the experiment folder, by a single method call.
+	The model-file contains the network architecture, meaning the torch Module derivative including its forward pass.
+	This file may include several modules, as necessary for A3C, or sub modules and can be simply read by a single method call of our Experiment class.\\
+	The parameter-file is a Jason file containing all necessary hyperparameters.
+	All parameters should be defined here.\\
+	The factory-file contains a single factory method, which constructs the learner with the model, loss, optimizer and other submodules necessary.\\
+	The train-script usually is a very general training script, which is called with the experiment root as argument.
+	From the root it is able to independently construct the learner and run the experiment.
+	Since nearly all information is given in the previously mentioned files, the train-script is nearly independent of the problem and does not have to be changed, when using different datasets, hyperparameters or learning frameworks.
+	The train-script can store itself in the experiment folder, or be called from there.
+	This ensures that changes made after the experiment was run will not affect the reproducibility of the experiment.\\
 
-	This structure is particularly useful when running multiple experiments with different architectures and hyper-parameters and is required when using the Ensemble class provided by PyMatch
+	Our Experiment class also writes rudimentary meta information, as the start time, the time taken, or the library version to a meta-file on the file system.
+	If it detects a meta-file in the experiment folder it was called with, it automatically terminates the learning, to avoid overwriting previously run experiments.\\
+
+	Our experiment class can be run in combination with weights\&biases~\cite{noauthor_weights_nodate}, using the same interface and the cloud storage provided by them.
+	It is to mention that weights\&biases does not sufficiently support ensembling methods in our experience, since it only supports one set of weights per experiment.
+
+
 
 	\subsubsection{Ensembles}
 	Abstracting learning frameworks and concepts with a standardized interface, as done by the Learner approach we take, has a big advantage when it comes to ensemble methods.
-	In principle the Ensemble is just a wrapper around a list of Learners, but it also has its own loading and storing method, its own train\_dict and callbacks.
-	When using the experiment structure as suggested above there is nearly no adjustment to make to go from a single Learner to an ensemble of Learners.
-	Though, using an ensemble disables you to work with wandb, since wandb is only able to store weights and metrics for a single model, but not multiple models wrapped in a single one (though you could store all of them individually).
+	In principle the Ensemble is just a wrapper around a list of Learners, training them either sequentially or semi-parallel.
+	Our Ensemble implementation has its own loading and storing method, loading and storing all subsequent learners.
+	In addition, it has its own train\_dict and callbacks, creating storing information regarding the ensemble as the aggregation of all subsequent learners.
+	When using the experiment structure as suggested above there is nearly no adjustment to make to build an ensemble from a single Learner, since the ensemble constructs its learners based on a factory method.
+	Ensembles provide the same fit() method as Learners, but they can partition the learning, meaning that all Learners are trained upto a certain step, before the training for the first learner is continued.
+	After each of those partitions the callbacks of the ensemble are called, which for example can be the evaluation of the ensemble as a whole, or to plot metrics from the learners or the ensemble.\\
 
-	The Ensemble comes with a KFold data folder, that can be used in the factory.
-	The Ensemble can also be used to easily implement Neural Network Boosting and automated hyper-parameter searches, if the factory of the ensemble is randomized or used with a predefined set of different hyper-parameters.
-
-	Ensembles provide the same fit() method as Learners do, but they can either train the Learners one by one or partition the training of the Learners.
-	After each of those partitions the callbacks of the ensemble are called, e.g. this can be the evaluation of the ensemble as a whole, or to plot metrics from the learners or the ensemble.
+	The Ensemble can also be used to easily implement Neural Network Boosting or automated hyper-parameter search, if the factory of the ensemble is randomized or used with a predefined set of different hyper-parameters.
 
 	\subsubsection{Hats}
-	Hats are meant to be placed on the head of a network or ensemble.
-	The idea is to keep the aggregation and handling of the models output as flexible as possible.
+	There are many ways to handle and aggregate the output of an ensemble, which might even be changed after the training process was completed.
+	For example ensembles can be used with a majority vote over actions or just averaged over all learners, in some cases you might even be interested in the top 3 predictions, or different forms of uncertainty estimation.
+	To avoid the tedious handing of such modifications, typically resulting in a large set of different training and evaluation scripts, we introduce the hat-concept.
+	Hats are meant to be placed on the head of a network or ensemble and perform some sort of aggregation or modification of the network output providing a standardized interface.
+	The idea is to keep the aggregation and handling of the models output separated from the model and the training process and keep it as flexible as possible.
 	Hats can also be stacked on the head of a network only requiring that the output and input of consecutive hats match.
 	This is particularly useful when dealing with ensembles, for either the aggregation of the different models or certainty estimations on the predicted values (e.g. estimating the standard deviation or the entropy).
-	Hats are usually not part of the training process but could be incorporated in the Learner as well.
-	
+	Hats are usually not part of the training process but could be incorporated in the Learner or evaluation callbacks as well.
+
 	\subsubsection{MC-Dropout}
-	Implementing Dropout using PyMatch is a straight forward thing.
-	There are only three minor adjustments you have to make compared to a standard Learner.
+	Implementing MC-Dropout using PyTorch is a straight forward thing.
+	There are only three minor adjustments you have to make compared to a standard Learner with dropout.
 	First you have to redefine the eval-function of the PyTorch Module, to activate Dropout during evaluation.
+	This can be done by overwriting the nn.Model.eval method in your model class.
 	Second you have to stack the input $n$-times, where $n$ is the number of evaluations to be run.
-	Last you have to use a reduction hat of choice - for example averaging or voting - to reduce the output of the model back to the original shape.
-	
+	This is sufficient, since PyTorch samples dropout mask individually for all data points and not a single mask for the entire batch.
+	Last you have to stack a hat of choice - for example averaging or majority vote - to reduce the output of the model back to the original shape.
+	The training process itself does not need to be altered in any way.\\
+
 	\subsubsection{Boosting}
 	We implemented Boosting as an ensemble of Agents sharing the common network core, using this approach we can nearly entirely rely on our Ensemble implementation with minor adjustments of our model factory.
-	This includes a learning rate reduction on the common core by the factor $\frac{1}{n}$, where $n$ is the number of heads of the boosting algorithm.
+	To create a set of learners using a single common core, one needs to define the core as a separate class and initiate it in the training script, or as a global variable in the factory-file.
+	The core then has to be handed over and used as a submodule in the model class.
+	Another adjustment to make is the reduction of the learning rate for the core by the factor $\frac{1}{n}$, where $n$ is the number of heads of the boosting algorithm.
+
 
 	\section{Evaluation}\label{sec:evaluation}
 	This work puts most focus on uncertainty estimation and the approaches it is based on.
-	Therefore, we do not excessively compare the different learning frameworks, as they are generally highly dependent on the environments they are used with.
-	The three main approaches to uncertainty estimation in Deep Reinforcement Learning are MC-Dropout introduced by Loquercio et.al ~\cite{loquercio_general_2020}, Bootstrapping as suggested by Osband et al.~\cite{osband_deep_2016}, as the third approach we use the commonly used model averaging, also known as ensemble method.\\
-	For our evaluation we focus on two simply environments provided by OpenAI gym~\cite{openai_gym_nodate}, namely CartPole and the discrete version of LunarLander.\\
+	Therefore, we do not compare the different learning frameworks, as they are generally highly dependent on the environments they are used with.
+	The three main approaches to uncertainty estimation in Deep Reinforcement Learning are MC-Dropout introduced by Loquercio et.al ~\cite{loquercio_general_2020}, Bootstrapping as suggested by Osband et al.~\cite{osband_deep_2016}.
+	As the third approach we use the commonly used model averaging, also known as ensemble method.\\
+	For our evaluation we focus on two simple environments provided by OpenAI gym~\cite{openai_gym_nodate}, namely CartPole and the discrete version of LunarLander.\\
 
-	Comparing RL algorithms with each other is not as straight forward as it usually is with standard ML.
+	Comparing RL algorithms with each other is not as straight forward as it usually is with standard ML\@.
 	The reason for this is that RL typically has a much higher variance compared with data driven approaches and runs the risk of catastrophic forgetting.
+	Therefore, once reached performance might be either the product of randomness or may get lost over time, hence we are not using any early stopping.
+	We also consider the stability of the performance as an important metric, favoring a slightly worse but stable performance over occasionally high peaks.
 	In addition many environments are stochastic, meaning that the same policy might lead to very different performance.
 	To take the high variance into account we use a similar approach as Sutton and Barto~\cite{sutton_introduction_1998} evaluating models based on $k$ runs of the same agent, averaging the performance of all agents over each epoch.
-	Since we are interested in the performance compared to the `average` model, we slightly modify the approach taken by Sutton and Barto by use the median instead of the mean.
-	All performances are reported on the learned optimal policy, meaning that a greedy action selection strategy is used during evaluation.
+	Since we are interested in the performance compared to the `average` model, we slightly modify the approach taken by Sutton and Barto by using the median instead of the mean over the agents performance.
+	All performances are reported on the learned optimal policy at each step, meaning that a greedy action selection strategy is used during evaluation.
+
+
+%%%%%%%%%%%%%%%% proof read from here on
 
 	\subsection{Comparing uncertainty estimators with agents} \label{subsec:comparing-uncertainty-estimators-with-agents}
 
@@ -413,6 +442,8 @@
 		\includegraphics[width=0.8\linewidth]{../../DQN/CartPole/boosting/exp_58/avg_ensemble_val_rewards.png}
 		\caption{DDQN ensemble on a CartPole environment}
 	\end{figure}
+	
+	\subsection{MC-Dropout}\label{subsec:mc-dropout2}
 
 	\include{abbreviation}
 
