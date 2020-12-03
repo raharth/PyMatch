@@ -1,1 +1,0 @@
-This experiment terminated after 46 agents due to a memory issue. There should be sufficiently many agents though to estimate the performance without rerunning it.

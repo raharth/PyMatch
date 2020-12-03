@@ -1,1 +1,0 @@
-this is just a sanity check of a single boosting head. In theory it should perform like a single learner, but somehow it doesnt
