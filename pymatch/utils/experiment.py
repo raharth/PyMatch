@@ -26,7 +26,6 @@ class Experiment:
         self.params = None
         self.hw_monitor = None
 
-
     def get_params(self, param_source='params.json'):
         """
         Loads parameters from a json file
@@ -102,7 +101,7 @@ class Experiment:
 
         hw_monitor = self.params.get('hw_monitor', None)
         if hw_monitor is not None:
-            self.hw_monitor = HardwareMonitor(path=f'{self.root}/{hw_monitor.get("hw_path_extension", "monitoring.csv")}',
+            self.hw_monitor = HardwareMonitor(path=f'{self.root}/{hw_monitor.get("hw_dump2file", "monitoring.csv")}',
                                               sleep=hw_monitor.get('hw_sleep', 30))
             thread = threading.Thread(target=self.hw_monitor.monitor, args=())
             thread.start()
@@ -138,6 +137,19 @@ class Experiment:
             os.makedirs(self.root)
         with open(f'{self.root}/{path}', 'w') as json_file:
             json_file.write(json.dumps(data, indent=2))
+
+
+class with_experiment:
+    def __init__(self, experiment, overwrite=False):
+        self.experiment = experiment
+        self.overwrite = overwrite
+
+    def __enter__(self):
+        self.experiment.start(self.overwrite)
+
+    def __exit__(self, *args):
+        self.experiment.finish()
+        return False
 
 
 class WandbExperiment(Experiment):
