@@ -62,7 +62,7 @@ def sliding_window(window, values, index=None):
     for i in range(fw, len(values) - fw):
         indices += [index[i]]
         means += [np.mean(values[i - fw: i + cw])]
-    return indices, means
+    return np.array(indices), np.array(means)
 
 
 class eval_mode:

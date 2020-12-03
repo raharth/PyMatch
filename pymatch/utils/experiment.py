@@ -5,13 +5,14 @@ import os
 import datetime
 import sys
 import wandb
+import threading
 from pymatch.DeepLearning.learner import Learner
 from pymatch.utils.exception import OverwriteException
 from pymatch.utils.hardware_monitor import HardwareMonitor
 
 
 class Experiment:
-    def __init__(self, root, hw_monitor=False, hw_sleep=30, hw_path_extension='monitoring.csv'):
+    def __init__(self, root):
         """
         Experiment class, used for documenting experiments in a standardized manner.
 
@@ -22,7 +23,9 @@ class Experiment:
         self.start_time = datetime.datetime.now()
         self.info = {"mode": "interactive" if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
                                            else "script"}
-        self.hw_monitor = HardwareMonitor(path=f'{root}/{hw_path_extension}', sleep=hw_sleep) if hw_monitor else None
+        self.params = None
+        self.hw_monitor = None
+
 
     def get_params(self, param_source='params.json'):
         """
@@ -36,6 +39,7 @@ class Experiment:
         """
         with open(f'{self.root}/{param_source}', 'r') as f:
             params = json.load(f)
+        self.params = params
         return params
 
     def get_model_class(self, source_file='model', source_class='Model'):
@@ -95,8 +99,13 @@ class Experiment:
         self.info['PyMatch-version'] = os.popen('pip show pymatch').read()
         self.info['start time'] = str(self.start_time)
         self.write_json(self.info)
-        if self.hw_monitor is not None:
-            self.hw_monitor.monitor()
+
+        hw_monitor = self.params.get('hw_monitor', None)
+        if hw_monitor is not None:
+            self.hw_monitor = HardwareMonitor(path=f'{self.root}/{hw_monitor.get("hw_path_extension", "monitoring.csv")}',
+                                              sleep=hw_monitor.get('hw_sleep', 30))
+            thread = threading.Thread(target=self.hw_monitor.monitor, args=())
+            thread.start()
 
     def finish(self):
         """
@@ -110,7 +119,7 @@ class Experiment:
         self.info['time taken'] = str(datetime.datetime.now() - self.start_time)
         self.write_json(self.info)
         if self.hw_monitor is not None:
-            self.hw_monitor.terminate = True
+            self.hw_monitor.terminate()
 
     def write_json(self, data, path='meta_data.json'):
         """
