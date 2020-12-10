@@ -128,7 +128,7 @@ class Ensemble:
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
         path = self.get_path(path=path, tag=tag)
-        torch.save(self.train_dict, path)
+        torch.save({'train_dict': self.train_dict}, path)
 
     def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
         """
@@ -154,7 +154,7 @@ class Ensemble:
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def fit_resume(self, epochs, **fit_args):
-        self.load_checkpoint()
+        self.load_checkpoint(path=f'{self.dump_path}/checkpoint')
         epochs = epochs - self.train_dict['epochs_run']
         return self.fit(epochs=epochs, **fit_args)
 
