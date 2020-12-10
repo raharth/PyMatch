@@ -74,4 +74,4 @@ with with_experiment(experiment=experiment, overwrite=params['overwrite']):
                        callbacks=[])
     learner.fit(**params['fit'])
     print('done training')
-    raise NotImplemented
+    # raise NotImplemented
