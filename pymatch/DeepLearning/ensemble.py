@@ -64,13 +64,7 @@ class Ensemble:
         """
         epoch_iter = self.partition_learning_steps(epochs, learning_partition)
 
-        for cb in self.callbacks:
-            cb.start(self)
-
-        for learner in self.learners:
-            # @todo extract a learner.start_callbacks()
-            for cb in learner.callbacks:
-                cb.start(learner)
+        self.start_callbacks()
 
         for run_epochs in epoch_iter:
             for learner in self.learners:
@@ -93,6 +87,13 @@ class Ensemble:
                     print(f'Ensemble callback {cb} failed with exception:\n{e}')
                     raise e
             self.train_dict['epochs_run'] = self.train_dict.get('epochs_run', 0) + 1
+
+    def start_callbacks(self):
+        for cb in self.callbacks:
+            cb.start(self)
+        for learner in self.learners:
+            for cb in learner.callbacks:
+                cb.start(learner)
 
     def partition_learning_steps(self, epochs, learning_partition):
         """
@@ -152,7 +153,14 @@ class Ensemble:
         checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
+    def fit_resume(self, epochs, **fit_args):
+        self.load_checkpoint()
+        epochs = epochs - self.train_dict['epochs_run']
+        return self.fit(epochs=epochs, **fit_args)
+
+    # @todo depricated
     def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
+        # self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0
         """
         The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
 
