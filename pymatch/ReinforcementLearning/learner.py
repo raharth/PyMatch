@@ -729,3 +729,12 @@ class A3C(PolicyGradient):
             self.train_dict['best_performance'] = episode_reward
 
         return episode_reward
+
+    def create_state_dict(self):
+        state_dict = super(A3C, self).create_state_dict()
+        state_dict['critics_state_dict'] = self.critics.create_state_dict()
+        return state_dict
+
+    def restore_checkpoint(self, checkpoint):
+        super(A3C, self).restore_checkpoint(checkpoint=checkpoint)
+        self.critics.restore_checkpoint(checkpoint['critics_state_dict'])
