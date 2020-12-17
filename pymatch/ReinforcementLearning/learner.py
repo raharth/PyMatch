@@ -8,12 +8,6 @@ from pymatch.utils.functional import one_hot_encoding, eval_mode, train_mode
 import pymatch.ReinforcementLearning.selection_policy as sp
 import copy
 
-import pymatch.DeepLearning.hat as hat
-from pymatch.DeepLearning.pipeline import Pipeline
-from torch.utils.data.sampler import SubsetRandomSampler
-from torch.distributions import Categorical, MultivariateNormal
-import torch.nn.functional as F
-
 
 class ReinforcementLearner(Learner):
     def __init__(self,
@@ -74,6 +68,25 @@ class ReinforcementLearner(Learner):
 
     def play_episode(self):
         raise NotImplementedError
+
+    def create_state_dict(self):
+        """
+        Creates the state dictionary of a learner.
+        This should be redefined by each derived learner that introduces own members. Always call the parents method.
+        This dictionary can then be extended by
+        the derived learner's members
+
+        Returns:
+            state dictionary of the learner
+
+        """
+        state_dict = super().create_state_dict()
+        state_dict['memory'] = self.train_loader.create_state_dict()
+        return state_dict
+
+    def restore_checkpoint(self, checkpoint):
+        super(ReinforcementLearner, self).restore_checkpoint(checkpoint=checkpoint)
+        self.train_loader.restore_checkpoint(checkpoint['memory'])
 
 
 class PolicyGradient(ReinforcementLearner):

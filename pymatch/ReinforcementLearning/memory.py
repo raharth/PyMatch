@@ -125,6 +125,12 @@ class Memory(Dataset):
     def __iter__(self):
         return iter(self.sample_loader(self.n_samples))
 
+    def create_state_dict(self):
+        return {'memory': self.memory}
+
+    def restore_checkpoint(self, checkpoint):
+        self.memory = checkpoint['memory']
+
 
 class MemoryUpdater:
     def __init__(self, memory_refresh_rate):
@@ -182,3 +188,12 @@ class StateTrackingMemory(Memory):
         else:
             self.eternal_memory = self._memorize_values(values, cell_name)
         super(StateTrackingMemory, self).memorize(values, cell_name)
+
+    def create_state_dict(self):
+        state_dict = super().create_state_dict()
+        state_dict['eternal_memory'] = self.eternal_memory
+        return state_dict
+
+    def restore_checkpoint(self, checkpoint):
+        super().restore_checkpoint(checkpoint)
+        self.eternal_memory = checkpoint['eternal_memory']
