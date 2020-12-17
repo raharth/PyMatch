@@ -11,21 +11,21 @@ class Memory(Dataset):
                  memory_cell_names,
                  n_samples=None,
                  memory_cell_space=None,
-                 buffer_size=None,
+                 memory_size=None,
                  batch_size=64,
                  gamma=.0):
         """
         Memory class for RL algorithm.
 
         Args:
-            buffer_size (int): max buffer size
+            memory_size (int): max buffer size
 
         """
         if memory_cell_space is None:
             memory_cell_space = [1 for _ in range(len(memory_cell_names))]
         self.memory_cell_space = memory_cell_space
         self.memory_cell_names = memory_cell_names
-        self.buffer_size = buffer_size
+        self.memory_size = memory_size
         if gamma >= 1.:
             raise ValueError('gamma is larger then 1 which will lead to exponential growth in rewards')
         self.gamma = gamma
@@ -66,7 +66,7 @@ class Memory(Dataset):
         Reduces the memory to its max capacity.
 
         """
-        reduce_to = reduce_to if reduce_to is not None else self.buffer_size
+        reduce_to = reduce_to if reduce_to is not None else self.memory_size
         if reduce_to is not None:
             if reduce_to == 0:
                 self.memory_reset()
@@ -150,7 +150,7 @@ class MemoryUpdater:
 
     def fill_memory(self, agent):
         reward, games = 0, 0
-        while len(agent.train_loader) < agent.train_loader.buffer_size:
+        while len(agent.train_loader) < agent.train_loader.memory_size:
             reward += agent.play_episode()
             games += 1
         agent.train_loader.reduce_buffer()
@@ -163,13 +163,13 @@ class StateTrackingMemory(Memory):
                  memory_cell_names,
                  n_samples=None,
                  memory_cell_space=None,
-                 buffer_size=None,
+                 memory_size=None,
                  batch_size=64,
                  gamma=.0):
         super().__init__(memory_cell_names=memory_cell_names,
                          n_samples=n_samples,
                          memory_cell_space=memory_cell_space,
-                         buffer_size=buffer_size,
+                         memory_size=memory_size,
                          batch_size=batch_size,
                          gamma=gamma)
         self.eternal_memory = {k: [] for k in memory_cell_names + ['update']}

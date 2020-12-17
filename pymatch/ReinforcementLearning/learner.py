@@ -139,7 +139,7 @@ class PolicyGradient(ReinforcementLearner):
                              '`batch_size` have to be provided')
         if memory is None:
             memory = Memory(['log_prob', 'reward'],
-                            buffer_size=memory_size,
+                            memory_size=memory_size,
                             n_samples=n_samples,
                             gamma=gamma,
                             batch_size=batch_size)
@@ -296,7 +296,7 @@ class QLearner(ReinforcementLearner):
                              '`batch_size` have to be provided')
         if memory is None:
             memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'],
-                            buffer_size=memory_size,
+                            memory_size=memory_size,
                             n_samples=n_samples,
                             gamma=gamma,
                             batch_size=batch_size)
@@ -505,7 +505,7 @@ class SARSA(DoubleQLearner):
                  dump_path='./tmp',
                  device='cpu'):
         memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
-                        buffer_size=memory_size,
+                        memory_size=memory_size,
                         n_samples=n_samples,
                         gamma=gamma,
                         batch_size=batch_size)
@@ -636,7 +636,7 @@ class A3C(PolicyGradient):
                              '`batch_size` have to be provided')
         if memory is None:
             memory = Memory(['log_prob', 'reward', 'state'],
-                            buffer_size=memory_size,
+                            memory_size=memory_size,
                             n_samples=n_samples,
                             gamma=gamma,
                             batch_size=batch_size)
