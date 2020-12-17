@@ -6,12 +6,12 @@ import numpy as np
 
 
 class ExperimentWorkerHandler:
-    def __init__(self, experiment_root, source_file, source_function, num_workers):
+    def __init__(self, experiment_root, source_file, source_function, num_workers, folders=None):
         self.experiment_root = experiment_root
         self.source_file = source_file
         self.source_function = source_function
         self.num_workers = num_workers
-        self.processes = self.define_processes()
+        self.processes = self.define_processes(folders)
 
     def count_active_processes(self):
         return np.array([process.is_alive() for process in self.processes]).sum()
@@ -19,13 +19,14 @@ class ExperimentWorkerHandler:
     def get_func(self):
         return locate(f'{self.source_file.replace("/", ".")}.{self.source_function}')
 
-    def define_processes(self):
-        processes = []
-        for dir in os.listdir(self.experiment_root):
-            sub_dir = f'{self.experiment_root}/{dir}'
-            if os.listdir(sub_dir):
-                processes += [Process(target=self.get_func(), args=(sub_dir, f'{self.source_file}.py'))]
-        return processes
+    def define_processes(self, folders=None):
+        if folders is None:
+            folders = []
+            for dir in os.listdir(self.experiment_root):
+                sub_dir = f'{self.experiment_root}/{dir}'
+                if os.listdir(sub_dir):
+                    folders += [sub_dir]
+        return [Process(target=self.get_func(), args=(folder, f'{self.source_file}.py')) for folder in folders]
 
     def start(self):
         for process in self.processes:

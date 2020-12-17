@@ -44,18 +44,22 @@ class Memory(Dataset):
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            self._merge_memory(values, cell_name)
+            self.memory = self._merge_memory(values, cell_name)
         else:
-            self._memorize_values(values, cell_name)
+            self.memory = self._memorize_values(values, cell_name)
         self.reduce_buffer()
 
     def _memorize_values(self, values, cell_name: list):
+        memory = dict(self.memory)
         for val, cell in zip(values, cell_name):
-            self.memory[cell] += [val]
+            memory[cell] += [val]
+        return memory
 
     def _merge_memory(self, values, cell_name):
+        memory = dict(self.memory)
         for key in cell_name:
-            self.memory[key] += values.memory[key]
+            memory[key] += values.memory[key]
+        return memory
 
     def reduce_buffer(self, reduce_to=None):
         """
@@ -146,3 +150,35 @@ class MemoryUpdater:
         agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
 
+
+class StateTrackingMemory(Memory):
+
+    def __init__(self,
+                 memory_cell_names,
+                 n_samples=None,
+                 memory_cell_space=None,
+                 buffer_size=None,
+                 batch_size=64,
+                 gamma=.0):
+        super().__init__(memory_cell_names=memory_cell_names,
+                         n_samples=n_samples,
+                         memory_cell_space=memory_cell_space,
+                         buffer_size=buffer_size,
+                         batch_size=batch_size,
+                         gamma=gamma)
+        self.eternal_memory = {k: [] for k in memory_cell_names + ['update']}
+
+    def memorize(self, values, cell_name: list):
+        """
+        Memorizes a list of torch tensors to the memory cells provided by the cell_name list.
+
+        Args:
+            values (list)/(Memory): list of torch tensors to memorize
+            cell_name (list): list of strings containing the memory cell names the tensors have to be added to
+
+        """
+        if isinstance(values, Memory):  # create list of values from memory
+            self.eternal_memory = self._merge_memory(values, cell_name)
+        else:
+            self.eternal_memory = self._memorize_values(values, cell_name)
+        super(StateTrackingMemory, self).memorize(values, cell_name)
