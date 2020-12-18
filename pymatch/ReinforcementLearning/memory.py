@@ -44,13 +44,12 @@ class Memory(Dataset):
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            self.memory = self._merge_memory(values, cell_name)
+            self.memory = self._merge_memory(values, cell_name, self.memory)
         else:
-            self.memory = self._memorize_values(values, cell_name)
+            self.memory = self._memorize_values(values, cell_name, self.memory)
         self.reduce_buffer()
 
-    def _memorize_values(self, values, cell_name: list):
-        memory = dict(self.memory)
+    def _memorize_values(self, values, cell_name: list, memory):
         for val, cell in zip(values, cell_name):
             memory[cell] += [val]
         return memory
@@ -184,9 +183,9 @@ class StateTrackingMemory(Memory):
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            self.eternal_memory = self._merge_memory(values, cell_name)
+            self.eternal_memory = self._merge_memory(values, cell_name, self.eternal_memory)
         else:
-            self.eternal_memory = self._memorize_values(values, cell_name)
+            self.eternal_memory = self._memorize_values(values, cell_name, self.eternal_memory)
         super(StateTrackingMemory, self).memorize(values, cell_name)
 
     def create_state_dict(self):
