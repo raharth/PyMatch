@@ -54,8 +54,7 @@ class Memory(Dataset):
             memory[cell] += [val]
         return memory
 
-    def _merge_memory(self, values, cell_name):
-        memory = dict(self.memory)
+    def _merge_memory(self, values, cell_name, memory):
         for key in cell_name:
             memory[key] += values.memory[key]
         return memory
@@ -171,7 +170,8 @@ class StateTrackingMemory(Memory):
                          memory_size=memory_size,
                          batch_size=batch_size,
                          gamma=gamma)
-        self.eternal_memory = {k: [] for k in memory_cell_names + ['update']}
+        self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
+        self.iteration = 0
 
     def memorize(self, values, cell_name: list):
         """
@@ -183,10 +183,12 @@ class StateTrackingMemory(Memory):
 
         """
         if isinstance(values, Memory):  # create list of values from memory
-            self.eternal_memory = self._merge_memory(values, cell_name, self.eternal_memory)
+            values.memory['iteration'] = [self.iteration] * len(values)
+            self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
         else:
-            self.eternal_memory = self._memorize_values(values, cell_name, self.eternal_memory)
+            self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
         super(StateTrackingMemory, self).memorize(values, cell_name)
+        self.iteration += 1
 
     def create_state_dict(self):
         state_dict = super().create_state_dict()
