@@ -1,0 +1,39 @@
+{
+    "overwrite": true,
+    "n_learner": 3,
+    "hw_monitor": {"hw_sleep": 5},
+    "factory_args": {
+        "model_args": {
+            "out_nodes": 2
+        },
+        "env_args": {
+        },
+        "optim_args": {
+            "lr": 0.0005,
+            "momentum": 0.1
+        },
+        "memory_args": {
+            "memory_refresh_rate": 0.1
+        },
+        "learner_args": {
+            "gamma": 0.9,
+            "n_samples": 50,
+            "batch_size": 50,
+            "grad_clip": 5.0,
+            "memory_size": 100,
+            "name": "policy_gradient",
+            "load_checkpoint": false,
+            "device": "cpu"
+        }
+    },
+    "fit": {
+        "epochs": 2,
+        "device": "cpu",
+        "restore_early_stopping": false,
+        "verbose": false,
+        "learning_partition": 1
+    },
+    "core_args": {
+        "in_nodes": 4
+    }
+}
