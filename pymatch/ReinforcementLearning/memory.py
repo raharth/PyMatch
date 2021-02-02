@@ -163,14 +163,18 @@ class StateTrackingMemory(Memory):
                  memory_cell_space=None,
                  memory_size=None,
                  batch_size=64,
-                 gamma=.0):
+                 gamma=.0,
+                 root='.'):
         super().__init__(memory_cell_names=memory_cell_names,
                          n_samples=n_samples,
                          memory_cell_space=memory_cell_space,
                          memory_size=memory_size,
                          batch_size=batch_size,
                          gamma=gamma)
-        self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
+        # self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
+        self.root = root
+        with open(f'{self.root}/memory_dump.txt', 'w') as f:
+            f.write(str(memory_cell_names))
         self.iteration = 0
 
     def memorize(self, values, cell_name: list):
@@ -182,19 +186,19 @@ class StateTrackingMemory(Memory):
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
-        if isinstance(values, Memory):  # create list of values from memory
-            values.memory['iteration'] = [self.iteration] * len(values)
-            self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
-        else:
-            self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
+        # if isinstance(values, Memory):  # create list of values from memory
+        #     values.memory['iteration'] = [self.iteration] * len(values)
+        #     self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
+        # else:
+        #     self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
         super(StateTrackingMemory, self).memorize(values, cell_name)
+        with open(f'{self.root}/memory_dump.txt', 'a') as f:
+            f.write(str(values) + '\n')
         self.iteration += 1
 
-    def create_state_dict(self):
-        state_dict = super().create_state_dict()
-        state_dict['eternal_memory'] = self.eternal_memory
-        return state_dict
 
-    def restore_checkpoint(self, checkpoint):
-        super().restore_checkpoint(checkpoint)
-        self.eternal_memory = checkpoint['eternal_memory']
+m = StateTrackingMemory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3, root='tests/memory')
+for i in range(8):
+    m.memorize(torch.tensor([[i, i+1], 3]), ['a', 'b'])
+
+m.memory
