@@ -203,16 +203,16 @@ class StateTrackingMemory(Memory):
 
 
 
-m = StateTrackingMemory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3, root='tests/memory')
-for i in range(5):
-    tmp_m = Memory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3)
-    tmp_m.memorize((torch.tensor([i, i+1]), 3), cell_name=['a', 'b'])
-    m.memorize(tmp_m, ['a', 'b'])
-
-m.memory
-m.eternal_memory
-
-test = pd.read_hdf(r'D:\projects\PyMatch\tests\memory\memory_dump.hdf', key='2')
-type(test['a'].values[0])
-
-test = pd.DataFrame(tmp_m.memory, columns=['a', 'b'])
+# m = StateTrackingMemory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3, root='tests/memory')
+# for i in range(5):
+#     tmp_m = Memory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3)
+#     tmp_m.memorize((torch.tensor([i, i+1]), 3), cell_name=['a', 'b'])
+#     m.memorize(tmp_m, ['a', 'b'])
+#
+# m.memory
+# m.eternal_memory
+#
+# test = pd.read_hdf(r'D:\projects\PyMatch\tests\memory\memory_dump.hdf', key='2')
+# type(test['a'].values[0])
+#
+# test = pd.DataFrame(tmp_m.memory, columns=['a', 'b'])
