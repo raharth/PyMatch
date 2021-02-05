@@ -187,14 +187,13 @@ class StateTrackingMemory(Memory):
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
-        # if isinstance(values, Memory):  # create list of values from memory
-        #     values.memory['iteration'] = [self.iteration] * len(values)
-        #     self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
-        # else:
-        #     self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
-        tmp_values = values.memory
-
-        pd.DataFrame(values.memory, columns=cell_name).to_hdf(f'{self.root}/memory_dump.hdf', key=str(self.iteration))
+        if isinstance(values, Memory):  # create list of values from memory
+            values.memory['iteration'] = [self.iteration] * len(values)
+            self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
+        else:
+            self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
+        # tmp_values = values.memory
+        # pd.DataFrame(values.memory, columns=cell_name).to_hdf(f'{self.root}/memory_dump.hdf', key=str(self.iteration))
 
         super(StateTrackingMemory, self).memorize(values, cell_name)
         # with open(f'{self.root}/memory_dump.txt', 'a') as f:
