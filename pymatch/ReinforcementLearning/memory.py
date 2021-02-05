@@ -3,6 +3,7 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 import numpy as np
 from torch.utils.data.sampler import SubsetRandomSampler
+import pandas as pd
 
 
 class Memory(Dataset):
@@ -171,10 +172,10 @@ class StateTrackingMemory(Memory):
                          memory_size=memory_size,
                          batch_size=batch_size,
                          gamma=gamma)
-        # self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
+        self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
         self.root = root
-        with open(f'{self.root}/memory_dump.txt', 'w') as f:
-            f.write(str(memory_cell_names))
+        # with open(f'{self.root}/memory_dump.txt', 'w') as f:
+        #     f.write(str(memory_cell_names)+'\n')
         self.iteration = 0
 
     def memorize(self, values, cell_name: list):
@@ -191,14 +192,27 @@ class StateTrackingMemory(Memory):
         #     self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
         # else:
         #     self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
+        tmp_values = values.memory
+
+        pd.DataFrame(values.memory, columns=cell_name).to_hdf(f'{self.root}/memory_dump.hdf', key=str(self.iteration))
+
         super(StateTrackingMemory, self).memorize(values, cell_name)
-        with open(f'{self.root}/memory_dump.txt', 'a') as f:
-            f.write(str(values) + '\n')
+        # with open(f'{self.root}/memory_dump.txt', 'a') as f:
+        #     f.write(str(values) + '\n')
         self.iteration += 1
 
 
+
 m = StateTrackingMemory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3, root='tests/memory')
-for i in range(8):
-    m.memorize(torch.tensor([[i, i+1], 3]), ['a', 'b'])
+for i in range(5):
+    tmp_m = Memory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3)
+    tmp_m.memorize((torch.tensor([i, i+1]), 3), cell_name=['a', 'b'])
+    m.memorize(tmp_m, ['a', 'b'])
 
 m.memory
+m.eternal_memory
+
+test = pd.read_hdf(r'D:\projects\PyMatch\tests\memory\memory_dump.hdf', key='2')
+type(test['a'].values[0])
+
+test = pd.DataFrame(tmp_m.memory, columns=['a', 'b'])
