@@ -165,7 +165,8 @@ class StateTrackingMemory(Memory):
                  memory_size=None,
                  batch_size=64,
                  gamma=.0,
-                 root='.'):
+                 root='.',
+                 detach_tensors=[]):
         super().__init__(memory_cell_names=memory_cell_names,
                          n_samples=n_samples,
                          memory_cell_space=memory_cell_space,
@@ -174,8 +175,7 @@ class StateTrackingMemory(Memory):
                          gamma=gamma)
         self.eternal_memory = {k: [] for k in memory_cell_names + ['iteration']}
         self.root = root
-        # with open(f'{self.root}/memory_dump.txt', 'w') as f:
-        #     f.write(str(memory_cell_names)+'\n')
+        self.detach_tensors = detach_tensors
         self.iteration = 0
 
     def memorize(self, values, cell_name: list):
@@ -187,17 +187,19 @@ class StateTrackingMemory(Memory):
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
+        super(StateTrackingMemory, self).memorize(values, cell_name)
+
         if isinstance(values, Memory):  # create list of values from memory
+            for detach in self.detach_tensors:
+                values.memory[detach] = values.memory[detach].detach()
             values.memory['iteration'] = [self.iteration] * len(values)
             self.eternal_memory = self._merge_memory(values, cell_name + ['iteration'], self.eternal_memory)
         else:
+            for detach in self.detach_tensors:
+                idx = np.argwhere(np.array(cell_name) == detach).item()
+                values[idx] = values[idx].detach()
             self.eternal_memory = self._memorize_values(values + [self.iteration], cell_name + ['iteration'], self.eternal_memory)
-        # tmp_values = values.memory
-        # pd.DataFrame(values.memory, columns=cell_name).to_hdf(f'{self.root}/memory_dump.hdf', key=str(self.iteration))
 
-        super(StateTrackingMemory, self).memorize(values, cell_name)
-        # with open(f'{self.root}/memory_dump.txt', 'a') as f:
-        #     f.write(str(values) + '\n')
         self.iteration += 1
 
 
