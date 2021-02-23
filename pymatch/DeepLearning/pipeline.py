@@ -8,11 +8,11 @@ class Pipeline:
         self.pipe_args = pipe_args if pipe_args is not None else [None for _ in range(len(pipes))]
         self.device = device
 
-    def __call__(self, X, device='cpu'):
+    def __call__(self, X):
         # for pipe, pipe_arg in zip(self.pipes, self.pipe_args):
         #     X = pipe.forward(X, device=device, **pipe_arg)
         for pipe in self.pipes:
-            X = pipe(X, device)
+            X = pipe(X)
         return X
 
     def predict_dataloader(self, data_loader, device='cpu', return_true=False):
