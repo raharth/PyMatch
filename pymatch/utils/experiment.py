@@ -6,6 +6,8 @@ import datetime
 import sys
 import wandb
 import threading
+
+from pymatch.DeepLearning.ensemble import Ensemble
 from pymatch.DeepLearning.learner import Learner
 from pymatch.utils.exception import OverwriteException
 from pymatch.utils.hardware_monitor import HardwareMonitor
@@ -174,3 +176,47 @@ class WandbExperiment(Experiment):
 
     def log(self, info):
         wandb.log(info)
+
+
+def get_learner_from_exp_root(exp_root, state=None):
+    experiment = Experiment(root=exp_root)
+    factory = experiment.get_factory()
+    params = experiment.get_params()
+    params['factory_args']['learner_args']['dump_path'] = exp_root
+    Model = experiment.get_model_class()
+    learner = factory(Model=Model, **params['factory_args'])
+    if state is not None:
+        learner.load_checkpoint(path=f'{exp_root}/{state}', tag=state)
+    return learner
+
+
+def get_boosting_learner_from_exp_root(exp_root, state=None):
+    experiment = Experiment(root=exp_root)
+    factory = experiment.get_factory()
+    params = experiment.get_params()
+    params['factory_args']['learner_args']['dump_path'] = exp_root
+    Model = experiment.get_model_class()
+    Core = experiment.get_model_class(source_file='core', source_class='Core')
+    params['factory_args']['core'] = Core(**params['core_args'])
+    learner = Ensemble(model_class=Model,
+                       trainer_factory=factory,
+                       trainer_args=params['factory_args'],
+                       n_model=params['n_learner'])
+    if state is not None:
+        learner.load_checkpoint(path=f'{exp_root}/{state}', tag=state)
+    return learner
+
+
+def get_ensemble_learner_from_exp_root(exp_root, state=None):
+    experiment = Experiment(root=exp_root)
+    factory = experiment.get_factory()
+    params = experiment.get_params()
+    params['factory_args']['learner_args']['dump_path'] = exp_root
+    Model = experiment.get_model_class()
+    learner = Ensemble(model_class=Model,
+                       trainer_factory=factory,
+                       trainer_args=params['factory_args'],
+                       n_model=params['n_learner'])
+    if state is not None:
+        learner.load_checkpoint(path=f'{exp_root}/{state}', tag=state)
+    return learner
