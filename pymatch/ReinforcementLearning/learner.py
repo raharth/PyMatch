@@ -329,9 +329,9 @@ class QLearner(ReinforcementLearner):
             target = prediction.clone().detach()
             max_next = self.get_max_Q_for_states(new_state)
 
-            mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor)
+            mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
             target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                    reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)))
+                    reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
 
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
@@ -470,6 +470,7 @@ class DoubleQLearner(QLearner):
         return max_Q
 
     def fit_epoch(self, device, verbose=1):
+        self.target_model.to(device)
         loss = super(DoubleQLearner, self).fit_epoch(device=device, verbose=verbose)
         self.update_target_network()
         return loss

@@ -156,6 +156,16 @@ class MemoryUpdater:
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
 
 
+class EpisodeUpdater:
+    """
+    Sampels and writes a singe episode to the memory of an agent.
+    """
+    def __call__(self, agent):
+        reward = agent.play_episode()
+        agent.train_loader.reduce_buffer()
+        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
+
+
 class StateTrackingMemory(Memory):
 
     def __init__(self,
