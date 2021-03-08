@@ -543,6 +543,7 @@ class SARSA(DoubleQLearner):
         self.memory_updater(self)
         self.model.train()
         self.model.to(device)
+        self.target_model.to(device)
 
         for batch, (action, state, reward, next_state, next_action, terminal) in tqdm(enumerate(self.train_loader)):
             action, state, reward, next_state = action.to(self.device), state.to(self.device), reward.to(
@@ -555,7 +556,7 @@ class SARSA(DoubleQLearner):
 
             mask = one_hot_encoding(action).type(torch.BoolTensor)
             target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                    reward + self.gamma * next_Q * (1. - terminal.type(torch.FloatTensor)))
+                    reward + self.gamma * next_Q * (1. - terminal.type(torch.FloatTensor)).to(self.device))
 
             loss = self.crit(prediction, target)
             self.train_dict['train_losses'] += [loss.item()]
