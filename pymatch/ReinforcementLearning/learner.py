@@ -512,11 +512,11 @@ class SARSA(DoubleQLearner):
                  dump_path='./tmp',
                  device='cpu',
                  **kwargs):
-        memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
-                        memory_size=memory_size,
-                        n_samples=n_samples,
-                        gamma=gamma,
-                        batch_size=batch_size)
+        # memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
+        #                 memory_size=memory_size,
+        #                 n_samples=n_samples,
+        #                 gamma=gamma,
+        #                 batch_size=batch_size)
         super().__init__(model=model,
                          optimizer=optimizer,
                          crit=crit,
@@ -535,7 +535,7 @@ class SARSA(DoubleQLearner):
                          callbacks=callbacks,
                          dump_path=dump_path,
                          device=device,
-                         memory=memory,
+                         # memory=memory,
                          **kwargs)
 
     def fit_epoch(self, device, verbose=1):
