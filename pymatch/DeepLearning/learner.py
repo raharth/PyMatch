@@ -260,7 +260,8 @@ class ClassificationLearner(Learner):
                  load_checkpoint=False,
                  name='',
                  callbacks=None,
-                 dump_path='./tmp'):
+                 dump_path='./tmp',
+                 **kwargs):
         super(ClassificationLearner, self).__init__(model,
                                                     optimizer,
                                                     crit,
@@ -269,7 +270,8 @@ class ClassificationLearner(Learner):
                                                     load_checkpoint,
                                                     name,
                                                     callbacks=callbacks,
-                                                    dump_path=dump_path)
+                                                    dump_path=dump_path,
+                                                    **kwargs)
         self.train_dict['train_accuracy'] = []
         self.train_dict['val_accuracy'] = []
 
@@ -321,7 +323,8 @@ class RegressionLearner(Learner):
                  load_checkpoint=False,
                  name='',
                  callbacks=None,
-                 dump_path='./tmp'):
+                 dump_path='./tmp',
+                 **kwargs):
         super(RegressionLearner, self).__init__(model=model,
                                                 optimizer=optimizer,
                                                 crit=crit,
@@ -330,7 +333,8 @@ class RegressionLearner(Learner):
                                                 load_checkpoint=load_checkpoint,
                                                 name=name,
                                                 callbacks=callbacks,
-                                                dump_path=dump_path)
+                                                dump_path=dump_path,
+                                                **kwargs)
 
     def fit_epoch(self, device, verbose=1):
         """

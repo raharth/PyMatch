@@ -107,7 +107,8 @@ class PolicyGradient(ReinforcementLearner):
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
-                 device='cpu'):
+                 device='cpu',
+                 **kwargs):
         """
         Policy Gradient learner.
 
@@ -156,7 +157,8 @@ class PolicyGradient(ReinforcementLearner):
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
-                         device=device)
+                         device=device,
+                         **kwargs)
 
     def fit_epoch(self, device, verbose=1):
         """
@@ -261,7 +263,8 @@ class QLearner(ReinforcementLearner):
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
-                 device='cpu'):
+                 device='cpu',
+                 **kwargs):
         """
         Deep Q-Learning algorithm, as introduced by http://arxiv.org/abs/1312.5602
         Args:
@@ -313,7 +316,8 @@ class QLearner(ReinforcementLearner):
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
-                         device=device)
+                         device=device,
+                         **kwargs)
         self.train_dict['train_losses'] = []
         self.alpha = alpha
 
@@ -412,7 +416,8 @@ class DoubleQLearner(QLearner):
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
-                 device='cpu'):
+                 device='cpu',
+                 **kwargs):
         """
         Double Deep Q-Learning algorithm, as introduced in `Deep Reinforcement Learning with Double Q-Learning` by
         Hasselt et al.
@@ -460,7 +465,8 @@ class DoubleQLearner(QLearner):
             name=name,
             callbacks=callbacks,
             dump_path=dump_path,
-            device=device)
+            device=device,
+            **kwargs)
         self.target_model = copy.deepcopy(model)
         self.tau = tau
 
@@ -504,7 +510,8 @@ class SARSA(DoubleQLearner):
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
-                 device='cpu'):
+                 device='cpu',
+                 **kwargs):
         memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
                         memory_size=memory_size,
                         n_samples=n_samples,
@@ -528,7 +535,8 @@ class SARSA(DoubleQLearner):
                          callbacks=callbacks,
                          dump_path=dump_path,
                          device=device,
-                         memory=memory)
+                         memory=memory,
+                         **kwargs)
 
     def fit_epoch(self, device, verbose=1):
         self.memory_updater(self)
@@ -626,7 +634,8 @@ class A3C(PolicyGradient):
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
-                 device='cpu'):
+                 device='cpu',
+                 **kwargs):
         if memory is None and (memory_size is None or n_samples is None or batch_size is None):
             raise ValueError('Learner lacks the memory, it has to be explicitly given, or defined by the params:'
                              '`memory_size`, `n_samples`, `batch_size`')
@@ -657,7 +666,8 @@ class A3C(PolicyGradient):
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
-                         device=device)
+                         device=device,
+                         **kwargs)
         self.critics = critics  # @todo probably create it in here
 
     def fit_epoch(self, device, verbose=1):
