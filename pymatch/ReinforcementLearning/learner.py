@@ -490,6 +490,10 @@ class DoubleQLearner(QLearner):
                 for params_target, params_online in zip(self.target_model.parameters(), self.model.parameters()):
                     params_target.data.copy_(params_online.data)
 
+    def to(self, device):
+        self.target_model.to(device)
+        super(DoubleQLearner).to(device)
+
 
 class SARSA(DoubleQLearner):
     def __init__(self,

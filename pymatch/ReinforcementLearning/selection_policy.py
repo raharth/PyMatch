@@ -16,6 +16,15 @@ class SelectionPolicy:
     def forward(self, agent, observation):
         raise NotImplementedError
 
+    def preparation(self, x):
+        for pipe in self.pre_pipeline:
+            x = pipe(x)
+        return x
+
+    def aggregation(self, x):
+        for pipe in self.post_pipeline:
+            x = pipe(x)
+        return x
 
 # class Softmax_Selection(SelectionPolicy):
 #
@@ -48,7 +57,6 @@ class PolicyGradientActionSelection:
 
     def __call__(self, agent, observation):
         agent.model.to(agent.device)
-        # agent.model.eval()
         probs = agent.model(observation.to(agent.device))
         dist = Categorical(probs.squeeze())
         action = dist.sample()
@@ -80,27 +88,30 @@ class BayesianDropoutPGActionSelection:
         return action.item(), log_prob
 
 
-class QActionSelection:
-    def __init__(self, temperature=1.):
+class QActionSelection(SelectionPolicy):
+    def __init__(self, temperature=1., **kwargs):
         """
         Temperature based exponential selection strategy
 
         Args:
             temperature:
         """
+        super().__init__(**kwargs)
         self.temperature = temperature
 
     def __call__(self, agent, observation):
         agent.model.to(agent.device)
+        observation = self.preparation(observation)
         qs = agent.model(observation.to(agent.device))
+        qs = self.aggregation(qs)
         probs = F.softmax(qs / self.temperature, dim=1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         return action.item()
 
 
-class EpsilonGreedyActionSelection:
-    def __init__(self, action_space, epsilon=.9):
+class EpsilonGreedyActionSelection(SelectionPolicy):
+    def __init__(self, action_space, epsilon=.9, **kwargs):
         """
         Epsilon greedy selection strategy, choosing the best or with p=1-epsilon choosing a random action
 
@@ -108,37 +119,37 @@ class EpsilonGreedyActionSelection:
             action_space:   list of possible actions
             epsilon:        probability for max
         """
+        super().__init__(**kwargs)
         self.action_space = action_space
         self.epsilon = epsilon
 
     def __call__(self, agent, observation):
         agent.model.to(agent.device)
+        observation = self.preparation(observation)
         qs = agent.model(observation.to(agent.device))
+        qs = self.aggregation(qs)
         if np.random.uniform() < self.epsilon:
             return qs.argmax().item()
         return np.random.choice(self.action_space)
 
 
-class GreedyValueSelection:
+class GreedyValueSelection(SelectionPolicy):
     """
     Choosing the best possible option, necessary for evaluation
     @todo abstract pre and post-pipeline
     """
-    def __init__(self, pre_pipeline=[], post_pipeline=[]):
-        self.pre_pipeline = pre_pipeline
-        self.post_pipeline = post_pipeline
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def __call__(self, agent, observation):
-        for pipe in self.pre_pipeline:
-            observation = pipe(observation)
+        observation = self.preparation(observation)
         qs = agent(observation.to(agent.device))
-        for pipe in self.post_pipeline:
-            qs = pipe(qs)
+        qs = self.aggregation(qs)
         return qs.argmax().item()
 
 
-class NormalThompsonSampling:
-    def __init__(self, pre_pipes: list, post_pipes: list):
+class NormalThompsonSampling(SelectionPolicy):
+    def __init__(self, **kwargs):
         """
         Implementation of Thompson sampling based in the Normal distribution.
         Estimates the distribution over a model, sampling from it.
@@ -152,8 +163,7 @@ class NormalThompsonSampling:
                 Why is this part of the sampling in the first place?
         """
         # self.repeater = hat.InputRepeater(n_iter)
-        self.pre_pipes = pre_pipes
-        self.post_pipes = post_pipes
+        super().__init__(**kwargs)
 
     def __call__(self, agent, observation):
         pipeline = Pipeline(pipes=self.pre_pipes + [agent] + self.post_pipes)

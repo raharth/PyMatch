@@ -144,14 +144,15 @@ class EnsembleRewardPlotter(Callback):
         self.metrics = {'val_reward_mean': 'val_epoch'} if metrics is None else metrics
 
     def __call__(self, model):
-        val_rewards = np.array([learner.train_dict['val_reward'] for learner in model.learners])
+        val_rewards = np.array([learner.train_dict.get('val_reward', []) for learner in model.learners])
+        learner_val_epochs = model.learners[0].train_dict.get('val_epoch', [])
         plt.title(f'average validation reward over time for {len(model.learners)} Agents')
         plt.xlabel('epochs')
         plt.ylabel('average reward')
-        plt.plot(val_rewards.mean(0), label='agent mean')
-        plt.plot(np.median(val_rewards, axis=0), label='agent median')
+        plt.plot(learner_val_epochs, val_rewards.mean(0), label='agent mean')
+        plt.plot(learner_val_epochs, np.median(val_rewards, axis=0), label='agent median')
         for v in val_rewards:
-            plt.plot(v, alpha=.1, color='grey')
+            plt.plot(learner_val_epochs, v, alpha=.1, color='grey')
         for y, x in self.metrics.items():
             plt.plot(model.train_dict[x], model.train_dict[y], label=f'ensemble {y}')
         plt.legend()
