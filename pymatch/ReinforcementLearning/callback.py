@@ -127,6 +127,14 @@ class EnvironmentEvaluator(Callback):
 
 class AgentVisualizer(Callback):
     def __init__(self, env, frequency=1, action_selector=GreedyValueSelection()):
+        """
+        Visualizes an agent in an environment.
+
+        Args:
+            env:                Environment to evaluate
+            frequency:          Every 'frequency'-th epoch the environment is evaluated
+            action_selector:    Selection Policy with which the agent is used
+        """
         super().__init__()
         self.env = env
         self.frequency = frequency

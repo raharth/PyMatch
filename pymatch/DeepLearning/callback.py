@@ -15,10 +15,14 @@ import os
 
 class Callback:
 
-    def __init__(self):
-        pass
+    def __init__(self, frequency=1):
+        self.frequency = frequency
 
-    def __call__(self, model):
+    def __call__(self, model, *args, **kwargs):
+        if model.train_dict['epochs_run'] % self.frequency == 0:
+            return self.forward(model, *args, **kwargs)
+
+    def forward(self, model, *args, **kwargs):
         raise NotImplementedError
 
     def start(self, model):
@@ -27,9 +31,8 @@ class Callback:
 
 class Checkpointer(Callback):
 
-    def __init__(self, checkpoint_frequ=1):
-        super().__init__()
-        self.checkpoint_frequ = checkpoint_frequ
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.path = None
 
     def start(self, model):
@@ -37,55 +40,52 @@ class Checkpointer(Callback):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.checkpoint_frequ == 0:
-            model.dump_checkpoint(path=self.path, tag='checkpoint')
+    def forward(self, model):
+        model.dump_checkpoint(path=self.path, tag='checkpoint')
 
 
 class Validator(Callback):
-    def __init__(self, data_loader, validation_int, verbose=1):
-        super().__init__()
+    def __init__(self, data_loader, verbose=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.data_loader = data_loader
-        self.validation_int = validation_int
         self.verbose = verbose
 
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.validation_int == 0:
-            train_mode = model.model.training
-            with torch.no_grad():
-                model.eval()
-                model.to(model.device)
-                loss = []
-                accuracies = []
-                for data, y in self.data_loader:
-                    data = data.to(model.device)
-                    y = y.to(model.device)
-                    y_pred = model.model(data)
-                    loss += [model.crit(y_pred, y)]
+    def forward(self, model):
+        train_mode = model.model.training
+        with torch.no_grad():
+            model.eval()
+            model.to(model.device)
+            loss = []
+            accuracies = []
+            for data, y in self.data_loader:
+                data = data.to(model.device)
+                y = y.to(model.device)
+                y_pred = model.model(data)
+                loss += [model.crit(y_pred, y)]
 
-                    y_pred = y_pred.max(dim=1)[1]
-                    accuracies += [(y_pred == y).float()]
+                y_pred = y_pred.max(dim=1)[1]
+                accuracies += [(y_pred == y).float()]
 
-                loss = torch.stack(loss).mean().item()
-                model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
-                model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
-                accuracy = torch.cat(accuracies).mean().item()
-                model.train_dict['val_accuracy'] = model.train_dict.get('val_accuracy', []) + [accuracy]
+            loss = torch.stack(loss).mean().item()
+            model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
+            model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
+            accuracy = torch.cat(accuracies).mean().item()
+            model.train_dict['val_accuracy'] = model.train_dict.get('val_accuracy', []) + [accuracy]
 
-            if loss < model.train_dict.get('best_val_performance', np.inf):
-                model.train_dict['best_train_performance'] = loss
-                model.train_dict['epochs_since_last_val_improvement'] = 0
+        if loss < model.train_dict.get('best_val_performance', np.inf):
+            model.train_dict['best_train_performance'] = loss
+            model.train_dict['epochs_since_last_val_improvement'] = 0
 
-            if self.verbose == 1:
-                print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-            if train_mode:  # reset to original mode
-                model.train()
-            return loss
+        if self.verbose == 1:
+            print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
+        if train_mode:  # reset to original mode
+            model.train()
+        return loss
 
 
 class EarlyStopping(Validator):
-    def __init__(self, data_loader, validation_int=1, verbose=1):
-        super(EarlyStopping, self).__init__(data_loader, validation_int, verbose)
+    def __init__(self, data_loader, verbose=1, *args, **kwargs):
+        super(EarlyStopping, self).__init__(data_loader, verbose, *args, **kwargs)
         self.path = None
 
     def start(self, model):
@@ -93,25 +93,24 @@ class EarlyStopping(Validator):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-    def __call__(self, model):
+    def forward(self, model):
         if not os.path.exists(model.early_stopping_path):
             os.makedirs(model.early_stopping_path)
-        if model.train_dict['epochs_run'] % self.validation_int == 0:
-            if self.verbose == 1:
-                print('evaluating')
-            val_loss = Validator.__call__(self, model=model)
-            if val_loss < model.train_dict['best_val_performance']:
-                model.train_dict['best_val_performance'] = val_loss
-                model.dump_checkpoint(path=self.path, tag='early_stopping')
+        if self.verbose == 1:
+            print('evaluating')
+        val_loss = Validator.__call__(self, model=model)
+        if val_loss < model.train_dict['best_val_performance']:
+            model.train_dict['best_val_performance'] = val_loss
+            model.dump_checkpoint(path=self.path, tag='early_stopping')
 
 
 class EarlyTermination(Callback):
 
-    def __init__(self, patience):
-        super(EarlyTermination, self).__init__()
+    def __init__(self, patience, *args, **kwargs):
+        super(EarlyTermination, self).__init__(*args, **kwargs)
         self.patience = patience
 
-    def __call__(self, model):
+    def forward(self, model):
         if self.patience < model.train_dict['epochs_since_last_val_improvement']:
             raise TerminationException(f'The model did not improve for the last {self.patience} steps and is '
                                        f'therefore terminated')
@@ -119,11 +118,11 @@ class EarlyTermination(Callback):
 
 class ClassificationCurvePlotter(Callback):
 
-    def __init__(self, img_path='tmp'):
-        super(ClassificationCurvePlotter, self).__init__()
+    def __init__(self, img_path='tmp', *args, **kwargs):
+        super(ClassificationCurvePlotter, self).__init__(*args, **kwargs)
         self.img_path = img_path
 
-    def __call__(self, model, args=None, return_fig=False):
+    def forward(self, model, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -154,11 +153,11 @@ class ClassificationCurvePlotter(Callback):
 
 class RegressionCurvePlotter(Callback):
 
-    def __init__(self, img_path='tmp'):
-        super(RegressionCurvePlotter, self).__init__()
+    def __init__(self, img_path='tmp', *args, **kwargs):
+        super(RegressionCurvePlotter, self).__init__(*args, **kwargs)
         self.img_path = img_path
 
-    def __call__(self, model, args=None, return_fig=False):
+    def forward(self, model, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -181,10 +180,9 @@ class RegressionCurvePlotter(Callback):
 
 
 class MetricPlotter(Callback):
-    def __init__(self, frequency=1, metric='rewards', x=None, x_label=None, y_label=None, title=None, name=None,
-                 smoothing_window=None):
-        super().__init__()
-        self.frequency = frequency
+    def __init__(self, metric='rewards', x=None, x_label=None, y_label=None, title=None, name=None,
+                 smoothing_window=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.y = metric if isinstance(metric, list) else [metric]
         self.x = x if isinstance(x, list) else [x]
         if len(self.x) != len(self.y):
@@ -195,17 +193,16 @@ class MetricPlotter(Callback):
         self.name = name if name is not None else '_'.join(self.y)
         self.smoothing_window = smoothing_window
 
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.frequency == 0:
-            for x, y in zip(self.x, self.y):
-                self.plot(model, x, y)
-            plt.ylabel(self.y_label)
-            plt.xlabel(self.x_label)
-            plt.title(self.title)
-            plt.legend(framealpha=.3)
-            plt.tight_layout()
-            plt.savefig(f'{model.dump_path}/{self.name}.png')
-            plt.close()
+    def forward(self, model):
+        for x, y in zip(self.x, self.y):
+            self.plot(model, x, y)
+        plt.ylabel(self.y_label)
+        plt.xlabel(self.x_label)
+        plt.title(self.title)
+        plt.legend(framealpha=.3)
+        plt.tight_layout()
+        plt.savefig(f'{model.dump_path}/{self.name}.png')
+        plt.close()
 
     def plot(self, model, x, y):
         if self.smoothing_window is None:
@@ -225,50 +222,50 @@ class MetricPlotter(Callback):
                                          index=model.train_dict.get(x, None)), label=f'smoothed {y}')
 
 
-class SmoothedMetricPlotter(Callback):
-    # @todo is this simply redundant?
-    def __init__(self, metric, frequency=1, window=10,
-                 x=None, x_label=None, y_label=None, title=None, name=None):
-        super().__init__()
-        self.frequency = frequency
-        self.y = metric
-        self.x = x
-        self.window = window
-        self.y_label = y_label if y_label is not None else 'metric'
-        self.x_label = x_label if x_label is not None else 'iters'
-        self.title = title if title is not None else metric
-        self.name = name if name is not None else metric
-
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.frequency == 0:
-            if self.x is None:
-                plt.plot(*sliding_window(self.window,
-                                         model.train_dict[self.y]))
-            else:
-                plt.plot(*sliding_window(self.window,
-                                         model.train_dict[self.y],
-                                         index=model.train_dict.get(self.x, None)))
-            plt.ylabel(self.y_label)
-            plt.xlabel(self.x_label)
-            plt.title(f'smoothed {self.title}')
-            plt.tight_layout()
-            plt.savefig(f'{model.dump_path}/smoothed_{self.name}.png')
-            plt.close()
+# class SmoothedMetricPlotter(Callback):
+#     # @todo is this simply redundant?
+#     def __init__(self, metric, frequency=1, window=10,
+#                  x=None, x_label=None, y_label=None, title=None, name=None):
+#         super().__init__()
+#         self.frequency = frequency
+#         self.y = metric
+#         self.x = x
+#         self.window = window
+#         self.y_label = y_label if y_label is not None else 'metric'
+#         self.x_label = x_label if x_label is not None else 'iters'
+#         self.title = title if title is not None else metric
+#         self.name = name if name is not None else metric
+#
+#     def __call__(self, model):
+#         if model.train_dict['epochs_run'] % self.frequency == 0:
+#             if self.x is None:
+#                 plt.plot(*sliding_window(self.window,
+#                                          model.train_dict[self.y]))
+#             else:
+#                 plt.plot(*sliding_window(self.window,
+#                                          model.train_dict[self.y],
+#                                          index=model.train_dict.get(self.x, None)))
+#             plt.ylabel(self.y_label)
+#             plt.xlabel(self.x_label)
+#             plt.title(f'smoothed {self.title}')
+#             plt.tight_layout()
+#             plt.savefig(f'{model.dump_path}/smoothed_{self.name}.png')
+#             plt.close()
 
 
 class EnsembleLearningCurvePlotter(Callback):
 
-    def __init__(self, target_folder_path='tmp'):
+    def __init__(self, target_folder_path='tmp', *args, **kwargs):
         """
         Plotting the learning curves of an entire ensemble
          
         Args:
             target_folder_path:   path to dump the resulting image to 
         """
-        super(EnsembleLearningCurvePlotter, self).__init__()
+        super(EnsembleLearningCurvePlotter, self).__init__(*args, **kwargs)
         self.img_path = target_folder_path
 
-    def __call__(self, ensemble, args=None, return_fig=False):
+    def forward(self, ensemble, args=None, return_fig=False):
         if args is None:
             args = {}
         if 'figsize' not in args:
@@ -309,12 +306,12 @@ class EnsembleLearningCurvePlotter(Callback):
 
 class ConfusionMatrixPlotter(Callback):
 
-    def __init__(self, data_loader, img_path='./tmp', img_name='confusion_matrix'):
-        super(ConfusionMatrixPlotter, self).__init__()
+    def __init__(self, data_loader, img_path='./tmp', img_name='confusion_matrix', *args, **kwargs):
+        super(ConfusionMatrixPlotter, self).__init__(*args, **kwargs)
         self.data_loader = data_loader
         self.img_path = '{}/{}.png'.format(img_path, img_name)
 
-    def __call__(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
+    def forward(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
         y_pred, y_true = DataHandler.predict_data_loader(model=model, data_loader=self.data_loader, device=device, return_true=True)
 
         cm = scale_confusion_matrix(confusion_matrix(y_true, y_pred))
@@ -352,7 +349,7 @@ class ConfusionMatrixPlotter(Callback):
 
 class Reporter(Callback):
 
-    def __init__(self, data_loader, folder_path='./tmp', file_name='report', mode='w'):
+    def __init__(self, data_loader, folder_path='./tmp', file_name='report', mode='w', *args, **kwargs):
         """
 
         Args:
@@ -361,12 +358,12 @@ class Reporter(Callback):
             file_name:
             mode: mode of the writer, 'a': append, 'w': overwrite
         """
-        super(Reporter, self).__init__()
+        super(Reporter, self).__init__(*args, **kwargs)
         self.mode = mode
         self.data_loader = data_loader
         self.file_path = '{}/{}.txt'.format(folder_path, file_name)
 
-    def __call__(self, model, classes):
+    def forward(self, model, classes):
         y_pred, y_true = DataHandler.predict_data_loader(model, self.data_loader, return_true=True)
         report = classification_report(y_true.numpy(), y_pred.numpy(), digits=3, target_names=classes)
         self._write_report(report)
@@ -379,10 +376,10 @@ class Reporter(Callback):
 
 
 class WandbTrainDictLogger(Callback):
-    def __init__(self):
-        super(WandbTrainDictLogger, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(WandbTrainDictLogger, self).__init__(*args, **kwargs)
 
-    def __call__(self, model, args={}):
+    def forward(self, model, args={}):  # @todo what the fuck is args for?
         log_dict = {}
         for k, v in model.train_dict.items():
             if isinstance(v, (list, np.ndarray)):
@@ -393,8 +390,8 @@ class WandbTrainDictLogger(Callback):
 
 
 class WandbExperiment(Callback):
-    def __init__(self, wandb_args):
-        super(WandbExperiment, self).__init__()
+    def __init__(self, wandb_args, *args, **kwargs):
+        super(WandbExperiment, self).__init__(*args, **kwargs)
         self.wandb_args = wandb_args
 
     def start(self, learner):
@@ -403,7 +400,7 @@ class WandbExperiment(Callback):
         wandb.init(**self.wandb_args, reinit=True)
         wandb.watch(learner.model)
 
-    def __call__(self, model, args={}):
+    def forward(self, model, args={}):  # @todo what the fuck is args for?
         log_dict = {}
         for k, v in model.train_dict.items():
             if isinstance(v, (list, np.ndarray)):
