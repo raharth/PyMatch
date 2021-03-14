@@ -87,10 +87,19 @@ class PolicyGradientActionSelection(SelectionPolicy):
 
 
 class BayesianDropoutPGActionSelection(SelectionPolicy):
-    """
-    Probability based selection strategy, used for Policy Gradient, using multiple drop out forward passes
-    to estimate the reliability of the prediction.
-    """
+    def __init__(self, predictions: int, reduce_hat=hat.EnsembleHatStd(), *args, **kwargs):
+        """
+        Probability based selection strategy, used for Policy Gradient, using multiple drop out forward passes
+        to estimate the reliability of the prediction.
+
+        Args:
+            predictions:    number of iterations used for the bayesian ensemble
+            reduce_hat:     ensemble hat reducing the ouput of the ensemble to a single probability distribution
+        """
+        super().__init__(*args, **kwargs)
+        self.predictions = predictions
+        self.reduce_hat = reduce_hat
+
     def forward(self, agent, observation):
         observation = observation.to(agent.device)
         agent.to(agent.device)
@@ -156,10 +165,6 @@ class NormalThompsonSampling(SelectionPolicy):
     """
     Implementation of Thompson sampling based in the Normal distribution.
     Estimates the distribution over a model, sampling from it.
-    Args:
-        pre_pipes:  pipeline elements before the agent
-        post_pipes: pipeline elements after the agent the last element of this list has to provide the
-                    parameterization of the distribution
     @ todo  a better abstraction would be using a general distribution, defined in the constructor. Then the last
             pipe element has to provide the final inputs to that distribution, right now it can only use the Normal
             distribution but no other.
