@@ -80,8 +80,20 @@ class EnvironmentEvaluator(Callback):
                  frequency=1,
                  n_evaluations=1,
                  action_selector=GreedyValueSelection(),
-                 metrics=None,  # 'val_reward',
+                 metrics=None,
                  epoch_name='val_epoch'):
+        """
+        Evaluates an environment and writes the restults to the train_dict of the learner.
+
+        Args:
+            env:                Environment to evaluate
+            frequency:          Every 'frequency'-th epoch the environment is evaluated.
+            n_evaluations:      Number of evaluations to run at a time to obtain a more reliable estimate
+            action_selector:    SelectionPolicy to use
+            metrics:            dict, of the patter {name_to_store: fn_to apply to the n runs}. By default is uses the
+                                mean, but it can be replaced with the median or the std could be added.
+            epoch_name:         Defines under which name the epochs are stored, when evaluating the environment
+        """
         super().__init__()
         self.env = env
         self.frequency = frequency
@@ -92,7 +104,7 @@ class EnvironmentEvaluator(Callback):
 
     def __call__(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
-            print('Evaluation environment...')
+            print('Evaluation environment...', flush=True)
             with eval_mode(model):
                 episode_rewards = []
                 for _ in tqdm(range(self.n_evaluations)):
@@ -107,7 +119,7 @@ class EnvironmentEvaluator(Callback):
                         terminate = done
                     episode_rewards += [episode_reward]
 
-            print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}')
+            print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}', flush=True)
             for name, func in self.metrics.items():
                 model.train_dict[name] = model.train_dict.get(name, []) + [func(episode_rewards)]
             model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [model.train_dict['epochs_run']]
@@ -139,18 +151,29 @@ class AgentVisualizer(Callback):
 
 
 class EnsembleRewardPlotter(Callback):
-    def __init__(self, metrics=None):
+    def __init__(self, metrics=None, xlabel='epochs', ylabel='average reward', title='average validation reward over time'):
+        """
+        This plots the individual learners of an ensemble as well as the aggregated performance metrics of the ensemble.
+
+        Args:
+            metrics:    dict of the name of metrics to plot for the ensemble. The key is the y-values, while the values
+                        is the according x-values. This way metrics estimated at different epochs can be plotted
+                        properly in the same plot.
+        """
         super().__init__()
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.title = title
         self.metrics = {'val_reward_mean': 'val_epoch'} if metrics is None else metrics
 
     def __call__(self, model):
         val_rewards = np.array([learner.train_dict.get('val_reward', []) for learner in model.learners])
         learner_val_epochs = model.learners[0].train_dict.get('val_epoch', [])
-        plt.title(f'average validation reward over time for {len(model.learners)} Agents')
-        plt.xlabel('epochs')
-        plt.ylabel('average reward')
-        plt.plot(learner_val_epochs, val_rewards.mean(0), label='agent mean')
-        plt.plot(learner_val_epochs, np.median(val_rewards, axis=0), label='agent median')
+        plt.title(self.title)
+        plt.xlabel(self.xlabel)
+        plt.ylabel(self.ylabel)
+        plt.plot(learner_val_epochs, val_rewards.mean(0), label=f'mean ({len(model.learners)} agents)')
+        plt.plot(learner_val_epochs, np.median(val_rewards, axis=0), label=f'median ({len(model.learners)} agents)')
         for v in val_rewards:
             plt.plot(learner_val_epochs, v, alpha=.1, color='grey')
         for y, x in self.metrics.items():
