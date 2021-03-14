@@ -55,23 +55,23 @@ from tqdm import tqdm
 #         agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
 #         return episode_reward
 
-
-class SmoothedRewardPlotter(Callback):
-    def __init__(self, frequency=1, window=10):
-        super().__init__()
-        self.frequency = frequency
-        self.window = window
-
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.frequency == 0 and \
-                len(model.train_dict['rewards']) >= self.window:
-            plt.plot(*sliding_window(self.window, model.train_dict['rewards']))
-            plt.ylabel('averaged rewards')
-            plt.xlabel('episodes')
-            plt.title('Smoothed Average rewards')
-            plt.tight_layout()
-            plt.savefig(f'{model.dump_path}/smoothed_rewards.png')
-            plt.close()
+### DEPRICATED! THIS SHOULD BE REPLACED BY MetricPlotter
+# class SmoothedRewardPlotter(Callback):
+#     def __init__(self, window=10, metrics=None, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.window = window
+#         self.metrics = metrics if metrics is not None else ['rewards']
+#
+#     def forward(self, model):
+#         for metric in self.metrics:
+#             if len(model.train_dict['rewards']) >= self.window:
+#                 plt.plot(*sliding_window(self.window, model.train_dict['rewards']))
+#         plt.ylabel('averaged rewards')
+#         plt.xlabel('episodes')
+#         plt.title('Smoothed Average rewards')
+#         plt.tight_layout()
+#         plt.savefig(f'{model.dump_path}/smoothed_rewards.png')
+#         plt.close()
 
 
 class EnvironmentEvaluator(Callback):
@@ -81,7 +81,9 @@ class EnvironmentEvaluator(Callback):
                  n_evaluations=1,
                  action_selector=GreedyValueSelection(),
                  metrics=None,
-                 epoch_name='val_epoch'):
+                 epoch_name='val_epoch',
+                 *args,
+                 **kwargs):
         """
         Evaluates an environment and writes the restults to the train_dict of the learner.
 
@@ -94,15 +96,14 @@ class EnvironmentEvaluator(Callback):
                                 mean, but it can be replaced with the median or the std could be added.
             epoch_name:         Defines under which name the epochs are stored, when evaluating the environment
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.env = env
-        self.frequency = frequency
         self.action_selector = action_selector
         self.n_evaluations = n_evaluations
         self.metrics = {'val_reward': np.mean} if metrics is None else metrics
         self.epoch_name = epoch_name
 
-    def __call__(self, model):
+    def forward(self, model):
         if model.train_dict['epochs_run'] % self.frequency == 0:
             print('Evaluation environment...', flush=True)
             with eval_mode(model):
@@ -126,7 +127,7 @@ class EnvironmentEvaluator(Callback):
 
 
 class AgentVisualizer(Callback):
-    def __init__(self, env, frequency=1, action_selector=GreedyValueSelection()):
+    def __init__(self, env, action_selector=GreedyValueSelection(), *args, **kwargs):
         """
         Visualizes an agent in an environment.
 
@@ -137,29 +138,28 @@ class AgentVisualizer(Callback):
         """
         super().__init__()
         self.env = env
-        self.frequency = frequency
         self.action_selector = action_selector
 
-    def __call__(self, model):
-        if model.train_dict['epochs_run'] % self.frequency == 0:
-            print('Visualizing environment...')
-            with eval_mode(model):
-                terminate = False
-                episode_reward = 0
-                observation = self.env.reset().detach()
-                while not terminate:
-                    action = self.action_selector(model, observation)
-                    new_observation, reward, done, _ = self.env.step(action)
-                    episode_reward += reward
-                    observation = new_observation
-                    terminate = done
-                    self.env.render()
+    def forward(self, model):
+        print('Visualizing environment...')
+        with eval_mode(model):
+            terminate = False
+            episode_reward = 0
+            observation = self.env.reset().detach()
+            while not terminate:
+                action = self.action_selector(model, observation)
+                new_observation, reward, done, _ = self.env.step(action)
+                episode_reward += reward
+                observation = new_observation
+                terminate = done
+                self.env.render()
 
-            print(f'Visual evaluation reward for model: {episode_reward:.2f}')
+        print(f'Visual evaluation reward for model: {episode_reward:.2f}')
 
 
 class EnsembleRewardPlotter(Callback):
-    def __init__(self, metrics=None, xlabel='epochs', ylabel='average reward', title='average validation reward over time'):
+    def __init__(self, metrics=None, xlabel='epochs', ylabel='average reward',
+                 title='average validation reward over time', *args, **kwargs):
         """
         This plots the individual learners of an ensemble as well as the aggregated performance metrics of the ensemble.
 
@@ -168,13 +168,13 @@ class EnsembleRewardPlotter(Callback):
                         is the according x-values. This way metrics estimated at different epochs can be plotted
                         properly in the same plot.
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.title = title
         self.metrics = {'val_reward_mean': 'val_epoch'} if metrics is None else metrics
 
-    def __call__(self, model):
+    def forward(self, model):
         val_rewards = np.array([learner.train_dict.get('val_reward', []) for learner in model.learners])
         learner_val_epochs = model.learners[0].train_dict.get('val_epoch', [])
         plt.title(self.title)
