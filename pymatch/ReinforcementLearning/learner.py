@@ -96,7 +96,7 @@ class PolicyGradient(ReinforcementLearner):
                  env,
                  model,
                  optimizer,
-                 memory_updater,
+                 # memory_updater,
                  n_samples=None,
                  batch_size=None,
                  crit=REINFORCELoss(),
@@ -110,6 +110,7 @@ class PolicyGradient(ReinforcementLearner):
                  callbacks=None,
                  dump_path='./tmp',
                  device='cpu',
+                 *args,
                  **kwargs):
         """
         Policy Gradient learner.
@@ -151,7 +152,7 @@ class PolicyGradient(ReinforcementLearner):
                          env=env,
                          gamma=gamma,
                          memory=memory,
-                         memory_updater=memory_updater,
+                         # memory_updater=memory_updater,
                          action_selector=action_selector,
                          grad_clip=grad_clip,
                          load_checkpoint=load_checkpoint,
@@ -159,6 +160,7 @@ class PolicyGradient(ReinforcementLearner):
                          callbacks=callbacks,
                          dump_path=dump_path,
                          device=device,
+                         *args,
                          **kwargs)
 
     def fit_epoch(self, device, verbose=1):
@@ -251,7 +253,7 @@ class QLearner(ReinforcementLearner):
                  optimizer,
                  crit,
                  env,
-                 memory_updater,
+                 # memory_updater,
                  action_selector,
                  alpha,
                  gamma,
@@ -407,7 +409,7 @@ class DoubleQLearner(QLearner):
                  optimizer,
                  crit,
                  env,
-                 memory_updater,
+                 # memory_updater,
                  action_selector,
                  alpha,
                  gamma,
@@ -632,7 +634,7 @@ class A3C(PolicyGradient):
                  env,
                  model,
                  optimizer,
-                 memory_updater,
+                 # memory_updater,
                  n_samples,
                  batch_size,
                  crit=REINFORCELoss(),
