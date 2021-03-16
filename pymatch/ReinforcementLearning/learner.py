@@ -18,7 +18,7 @@ class ReinforcementLearner(Learner):
                  crit,
                  memory,
                  env,
-                 memory_updater,
+                 # memory_updater,
                  action_selector,
                  gamma,
                  grad_clip=None,
