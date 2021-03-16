@@ -18,15 +18,15 @@ class ReinforcementLearner(Learner):
                  crit,
                  memory,
                  env,
-                 # memory_updater,
                  action_selector,
                  gamma,
                  grad_clip=None,
-                 load_checkpoint=False,
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
-                 device='cpu'
+                 device='cpu',
+                 *args,
+                 **kwargs
                  ):
         """
         Abstract class for Reinforcement Learners
@@ -37,11 +37,9 @@ class ReinforcementLearner(Learner):
             crit:               loss function
             memory:             memory to store and load the memory
             env:                environment to interact with
-            memory_updater:     memory updater, also implementing the update policy
             action_selector:    action selection strategy
             gamma:              discount factor for reward over time
             grad_clip:          gradient clipping
-            load_checkpoint:    bool, if a checkpoint should be loaded
             name:               name of the model
             callbacks:          list of callbacks to use
             dump_path:          dump path for the model and callbacks
@@ -52,11 +50,12 @@ class ReinforcementLearner(Learner):
                          crit,
                          train_loader=memory,
                          grad_clip=grad_clip,
-                         load_checkpoint=load_checkpoint,
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
-                         device=device
+                         device=device,
+                         *args,
+                         **kwargs
                          )
 
         self.env = env
@@ -96,7 +95,6 @@ class PolicyGradient(ReinforcementLearner):
                  env,
                  model,
                  optimizer,
-                 # memory_updater,
                  n_samples=None,
                  batch_size=None,
                  crit=REINFORCELoss(),
@@ -105,7 +103,6 @@ class PolicyGradient(ReinforcementLearner):
                  memory_size=None,
                  gamma=.95,
                  grad_clip=None,
-                 load_checkpoint=False,
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
@@ -127,7 +124,6 @@ class PolicyGradient(ReinforcementLearner):
             memory_size:        memory size, storing passed memories
             gamma:              discount factor for rewards over time
             grad_clip:          gradient clipping
-            load_checkpoint:    bool, if checkpoint should be loaded
             name:               name of the agent
             callbacks:          list of callbacks to use during training
             dump_path:          dump path for the model and the callbacks
@@ -152,10 +148,8 @@ class PolicyGradient(ReinforcementLearner):
                          env=env,
                          gamma=gamma,
                          memory=memory,
-                         # memory_updater=memory_updater,
                          action_selector=action_selector,
                          grad_clip=grad_clip,
-                         load_checkpoint=load_checkpoint,
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
@@ -174,7 +168,6 @@ class PolicyGradient(ReinforcementLearner):
         Returns:
             current loss
         """
-        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
 
@@ -253,7 +246,6 @@ class QLearner(ReinforcementLearner):
                  optimizer,
                  crit,
                  env,
-                 # memory_updater,
                  action_selector,
                  alpha,
                  gamma,
@@ -262,7 +254,6 @@ class QLearner(ReinforcementLearner):
                  batch_size=None,
                  memory=None,
                  grad_clip=None,
-                 load_checkpoint=False,
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
@@ -286,7 +277,6 @@ class QLearner(ReinforcementLearner):
             memory:             alternatively the memory can be explicitly specified, instead by (memory_size,
                                 n_samples, batch_size)
             grad_clip:          gradient_clipping
-            load_checkpoint:    loading previous checkpoint @todo might be dropped in the future
             name:               name for the learner
             callbacks:          list of callbacks to be called during training
             dump_path:          path to root folder, where the model and its callbacks is dumping stuff to
@@ -312,10 +302,8 @@ class QLearner(ReinforcementLearner):
                          env=env,
                          gamma=gamma,
                          memory=memory,
-                         memory_updater=memory_updater,
                          action_selector=action_selector,
                          grad_clip=grad_clip,
-                         load_checkpoint=load_checkpoint,
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
@@ -325,7 +313,6 @@ class QLearner(ReinforcementLearner):
         self.alpha = alpha
 
     def fit_epoch(self, device, verbose=1):
-        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
 
@@ -419,7 +406,6 @@ class DoubleQLearner(QLearner):
                  batch_size=None,
                  memory=None,
                  grad_clip=None,
-                 load_checkpoint=False,
                  name='q_learner',
                  callbacks=[],
                  dump_path='./tmp',
@@ -459,7 +445,6 @@ class DoubleQLearner(QLearner):
             optimizer=optimizer,
             crit=crit,
             env=env,
-            memory_updater=memory_updater,
             action_selector=action_selector,
             alpha=alpha,
             gamma=gamma,
@@ -468,7 +453,6 @@ class DoubleQLearner(QLearner):
             batch_size=batch_size,
             memory=memory,
             grad_clip=grad_clip,
-            load_checkpoint=load_checkpoint,
             name=name,
             callbacks=callbacks,
             dump_path=dump_path,
@@ -508,7 +492,6 @@ class SARSA(DoubleQLearner):
                  # optimizer,
                  # crit,
                  # env,
-                 # memory_updater,
                  # action_selector,
                  # gamma,
                  # alpha,
@@ -517,7 +500,6 @@ class SARSA(DoubleQLearner):
                  # batch_size,
                  # tau,
                  # grad_clip=None,
-                 # load_checkpoint=False,
                  # name='q_learner',
                  # callbacks=[],
                  # dump_path='./tmp',
@@ -533,7 +515,6 @@ class SARSA(DoubleQLearner):
             # optimizer=optimizer,
             # crit=crit,
             # env=env,
-            # memory_updater=memory_updater,
             # action_selector=action_selector,
             # gamma=gamma,
             # alpha=alpha,
@@ -542,7 +523,6 @@ class SARSA(DoubleQLearner):
             # n_samples=None,
             # batch_size=None,
             # grad_clip=grad_clip,
-            # load_checkpoint=load_checkpoint,
             # name=name,
             # callbacks=callbacks,
             # dump_path=dump_path,
@@ -634,7 +614,6 @@ class A3C(PolicyGradient):
                  env,
                  model,
                  optimizer,
-                 # memory_updater,
                  n_samples,
                  batch_size,
                  crit=REINFORCELoss(),
@@ -643,7 +622,6 @@ class A3C(PolicyGradient):
                  memory_size=1000,
                  gamma=.95,
                  grad_clip=None,
-                 load_checkpoint=False,
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
@@ -666,7 +644,6 @@ class A3C(PolicyGradient):
         super().__init__(env=env,
                          model=model,
                          optimizer=optimizer,
-                         memory_updater=memory_updater,
                          n_samples=None,
                          batch_size=None,
                          crit=crit,
@@ -675,7 +652,6 @@ class A3C(PolicyGradient):
                          memory_size=None,
                          gamma=gamma,
                          grad_clip=grad_clip,
-                         load_checkpoint=load_checkpoint,
                          name=name,
                          callbacks=callbacks,
                          dump_path=dump_path,
