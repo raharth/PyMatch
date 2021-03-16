@@ -190,3 +190,58 @@ class EnsembleRewardPlotter(Callback):
         plt.tight_layout()
         plt.savefig(f'{model.dump_path}/avg_ensemble_val_rewards.png')
         plt.close()
+
+
+class MemoryUpdater(Callback):
+    def __init__(self, memory_refresh_rate, *args, **kwargs):
+        """
+        Updates the memory of
+        Args:
+            memory_refresh_rate: fraction of oldest memories to be replaced when updated
+        """
+        super().__init__(*args, **kwargs)
+        if not 0. <= memory_refresh_rate <= 1.:
+            raise ValueError(f'memory_refresh_rate was set to {memory_refresh_rate} but has to be in ]0., 1.]')
+        self.memory_refresh_rate = memory_refresh_rate
+
+    def forward(self, agent):
+        reduce_to = int(len(agent.train_loader) * (1 - self.memory_refresh_rate))
+        agent.train_loader.reduce_buffer(reduce_to)
+        self.fill_memory(agent)
+
+    def fill_memory(self, agent):
+        reward, games = 0, 0
+        while len(agent.train_loader) < agent.train_loader.memory_size:
+            reward += agent.play_episode()
+            games += 1
+        agent.train_loader.reduce_buffer()
+        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
+
+    def start(self, agent):
+        self.fill_memory(agent)
+
+
+class EpisodeUpdater(Callback):
+    """
+    Sampels and writes a singe episode to the memory of an agent.
+    """
+    def forward(self, agent):
+        reward = agent.play_episode()
+        agent.train_loader.reduce_buffer()
+        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
+
+    def start(self, model):
+        self.forward(model)
+
+
+class SingleEpisodeSampler(Callback):
+    """
+    Always samples just a single episode from the environment.
+    """
+    def forward(self, agent):
+        agent.train_loader.memory_reset()
+        reward = agent.play_episode()
+        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
+
+    def start(self, model):
+        self.forward(model)

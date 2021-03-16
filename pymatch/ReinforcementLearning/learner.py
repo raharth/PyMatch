@@ -1,6 +1,8 @@
 import torch
 from tqdm import tqdm
 import numpy as np
+
+from pymatch.DeepLearning.ensemble import Ensemble
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.DeepLearning.learner import Learner
@@ -58,7 +60,7 @@ class ReinforcementLearner(Learner):
                          )
 
         self.env = env
-        self.memory_updater = memory_updater
+        # self.memory_updater = memory_updater
         self.train_dict['rewards'] = []
         self.gamma = gamma
         self.chose_action = action_selector
@@ -130,14 +132,13 @@ class PolicyGradient(ReinforcementLearner):
             dump_path:          dump path for the model and the callbacks
             device:             device to run the model on
         """
-        if memory is None and (memory_size is None or n_samples is None or batch_size is None):
+        if memory is None and (memory_size is None or batch_size is None):
             raise ValueError('Learner lacks the memory, it has to be explicitly given, or defined by the params:'
-                             '`memory_size`, `n_samples`, `batch_size`')
+                             '`memory_size`, `batch_size`')
         if memory is not None and (memory_size is not None or
-                                   n_samples is not None or
                                    batch_size is not None):
-            raise ValueError('Ambiguous memory specification, either `memory` or `memory_size`, `n_samples`, '
-                             '`batch_size` have to be provided')
+            raise ValueError('Ambiguous memory specification, either `memory` or `memory_size`, `batch_size` have to '
+                             'be provided')
         if memory is None:
             memory = Memory(['log_prob', 'reward'],
                             memory_size=memory_size,
@@ -171,7 +172,7 @@ class PolicyGradient(ReinforcementLearner):
         Returns:
             current loss
         """
-        self.memory_updater(self)
+        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
 
@@ -322,9 +323,11 @@ class QLearner(ReinforcementLearner):
         self.alpha = alpha
 
     def fit_epoch(self, device, verbose=1):
-        self.memory_updater(self)
+        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
+
+        losses = []
 
         for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
             action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
@@ -338,8 +341,10 @@ class QLearner(ReinforcementLearner):
                     reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
 
             loss = self.crit(prediction, target)
-            self.train_dict['train_losses'] += [loss.item()]
+            losses += [loss.item()]
             self._backward(loss)
+
+        self.train_dict['train_losses'] += [loss.item()]
 
         # This is using the DQL loss defined in 'Asynchronous Methods for Deep Reinforcement Learning' by Mnih et al.,
         # though this is not working
@@ -544,7 +549,7 @@ class SARSA(DoubleQLearner):
             **kwargs)
 
     def fit_epoch(self, device, verbose=1):
-        self.memory_updater(self)
+        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
         self.target_model.to(device)
@@ -696,7 +701,7 @@ class A3C(PolicyGradient):
         Returns:
             current loss
         """
-        self.memory_updater(self)
+        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
 
@@ -768,3 +773,35 @@ class A3C(PolicyGradient):
     def restore_checkpoint(self, checkpoint):
         super(A3C, self).restore_checkpoint(checkpoint=checkpoint)
         self.critics.restore_checkpoint(checkpoint['critics_state_dict'])
+
+
+# class Bootstrapper(Ensemble):
+#     def play_episode(self):
+#         observation = self.env.reset().detach()
+#         episode_reward = 0
+#         step_counter = 0
+#         terminate = False
+#         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
+#         with eval_mode(self):
+#             while not terminate:
+#                 step_counter += 1
+#                 with torch.no_grad():
+#                     action = self.chose_action(self, observation)
+#                 new_observation, reward, terminate, _ = self.env.step(action)
+#
+#                 episode_reward += reward
+#                 episode_memory.memorize((action,
+#                                          observation,
+#                                          torch.tensor(reward).float(),
+#                                          new_observation,
+#                                          terminate),
+#                                         ['action', 'state', 'reward', 'new_state', 'terminal'])
+#                 observation = new_observation
+#
+#         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
+#         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
+#
+#         if episode_reward > self.train_dict.get('best_performance', -np.inf):
+#             self.train_dict['best_performance'] = episode_reward
+#
+#         return episode_reward

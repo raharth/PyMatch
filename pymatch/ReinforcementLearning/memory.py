@@ -112,6 +112,10 @@ class Memory(Dataset):
         return tuple(result)
 
     def sample_indices(self, n_samples):
+        if n_samples is None:
+            idx = np.arange(self.__len__())
+            np.random.shuffle(idx)
+            return idx
         return np.random.choice(range(self.__len__()), n_samples)
 
     def sample_loader(self, n_samples):
@@ -130,40 +134,40 @@ class Memory(Dataset):
     def restore_checkpoint(self, checkpoint):
         self.memory = checkpoint['memory']
 
-
-class MemoryUpdater:
-    def __init__(self, memory_refresh_rate):
-        """
-        Updates the memory of
-        Args:
-            memory_refresh_rate: fraction of oldest memories to be replaced when updated
-        """
-        if not 0. <= memory_refresh_rate <= 1.:
-            raise ValueError(f'memory_refresh_rate was set to {memory_refresh_rate} but has to be in ]0., 1.]')
-        self.memory_refresh_rate = memory_refresh_rate
-
-    def __call__(self, agent):
-        reduce_to = int(len(agent.train_loader) * (1 - self.memory_refresh_rate))
-        agent.train_loader.reduce_buffer(reduce_to)
-        self.fill_memory(agent)
-
-    def fill_memory(self, agent):
-        reward, games = 0, 0
-        while len(agent.train_loader) < agent.train_loader.memory_size:
-            reward += agent.play_episode()
-            games += 1
-        agent.train_loader.reduce_buffer()
-        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
-
-
-class EpisodeUpdater:
-    """
-    Sampels and writes a singe episode to the memory of an agent.
-    """
-    def __call__(self, agent):
-        reward = agent.play_episode()
-        agent.train_loader.reduce_buffer()
-        agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
+# Depricated for now
+# class MemoryUpdater:
+#     def __init__(self, memory_refresh_rate):
+#         """
+#         Updates the memory of
+#         Args:
+#             memory_refresh_rate: fraction of oldest memories to be replaced when updated
+#         """
+#         if not 0. <= memory_refresh_rate <= 1.:
+#             raise ValueError(f'memory_refresh_rate was set to {memory_refresh_rate} but has to be in ]0., 1.]')
+#         self.memory_refresh_rate = memory_refresh_rate
+#
+#     def __call__(self, agent):
+#         reduce_to = int(len(agent.train_loader) * (1 - self.memory_refresh_rate))
+#         agent.train_loader.reduce_buffer(reduce_to)
+#         self.fill_memory(agent)
+#
+#     def fill_memory(self, agent):
+#         reward, games = 0, 0
+#         while len(agent.train_loader) < agent.train_loader.memory_size:
+#             reward += agent.play_episode()
+#             games += 1
+#         agent.train_loader.reduce_buffer()
+#         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
+#
+#
+# class EpisodeUpdater:
+#     """
+#     Sampels and writes a singe episode to the memory of an agent.
+#     """
+#     def __call__(self, agent):
+#         reward = agent.play_episode()
+#         agent.train_loader.reduce_buffer()
+#         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
 
 class StateTrackingMemory(Memory):

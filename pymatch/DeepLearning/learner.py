@@ -18,7 +18,7 @@ class Learner(ABC):
                  crit,
                  train_loader,
                  grad_clip=None,
-                 load_checkpoint=False,
+                 # load_checkpoint=False,
                  name='',
                  callbacks=None,
                  dump_path='./tmp',
@@ -32,7 +32,7 @@ class Learner(ABC):
             crit:               loss gunction
             train_loader:       train loader
             grad_clip:          gradient clipping
-            load_checkpoint:    determines if checkpoint should be leaded
+            # load_checkpoint:    determines if checkpoint should be leaded
             name:               name of the learner, used for dumping
             callbacks:          list of callbacks
             dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
