@@ -115,8 +115,10 @@ class Memory(Dataset):
         if n_samples is None:
             idx = np.arange(self.__len__())
             np.random.shuffle(idx)
-            return idx
-        return np.random.choice(range(self.__len__()), n_samples)
+        else:
+            n_samples = min(n_samples, self.__len__())
+            idx = np.random.choice(range(self.__len__()), n_samples, replace=False)
+        return idx
 
     def sample_loader(self, n_samples):
         return torch.utils.data.DataLoader(
