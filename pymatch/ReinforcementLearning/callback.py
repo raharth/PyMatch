@@ -77,7 +77,6 @@ from tqdm import tqdm
 class EnvironmentEvaluator(Callback):
     def __init__(self,
                  env,
-                 frequency=1,
                  n_evaluations=1,
                  action_selector=GreedyValueSelection(),
                  metrics=None,
