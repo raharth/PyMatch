@@ -14,7 +14,8 @@ class Memory(Dataset):
                  memory_cell_space=None,
                  memory_size=None,
                  batch_size=64,
-                 gamma=.0):
+                 gamma=.0,
+                 replace=True):
         """
         Memory class for RL algorithm.
 
@@ -27,6 +28,7 @@ class Memory(Dataset):
         self.memory_cell_space = memory_cell_space
         self.memory_cell_names = memory_cell_names
         self.memory_size = memory_size
+        self.replace = replace
         if gamma >= 1.:
             raise ValueError('gamma is larger then 1 which will lead to exponential growth in rewards')
         self.gamma = gamma
@@ -117,7 +119,7 @@ class Memory(Dataset):
             np.random.shuffle(idx)
         else:
             n_samples = min(n_samples, self.__len__())
-            idx = np.random.choice(range(self.__len__()), n_samples, replace=False)
+            idx = np.random.choice(range(self.__len__()), n_samples, replace=self.replace)
         return idx
 
     def sample_loader(self, n_samples):
@@ -197,7 +199,7 @@ class PriorityMemory(Memory):
             n_samples = self.__len__()
         n_samples = min(n_samples, self.__len__())
         self.probability /= self.probability.sum()
-        idx = np.random.choice(range(self.__len__()), n_samples, p=self.probability)
+        idx = np.random.choice(range(self.__len__()), n_samples, p=self.probability, replace=self.replace)
         return idx
 
     def set_probabilities(self, certainty):
