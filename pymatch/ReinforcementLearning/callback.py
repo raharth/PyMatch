@@ -7,6 +7,9 @@ from pymatch.utils.functional import eval_mode
 from pymatch.ReinforcementLearning.selection_policy import GreedyValueSelection
 import numpy as np
 from tqdm import tqdm
+from pymatch.DeepLearning.pipeline import Pipeline
+from pymatch.DeepLearning.hat import EnsembleHatStd
+
 
 
 # class MemoryUpdater(Callback):
@@ -209,6 +212,7 @@ class MemoryUpdater(Callback):
         self.fill_memory(agent)
 
     def fill_memory(self, agent):
+        print('Filling Memory')
         reward, games = 0, 0
         while len(agent.train_loader) < agent.train_loader.memory_size:
             reward += agent.play_episode()
@@ -244,3 +248,12 @@ class SingleEpisodeSampler(Callback):
 
     def start(self, model):
         self.forward(model)
+
+
+class StateCertaintyEstimator(Callback):
+    def forward(self, agent, *args, **kwargs):
+        pipeline = Pipeline(pipes=[agent, EnsembleHatStd()])
+        pred, certainty = pipeline(torch.cat(agent.train_loader.memory['state']))
+        certainty = certainty.mean(-1)
+        certainty /= certainty.sum()
+        agent.train_loader.set_probabilities(certainty)

@@ -1,0 +1,39 @@
+{
+    "overwrite": false,
+    "n_learner": 2,
+    "hw_monitor": {},
+    "factory_args": {
+        "model_args": {
+            "in_nodes": 4,
+            "out_nodes": 2
+        },
+        "env_args": {},
+        "optim_args": {
+            "lr": 0.01,
+            "momentum": 0.5
+        },
+        "memory_args": {
+            "memory_refresh_rate": 0.002
+        },
+        "learner_args": {
+            "alpha": 0.2,
+            "grad_clip": 5.0,
+            "gamma": 0.95,
+            "name": "qlearner",
+            "device": "cpu"
+        }
+    },
+    "fit": {
+        "epochs": 500,
+        "device": "cpu",
+        "restore_early_stopping": false,
+        "verbose": false,
+        "learning_partition": 1
+    },
+    "memory_args": {
+        "n_samples": 100,
+        "batch_size": 100,
+        "memory_size": 100,
+        "memory_cell_names": ["action", "state", "reward", "new_state", "terminal"]
+    }
+}

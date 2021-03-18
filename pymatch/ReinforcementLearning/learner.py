@@ -180,7 +180,6 @@ class PolicyGradient(ReinforcementLearner):
             losses += [loss.item()]
         loss = np.mean(losses)
         self.train_dict['train_losses'] += [loss]
-        # self.train_dict['epochs_run'] += 1
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
                   f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
@@ -396,7 +395,6 @@ class DoubleQLearner(QLearner):
                  optimizer,
                  crit,
                  env,
-                 # memory_updater,
                  action_selector,
                  alpha,
                  gamma,
@@ -751,35 +749,3 @@ class A3C(PolicyGradient):
     def restore_checkpoint(self, checkpoint):
         super(A3C, self).restore_checkpoint(checkpoint=checkpoint)
         self.critics.restore_checkpoint(checkpoint['critics_state_dict'])
-
-
-# class Bootstrapper(Ensemble):
-#     def play_episode(self):
-#         observation = self.env.reset().detach()
-#         episode_reward = 0
-#         step_counter = 0
-#         terminate = False
-#         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
-#         with eval_mode(self):
-#             while not terminate:
-#                 step_counter += 1
-#                 with torch.no_grad():
-#                     action = self.chose_action(self, observation)
-#                 new_observation, reward, terminate, _ = self.env.step(action)
-#
-#                 episode_reward += reward
-#                 episode_memory.memorize((action,
-#                                          observation,
-#                                          torch.tensor(reward).float(),
-#                                          new_observation,
-#                                          terminate),
-#                                         ['action', 'state', 'reward', 'new_state', 'terminal'])
-#                 observation = new_observation
-#
-#         self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
-#         self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
-#
-#         if episode_reward > self.train_dict.get('best_performance', -np.inf):
-#             self.train_dict['best_performance'] = episode_reward
-#
-#         return episode_reward
