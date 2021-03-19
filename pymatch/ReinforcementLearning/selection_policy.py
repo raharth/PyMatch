@@ -34,20 +34,20 @@ class SelectionPolicy:
     def forward(self, agent, observation):
         raise NotImplementedError
 
-    def preparation(self, x):
+    def pre_pipe(self, x):
         for pipe in self.pre_pipeline:
             x = pipe(x)
         return x
 
-    def aggregation(self, x):
+    def post_pipe(self, x):
         for pipe in self.post_pipeline:
             x = pipe(x)
         return x
 
-    def __call__(self, agent, observation):
-        observation = self.preparation(observation)
-        x = self.forward(agent, observation)
-        return self.aggregation(x)
+    # def __call__(self, agent, observation):
+    #     observation = self.preparation(observation)
+    #     x = self.forward(agent, observation)
+    #     return self.aggregation(x)
 
 # class Softmax_Selection(SelectionPolicy):
 #
@@ -77,7 +77,7 @@ class PolicyGradientActionSelection(SelectionPolicy):
     """
     Probability based selection strategy, used for Policy Gradient
     """
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
         agent.to(agent.device)
         probs = agent.model(observation.to(agent.device))
         dist = Categorical(probs.squeeze())
@@ -100,7 +100,7 @@ class BayesianDropoutPGActionSelection(SelectionPolicy):
         self.predictions = predictions
         self.reduce_hat = reduce_hat
 
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
         observation = observation.to(agent.device)
         agent.to(agent.device)
         action_probs = agent.model(torch.cat(self.predictions * [observation]))
@@ -122,7 +122,7 @@ class QActionSelection(SelectionPolicy):
         super().__init__(*args, **kwargs)
         self.temperature = temperature
 
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
         agent.to(agent.device)
         qs = agent(observation.to(agent.device))
         probs = F.softmax(qs / self.temperature, dim=1)     # @todo dim=1 might cause trouble with ensembles?
@@ -144,9 +144,11 @@ class EpsilonGreedyActionSelection(SelectionPolicy):
         self.action_space = action_space
         self.epsilon = epsilon
 
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
         agent.to(agent.device)
+        observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
+        qs = self.post_pipe(qs)
         if np.random.uniform() > self.epsilon:
             return qs.argmax().item()
         return np.random.choice(self.action_space)
@@ -156,8 +158,10 @@ class GreedyValueSelection(SelectionPolicy):
     """
     Choosing the best possible option, necessary for evaluation
     """
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
+        observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
+        qs = self.post_pipe(qs)
         return qs.argmax().item()
 
 
@@ -170,7 +174,7 @@ class NormalThompsonSampling(SelectionPolicy):
             distribution but no other.
             Why is this part of the sampling in the first place?
     """
-    def forward(self, agent, observation):
+    def __call__(self, agent, observation):
         pipeline = Pipeline(pipes=self.pre_pipes + [agent] + self.post_pipes)
         with torch.no_grad():   # @todo why am I using a no grad here? This policy can then not be used for training?
             with eval_mode(agent):
