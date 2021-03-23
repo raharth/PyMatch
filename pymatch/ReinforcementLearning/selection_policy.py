@@ -124,8 +124,10 @@ class QActionSelection(SelectionPolicy):
 
     def __call__(self, agent, observation):
         agent.to(agent.device)
+        observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
-        probs = F.softmax(qs / self.temperature, dim=1)     # @todo dim=1 might cause trouble with ensembles?
+        qs = self.post_pipe(qs)
+        probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         return action.item()
