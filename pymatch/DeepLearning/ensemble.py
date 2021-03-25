@@ -50,13 +50,11 @@ class Ensemble:
         Trains each learner of the ensemble for a number of epochs
 
         Args:
-            callback_iter: number of iterations till the ensemble callbacks are called
-            epochs: number of epochs to train each learner
-            device: device to run the models on
-            checkpoint_int: every checkpoint_int iterations the model is checkpointed
-            validation_int:  every validation_int iterations the model is validated
-            restore_early_stopping: restores the best performing weights after training
-            verbose: verbosity
+            epochs:                     number of epochs to train each learner
+        device:                         device to run the models on
+            restore_early_stopping:     restores the best performing weights after training
+            learning_partition:         how many steps to take at a time for a specific learner
+            verbose:                    verbosity
 
         Returns:
             None
@@ -68,7 +66,7 @@ class Ensemble:
 
         for run_epochs in epoch_iter:
             for learner in self.learners:
-                if verbose == 1:
+                if verbose >= 1:
                     print('Trainer {}'.format(learner.name))
                 try:
                     learner.fit(epochs=run_epochs,
@@ -77,7 +75,7 @@ class Ensemble:
                 except TerminationException as te:
                     print(te)
 
-                if self.save_memory and learning_partition < 1:
+                if self.save_memory and learning_partition < 1:     # this means there is no learning partition
                     del learner
                     torch.cuda.empty_cache()
             for cb in self.callbacks:
@@ -159,37 +157,37 @@ class Ensemble:
         return self.fit(epochs=epochs, **fit_args)
 
     # @todo depricated
-    def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
-        # self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0
-        """
-        The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
-
-        Args:
-            epochs: max number of epochs to run the learners for
-            device: device to run the models on
-            checkpoint_int: every checkpoint_int iterations the model is checkpointed
-            validation_int:  every validation_int iterations the model is validated
-            restore_early_stopping: restores the best performing weights after training
-            verbose: verbosity
-
-        Returns:
-            None
-
-        """
-        for learner in self.learners:
-            train_epochs = epochs - learner.train_dict['epochs_run']
-            if train_epochs > 0:
-                print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
-                learner.fit(epochs=train_epochs,
-                            device=device,
-                            restore_early_stopping=restore_early_stopping,
-                            verbose=verbose)
-            else:
-                print(f'Trainer {learner.name} - was already trained')
-
-            if self.save_memory:
-                del learner
-                torch.cuda.empty_cache()
+    # def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
+    #     # self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0
+    #     """
+    #     The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
+    #
+    #     Args:
+    #         epochs: max number of epochs to run the learners for
+    #         device: device to run the models on
+    #         checkpoint_int: every checkpoint_int iterations the model is checkpointed
+    #         validation_int:  every validation_int iterations the model is validated
+    #         restore_early_stopping: restores the best performing weights after training
+    #         verbose: verbosity
+    #
+    #     Returns:
+    #         None
+    #
+    #     """
+    #     for learner in self.learners:
+    #         train_epochs = epochs - learner.train_dict['epochs_run']
+    #         if train_epochs > 0:
+    #             print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
+    #             learner.fit(epochs=train_epochs,
+    #                         device=device,
+    #                         restore_early_stopping=restore_early_stopping,
+    #                         verbose=verbose)
+    #         else:
+    #             print(f'Trainer {learner.name} - was already trained')
+    #
+    #         if self.save_memory:
+    #             del learner
+    #             torch.cuda.empty_cache()
 
     def to(self, device):
         self.device = device

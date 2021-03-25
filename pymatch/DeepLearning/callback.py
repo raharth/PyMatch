@@ -17,6 +17,7 @@ class Callback:
 
     def __init__(self, frequency=1):
         self.frequency = frequency
+        self.started = False
 
     def __call__(self, model, *args, **kwargs):
         if model.train_dict['epochs_run'] % self.frequency == 0:
@@ -36,9 +37,11 @@ class Checkpointer(Callback):
         self.path = None
 
     def start(self, model):
-        self.path = f'{model.dump_path}/checkpoint'
-        if not os.path.exists(self.path):
-            os.makedirs(self.path)
+        if not self.started:
+            self.path = f'{model.dump_path}/checkpoint'
+            if not os.path.exists(self.path):
+                os.makedirs(self.path)
+        self.started = True
 
     def forward(self, model):
         model.dump_checkpoint(path=self.path, tag='checkpoint')
@@ -89,9 +92,11 @@ class EarlyStopping(Validator):
         self.path = None
 
     def start(self, model):
-        self.path = f'{model.dump_path}/early_stopping'
-        if not os.path.exists(self.path):
-            os.makedirs(self.path)
+        if not self.started:
+            self.path = f'{model.dump_path}/early_stopping'
+            if not os.path.exists(self.path):
+                os.makedirs(self.path)
+        self.started = True
 
     def forward(self, model):
         if not os.path.exists(model.early_stopping_path):

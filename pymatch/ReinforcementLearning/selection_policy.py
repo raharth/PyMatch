@@ -79,11 +79,14 @@ class PolicyGradientActionSelection(SelectionPolicy):
     """
     def __call__(self, agent, observation):
         agent.to(agent.device)
-        probs = agent.model(observation.to(agent.device))
+        observation = self.pre_pipe(observation)
+        probs = agent(observation.to(agent.device))
+        probs = self.post_pipe(probs)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         log_prob = dist.log_prob(action)
         return action.item(), log_prob
+
 
 
 class BayesianDropoutPGActionSelection(SelectionPolicy):

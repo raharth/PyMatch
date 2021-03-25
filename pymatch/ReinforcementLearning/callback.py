@@ -221,7 +221,9 @@ class MemoryUpdater(Callback):
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
 
     def start(self, agent):
-        self.fill_memory(agent)
+        if not self.started:
+            self.fill_memory(agent)
+        self.started = True
 
 
 class EpisodeUpdater(Callback):
@@ -234,7 +236,9 @@ class EpisodeUpdater(Callback):
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
     def start(self, model):
-        self.forward(model)
+        if not self.started:
+            self.forward(model)
+        self.started = True
 
 
 class SingleEpisodeSampler(Callback):
@@ -247,7 +251,9 @@ class SingleEpisodeSampler(Callback):
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
     def start(self, model):
-        self.forward(model)
+        if not self.started:
+            self.forward(model)
+        self.started = True
 
 
 class StateCertaintyEstimator(Callback):
