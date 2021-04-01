@@ -245,3 +245,16 @@ class BaysianEnsemble(Ensemble):
         for y_p, y_s in zip(y_pred, y_std):
             y_confidence += [y_s[y_p]]
         return y_pred, y_prob, torch.stack(y_confidence)
+
+
+class DQNEnsemble(Ensemble):
+
+    def __init__(self, memory, selection_strategy, env, player, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.memory = memory
+        self.selection_strategy = selection_strategy
+        self.env = env
+        self.player = player
+
+    def play_episode(self):
+        return self.player(self, self.selection_strategy, self.env)
