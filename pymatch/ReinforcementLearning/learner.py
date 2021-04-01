@@ -350,7 +350,7 @@ class QLearner(ReinforcementLearner):
         if verbose == 1:
             print(f'epoch: {self.train_dict["epochs_run"]}\t'
                   f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t'
-                  f'latest average reward: {self.train_dict["avg_reward"][-1]:.2f}')
+                  f'latest average reward: {self.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
         return loss
 
     def get_max_Q_for_states(self, states):
