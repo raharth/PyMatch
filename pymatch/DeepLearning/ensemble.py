@@ -251,7 +251,9 @@ class DQNEnsemble(Ensemble):
 
     def __init__(self, memory, selection_strategy, env, player, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # todo this needs to be cleaned up
         self.train_loader = memory
+        self.memory = memory
         self.selection_strategy = selection_strategy
         self.env = env
         self.player = player
