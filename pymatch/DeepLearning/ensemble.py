@@ -257,4 +257,4 @@ class DQNEnsemble(Ensemble):
         self.player = player
 
     def play_episode(self):
-        return self.player(self, self.selection_strategy, self.env)
+        return self.player(self, self.selection_strategy)
