@@ -5,13 +5,13 @@ import torch
 
 
 class DQNPlayer:
-    def __call__(self, agent, selection_strategy):
+    def __call__(self, agent, selection_strategy, memory):
         observation = agent.env.reset().detach()
         episode_reward = 0
         step_counter = 0
         terminate = False
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'],
-                                gamma=agent.memory.gamma)
+                                gamma=memory.gamma)
         with eval_mode(agent):
             while not terminate:
                 step_counter += 1
@@ -27,7 +27,7 @@ class DQNPlayer:
                                         ['action', 'state', 'reward', 'new_state', 'terminal'])
                 observation = new_observation
 
-        agent.memory.memorize(episode_memory, episode_memory.memory_cell_names)
+        memory.memorize(episode_memory, episode_memory.memory_cell_names)
         agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
 
         if episode_reward > agent.train_dict.get('best_performance', -np.inf):
