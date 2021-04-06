@@ -7,8 +7,19 @@ import clr  # package pythonnet, not clr
 import time
 import pandas as pd
 import threading
-clr.AddReference(r'C:\Program Files\OpenHardwareMonitor\OpenHardwareMonitorLib.dll')
-from OpenHardwareMonitor import Hardware
+import json
+import warnings
+
+with open("pymatch_config", "r") as f:
+    config = json.load(f)
+
+if config.get("hardware_monitor", None) is not None:
+    clr.AddReference(f"{config['hardware_monitor']['dll_path']}")
+    from OpenHardwareMonitor import Hardware
+else:
+    warnings.warn('No .dll for Hardware Monitor provided. Therefore, monitoring the hardware will raise errors.\n'
+                  'To enable monitoring you should provide the path to the .dll in the pymatch_config file,'
+                  'which has a json structure with the arguments `hardware_monitor`-> `dll_path` ')
 
 
 class HardwareMonitor:
