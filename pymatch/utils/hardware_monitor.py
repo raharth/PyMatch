@@ -17,9 +17,9 @@ if config.get("hardware_monitor", None) is not None:
     clr.AddReference(f"{config['hardware_monitor']['dll_path']}")
     from OpenHardwareMonitor import Hardware
 else:
-    warnings.warn('No .dll for Hardware Monitor provided. Therefore, monitoring the hardware will raise errors.\n'
-                  'To enable monitoring you should provide the path to the .dll in the pymatch_config file,'
-                  'which has a json structure with the arguments `hardware_monitor`-> `dll_path` ')
+    warnings.warn("No .dll for Hardware Monitor provided. Therefore, monitoring the hardware will raise errors."
+                  "To enable monitoring you should provide the path to the .dll in the pymatch_config file,"
+                  "which has a json structure with the arguments `hardware_monitor`-> `dll_path` ")
 
 
 class HardwareMonitor:

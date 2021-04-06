@@ -79,7 +79,7 @@ class eval_mode:
     def __exit__(self, *args):
         if self.training:
             self.model.train()
-        self.no_grad.__exit__()
+        self.no_grad.__exit__(None, None, None)
         return False
 
 
