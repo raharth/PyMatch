@@ -261,5 +261,9 @@ class StateCertaintyEstimator(Callback):
         pipeline = Pipeline(pipes=[agent, EnsembleHatStd()])
         pred, certainty = pipeline(torch.cat(agent.train_loader.memory['state']))
         certainty = certainty.mean(-1)
+
+        certainty = (certainty - certainty.mean()) / certainty.std()
+        certainty = torch.sigmoid(certainty)
         certainty /= certainty.sum()
-        agent.train_loader.set_probabilities(certainty)
+
+        agent.train_loader.set_probabilities(certainty.numpy())

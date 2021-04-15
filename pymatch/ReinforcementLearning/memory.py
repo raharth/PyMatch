@@ -192,29 +192,15 @@ class PriorityMemory(Memory):
         self.probability = None
 
     def sample_indices(self, n_samples):
-        if self.probability is None:
-            print('WARNNG: Probabilites for priority sampling are not set. This can be fine for the first iteration, '
-                  'but may not appear afterwards')
+        # if self.probability is None:
+        #     print('WARNNG: Probabilites for priority sampling are not set. This can be fine for the first iteration, '
+        #           'but may not appear afterwards')
         if n_samples is None:
             n_samples = self.__len__()
         n_samples = min(n_samples, self.__len__())
-        self.probability /= self.probability.sum()
+        # self.probability /= self.probability.sum()
         idx = np.random.choice(range(self.__len__()), n_samples, p=self.probability, replace=self.replace)
         return idx
 
-    def set_probabilities(self, certainty):
-        self.probability = certainty
-
-# m = StateTrackingMemory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3, root='tests/memory')
-# for i in range(5):
-#     tmp_m = Memory(memory_cell_names=['a', 'b'], n_samples=1, memory_size=3)
-#     tmp_m.memorize((torch.tensor([i, i+1]), 3), cell_name=['a', 'b'])
-#     m.memorize(tmp_m, ['a', 'b'])
-#
-# m.memory
-# m.eternal_memory
-#
-# test = pd.read_hdf(r'D:\projects\PyMatch\tests\memory\memory_dump.hdf', key='2')
-# type(test['a'].values[0])
-#
-# test = pd.DataFrame(tmp_m.memory, columns=['a', 'b'])
+    def set_probabilities(self, probability):
+        self.probability = probability
