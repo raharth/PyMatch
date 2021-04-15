@@ -202,9 +202,16 @@ class PriorityMemory(Memory):
         if n_samples is None:
             n_samples = self.__len__()
         n_samples = min(n_samples, self.__len__())
-        prob = self.memory['certainty']
+        prob = self.compute_probs_from_certainty()
         idx = np.random.choice(range(self.__len__()), n_samples, p=prob, replace=self.replace)
         return idx
 
     def set_certainty(self, probability):
         self.probability = probability
+
+    def compute_probs_from_certainty(self):
+        prob = self.memory['certainty']
+        prob = (prob - prob.mean()) / prob.std()
+        prob = torch.sigmoid(prob)
+        prob /= prob.sum()
+        return prob
