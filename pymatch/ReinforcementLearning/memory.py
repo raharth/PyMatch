@@ -122,12 +122,16 @@ class Memory(Dataset):
             idx = np.random.choice(range(self.__len__()), n_samples, replace=self.replace)
         return idx
 
-    def sample_loader(self, n_samples):
-        return torch.utils.data.DataLoader(
-            self,
-            batch_size=self.batch_size,
-            sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
-        )
+    def sample_loader(self, n_samples, shuffle=True):
+        if shuffle:
+            data_loader = torch.utils.data.DataLoader(
+                self,
+                batch_size=self.batch_size,
+                sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
+            )
+        else:
+            data_loader = torch.utils.data.DataLoader(self, batch_size=self.batch_size)
+        return data_loader
 
     def __iter__(self):
         return iter(self.sample_loader(self.n_samples))
@@ -198,9 +202,9 @@ class PriorityMemory(Memory):
         if n_samples is None:
             n_samples = self.__len__()
         n_samples = min(n_samples, self.__len__())
-        # self.probability /= self.probability.sum()
-        idx = np.random.choice(range(self.__len__()), n_samples, p=self.probability, replace=self.replace)
+        prob = self.memory['certainty']
+        idx = np.random.choice(range(self.__len__()), n_samples, p=prob, replace=self.replace)
         return idx
 
-    def set_probabilities(self, probability):
+    def set_certainty(self, probability):
         self.probability = probability

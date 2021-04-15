@@ -136,6 +136,28 @@ class QActionSelection(SelectionPolicy):
         return action.item()
 
 
+class QActionSelectionCertainty(SelectionPolicy):
+    def __init__(self, temperature=1., *args, **kwargs):
+        """
+        Temperature based exponential selection strategy
+
+        Args:
+            temperature:    Temperature, which controls the degree of randomness.
+        """
+        super().__init__(*args, **kwargs)
+        self.temperature = temperature
+
+    def __call__(self, agent, observation):
+        agent.to(agent.device)
+        observation = self.pre_pipe(observation)
+        qs = agent(observation.to(agent.device))
+        qs, stds = self.post_pipe(qs)
+        probs = F.softmax(qs / self.temperature, dim=-1)
+        dist = Categorical(probs.squeeze())
+        action = dist.sample()
+        return action.item(), stds.mean(-1)
+
+
 class EpsilonGreedyActionSelection(SelectionPolicy):
     def __init__(self, action_space, epsilon=.1, **kwargs):
         """

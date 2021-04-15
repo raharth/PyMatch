@@ -266,4 +266,4 @@ class StateCertaintyEstimator(Callback):
         certainty = torch.sigmoid(certainty)
         certainty /= certainty.sum()
 
-        agent.train_loader.set_probabilities(certainty.numpy())
+        agent.train_loader.set_certainty(certainty.numpy())
