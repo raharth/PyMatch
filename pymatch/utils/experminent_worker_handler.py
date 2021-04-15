@@ -31,7 +31,9 @@ class ExperimentWorkerHandler:
     def start(self):
         print(f'processes: {self.processes}')
         for process in self.processes:
+            print(f'proc: {process}')
             while self.count_active_processes() >= self.num_workers:
+                print(f'active procs: {self.count_active_processes()}')
                 time.sleep(5)
             process.start()
 
