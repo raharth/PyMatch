@@ -191,9 +191,10 @@ class StateTrackingMemory(Memory):
 
 
 class PriorityMemory(Memory):
-    def __init__(self, memory_cell_names, *args, **kwargs):
+    def __init__(self, memory_cell_names, temp=1., *args, **kwargs):
         super().__init__(memory_cell_names, *args, **kwargs)
         self.probability = None
+        self.temp = temp
 
     def sample_indices(self, n_samples):
         # if self.probability is None:
@@ -210,8 +211,16 @@ class PriorityMemory(Memory):
         self.probability = probability
 
     def compute_probs_from_certainty(self):
-        prob = self.memory['certainty']
+        prob = torch.cat(self.memory['certainty'])
         prob = (prob - prob.mean()) / prob.std()
-        prob = torch.sigmoid(prob)
+        prob = torch.sigmoid(prob / self.temp)
         prob /= prob.sum()
         return prob
+
+    def __getitem__(self, idx):
+        result = []
+        for key in self.memory:
+            if key == 'certainty':
+                continue
+            result += [self.memory[key][idx]]
+        return tuple(result)
