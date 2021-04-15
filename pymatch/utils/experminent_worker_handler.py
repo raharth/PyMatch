@@ -17,6 +17,8 @@ class ExperimentWorkerHandler:
         return np.array([process.is_alive() for process in self.processes]).sum()
 
     def get_func(self):
+        test = f'{self.source_file.replace("/", ".")}.{self.source_function}'
+        print(f'source file: {test}')
         return locate(f'{self.source_file.replace("/", ".")}.{self.source_function}')
 
     def define_processes(self, folders=None):
@@ -26,6 +28,7 @@ class ExperimentWorkerHandler:
                 sub_dir = f'{self.experiment_root}/{dir}'
                 if os.listdir(sub_dir):
                     folders += [sub_dir]
+        print('func:', self.get_func())
         return [Process(target=self.get_func(), args=(folder, f'{self.source_file}.py')) for folder in folders]
 
     def start(self):
