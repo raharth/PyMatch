@@ -29,6 +29,7 @@ class ExperimentWorkerHandler:
         return [Process(target=self.get_func(), args=(folder, f'{self.source_file}.py')) for folder in folders]
 
     def start(self):
+        print(f'processes: {self.processes}')
         for process in self.processes:
             while self.count_active_processes() >= self.num_workers:
                 time.sleep(5)

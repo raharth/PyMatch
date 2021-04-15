@@ -51,7 +51,7 @@ def shut_down(s=30):
     os.system(f"shutdown /s /t {s}")
 
 
-def sliding_window(window, values, index=None):
+def sliding_window(window, values, index=None, stride=1):
     if index is None:
         index = np.arange(len(values))
     means = []
@@ -59,7 +59,7 @@ def sliding_window(window, values, index=None):
     hw = window / 2
     cw = int(np.ceil(hw))
     fw = int(np.floor(hw))
-    for i in range(fw, len(values) - fw):
+    for i in range(fw, len(values) - fw, stride):
         indices += [index[i]]
         means += [np.mean(values[i - fw: i + cw])]
     return np.array(indices), np.array(means)
