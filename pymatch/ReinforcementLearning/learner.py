@@ -482,7 +482,8 @@ class DoubleQLearner(QLearner):
 
     def to(self, device):
         self.target_model.to(device)
-        super(DoubleQLearner).to(device)
+        self.model.to(device)
+        # super(DoubleQLearner).to(device)
 
 
 class SARSA(DoubleQLearner):
