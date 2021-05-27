@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from pymatch.DeepLearning.pipeline import Pipeline
 from pymatch.DeepLearning.hat import EnsembleHatStd
+from pymatch.ReinforcementLearning.learner import ReinforcementLearner
 
 
 
@@ -230,14 +231,23 @@ class EpisodeUpdater(Callback):
     """
     Sampels and writes a singe episode to the memory of an agent.
     """
+    def __init__(self, init_samples=0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.init_samples = init_samples
+
     def forward(self, agent):
         reward = agent.play_episode()
         agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
-    def start(self, model):
-        if not self.started:
-            self.forward(model)
+    def start(self, agent: ReinforcementLearner):
+        # if not self.started:
+        i = 0
+        while not self.started or (len(agent.train_loader) < self.init_samples):
+            if i % 100 == 0:
+                print(f'Filling memory [{len(agent.train_loader)}/{self.init_samples}]')
+            self.forward(agent)
+            i += 1
         self.started = True
 
 
@@ -267,3 +277,12 @@ class StateCertaintyEstimator(Callback):
         certainty /= certainty.sum()
 
         agent.train_loader.set_certainty(certainty.numpy())
+
+
+from tqdm import tqdm
+import  time
+
+i = 0
+while tqdm(i < 5):
+    time.sleep(1)
+    i += 1
