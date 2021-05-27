@@ -10,7 +10,7 @@ from tqdm import tqdm
 from pymatch.DeepLearning.pipeline import Pipeline
 from pymatch.DeepLearning.hat import EnsembleHatStd
 from pymatch.ReinforcementLearning.learner import ReinforcementLearner
-
+import time
 
 
 # class MemoryUpdater(Callback):
@@ -243,11 +243,14 @@ class EpisodeUpdater(Callback):
     def start(self, agent: ReinforcementLearner):
         # if not self.started:
         i = 0
-        while not self.started or (len(agent.train_loader) < self.init_samples):
-            if i % 100 == 0:
-                print(f'Filling memory [{len(agent.train_loader)}/{self.init_samples}]')
-            self.forward(agent)
-            i += 1
+        s_time = time.time()
+        if not self.started:
+            while len(agent.train_loader) < self.init_samples:
+                if i % 10 == 0:
+                    print(f'Filling memory [{len(agent.train_loader)}/{self.init_samples}]')
+                self.forward(agent)
+                i += 1
+            print(f'Memory filled [{len(agent.train_loader)}/{self.init_samples}] in {time.time() - s_time}s')
         self.started = True
 
 
@@ -277,12 +280,3 @@ class StateCertaintyEstimator(Callback):
         certainty /= certainty.sum()
 
         agent.train_loader.set_certainty(certainty.numpy())
-
-
-from tqdm import tqdm
-import  time
-
-i = 0
-while tqdm(i < 5):
-    time.sleep(1)
-    i += 1
