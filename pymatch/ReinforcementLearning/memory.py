@@ -211,7 +211,7 @@ class PriorityMemory(Memory):
         self.probability = probability
 
     def compute_probs_from_certainty(self):
-        prob = torch.cat(self.memory['certainty'])
+        prob = torch.cat(self.memory['certainty']).max(-1)[0]
         prob = (prob - prob.mean()) / prob.std()
         prob = torch.sigmoid(prob / self.temp)
         prob /= prob.sum()

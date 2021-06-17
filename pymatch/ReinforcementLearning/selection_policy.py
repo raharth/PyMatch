@@ -155,7 +155,7 @@ class QActionSelectionCertainty(SelectionPolicy):
         probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
-        return action.item(), stds.mean(-1)
+        return action.item(), stds
 
 
 class EpsilonGreedyActionSelection(SelectionPolicy):
