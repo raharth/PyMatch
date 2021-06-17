@@ -59,7 +59,8 @@ class EnvironmentEvaluator(Callback):
             print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}', flush=True)
             for name, func in self.metrics.items():
                 model.train_dict[name] = model.train_dict.get(name, []) + [func(episode_rewards)]
-            model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [model.train_dict['epochs_run']]
+            model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [
+                model.train_dict['epochs_run']]
 
 
 class AgentVisualizer(Callback):
@@ -164,6 +165,7 @@ class EpisodeUpdater(Callback):
     """
     Sampels and writes a singe episode to the memory of an agent.
     """
+
     def __init__(self, init_samples=0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.init_samples = init_samples
@@ -195,6 +197,7 @@ class SingleEpisodeSampler(Callback):
     """
     Always samples just a single episode from the environment.
     """
+
     def forward(self, agent):
         agent.train_loader.memory_reset()
         reward = agent.play_episode()
@@ -217,3 +220,38 @@ class StateCertaintyEstimator(Callback):
         certainty /= certainty.sum()
 
         agent.train_loader.set_certainty(certainty.numpy())
+
+
+class UncertaintyUpdater(Callback):
+    def __init__(self, head=EnsembleHatStd()):
+        super().__init__()
+        self.head = head
+
+    def forward(self, model: ReinforcementLearner):  # , *args, **kwargs):
+
+        # data_loader = model.train_loader.sample_loader(shuffle=False)
+        print('Updating uncertainties...', flush=True)
+
+        uncertainties = []
+        pipe = Pipeline(pipes=[model, self.head])
+
+        for batch, (action, state, reward, new_state, terminal) in tqdm(
+                enumerate(model.train_loader.sample_loader(shuffle=False))):
+            state = state.to(model.device)
+            uncertainties += pipe(state.squeeze(1))[1]
+        uncertainties = [u for u in torch.stack(uncertainties)]
+        model.train_loader.memory['uncertainty'] = uncertainties
+
+
+        #     target = prediction.clone().detach()
+        #     max_next = self.get_max_Q_for_states(new_state)
+        #
+        #     mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
+        #     target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
+        #             reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
+        #
+        #     loss = self.crit(prediction, target)
+        #     losses += [loss.item()]
+        #     self._backward(loss)
+        #
+        # self.train_dict['train_losses'] += [loss.item()]

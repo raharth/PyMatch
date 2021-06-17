@@ -125,7 +125,11 @@ class Ensemble:
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
         path = self.get_path(path=path, tag=tag)
-        torch.save({'train_dict': self.train_dict}, path)
+        torch.save(self.create_state_dict(), path)
+
+    def create_state_dict(self):
+        state_dict = {'train_dict': self.train_dict}
+        return state_dict
 
     def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
         """
@@ -148,6 +152,9 @@ class Ensemble:
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
         checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
+        self.restore_checkpoint(checkpoint)
+
+    def restore_checkpoint(self, checkpoint):
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def fit_resume(self, epochs, **fit_args):
@@ -202,3 +209,12 @@ class DQNEnsemble(Ensemble):
 
     def play_episode(self):
         return self.player(self, self.selection_strategy, self.train_loader)
+
+    def create_state_dict(self):
+        state_dict = super().create_state_dict()
+        state_dict['memory'] = self.train_loader.create_state_dict()
+        return state_dict
+
+    def restore_checkpoint(self, checkpoint):
+        super().restore_checkpoint(checkpoint=checkpoint)
+        self.memory = checkpoint.get('memory', self.memory)

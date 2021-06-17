@@ -207,7 +207,7 @@ class PriorityMemory(Memory):
         idx = np.random.choice(range(self.__len__()), n_samples, p=prob.numpy(), replace=self.replace)
         return idx
 
-    def set_certainty(self, probability):
+    def set_probability(self, probability):
         self.probability = probability
 
     def compute_probs_from_certainty(self):
