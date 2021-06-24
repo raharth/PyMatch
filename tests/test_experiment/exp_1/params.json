@@ -1,0 +1,46 @@
+{
+    "overwrite": true,
+    "n_learner": 2,
+    "temp": 1.0,
+    "factory_args": {
+        "model_args": {
+            "in_nodes": 8,
+            "out_nodes": 4
+        },
+        "env_args": {
+            "env_name": "LunarLander-v2"
+        },
+        "optim_args": {
+            "lr": 0.001,
+            "momentum": 0.0
+        },
+        "learner_args": {
+            "gamma": 0.99,
+            "alpha": 1.0,
+            "grad_clip": 5.0,
+            "name": "learner",
+            "device": "cuda"
+        },
+        "memory_args": {
+            "n_samples": 1000,
+            "batch_size": 256,
+            "memory_size": 1000,
+            "memory_cell_names": [
+                "action",
+                "state",
+                "reward",
+                "new_state",
+                "terminal",
+                "uncertainty"
+            ]
+        },
+        "crit_args": {},
+        "temp": 1.0
+    },
+    "fit": {
+        "epochs": 3,
+        "device": "cuda",
+        "verbose": false,
+        "learning_partition": 1
+    }
+}
