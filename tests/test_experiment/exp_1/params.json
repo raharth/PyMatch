@@ -19,7 +19,7 @@
             "alpha": 1.0,
             "grad_clip": 5.0,
             "name": "learner",
-            "device": "cuda"
+            "device": "cpu"
         },
         "memory_args": {
             "n_samples": 1000,
