@@ -60,7 +60,9 @@ class DQNPlayerCertainty(RLPlayer):
         episode_reward = 0
         step_counter = 0
         terminate = False
-        episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal', 'certainty'],
+
+        # episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'],
+        episode_memory = Memory(agent.train_loader.memory_cell_names,
                                 gamma=memory.gamma)
         with eval_mode(agent):
             while not terminate:
@@ -75,7 +77,7 @@ class DQNPlayerCertainty(RLPlayer):
                                          new_observation,
                                          terminate,
                                          certainty),
-                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'certainty'])
+                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'])
                 observation = new_observation
 
         memory.memorize(episode_memory, episode_memory.memory_cell_names)

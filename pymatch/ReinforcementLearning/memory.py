@@ -122,8 +122,10 @@ class Memory(Dataset):
             idx = np.random.choice(range(self.__len__()), n_samples, replace=self.replace)
         return idx
 
-    def sample_loader(self, n_samples, shuffle=True):
+    def sample_loader(self, n_samples=None, shuffle=True):
         if shuffle:
+            if n_samples is None:
+                raise ValueError(f'n_samples is None')
             data_loader = torch.utils.data.DataLoader(
                 self,
                 batch_size=self.batch_size,
@@ -193,7 +195,7 @@ class StateTrackingMemory(Memory):
 class PriorityMemory(Memory):
     def __init__(self, memory_cell_names, temp=1., *args, **kwargs):
         super().__init__(memory_cell_names, *args, **kwargs)
-        self.probability = None
+        # self.probability = None
         self.temp = temp
 
     def sample_indices(self, n_samples):
@@ -207,11 +209,11 @@ class PriorityMemory(Memory):
         idx = np.random.choice(range(self.__len__()), n_samples, p=prob.numpy(), replace=self.replace)
         return idx
 
-    def set_probability(self, probability):
-        self.probability = probability
+    # def set_probability(self, probability):
+    #     self.probability = probability
 
     def compute_probs_from_certainty(self):
-        prob = torch.cat(self.memory['certainty']).max(-1)[0]
+        prob = torch.cat(self.memory['uncertainty']).max(-1)[0]
         prob = (prob - prob.mean()) / prob.std()
         prob = torch.sigmoid(prob / self.temp)
         prob /= prob.sum()
@@ -220,7 +222,7 @@ class PriorityMemory(Memory):
     def __getitem__(self, idx):
         result = []
         for key in self.memory:
-            if key == 'certainty':
+            if key == 'uncertainty':
                 continue
             result += [self.memory[key][idx]]
         return tuple(result)
