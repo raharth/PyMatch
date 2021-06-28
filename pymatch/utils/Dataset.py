@@ -46,8 +46,6 @@ class Dataset(data.Dataset):
         return Dataset(data=data, labels=label)
 
 
-
-
 class HardDriveDataset(data.Dataset):
 
     def __init__(self, list_IDs, labels):
@@ -116,6 +114,31 @@ class ObjectDetectionDataset(data.Dataset):
         img = Image.open(img_path).convert("RGB")
         target = self.data[self.imgs[idx]]
         target['image_id'] = torch.tensor([idx])
+
+        if self.transforms is not None:
+            img, target = self.transforms(img, target)
+
+        return img, target
+
+    def __len__(self):
+        return len(self.imgs)
+
+
+class ExtendedInageDataset(data.Dataset):
+
+    def __init__(self, img_root, data_file, transforms=None):
+        self.root = img_root
+        self.transforms = transforms
+        self.imgs = list(sorted(os.listdir(img_root)))
+
+        with open(data_file, 'r') as f:
+            self.data = json.load(f)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.root, self.imgs[idx])
+        img = Image.open(img_path).convert("RGB")
+        target = self.data[self.imgs[idx]]['y']
+        # target['image_id'] = torch.tensor([idx])
 
         if self.transforms is not None:
             img, target = self.transforms(img, target)
