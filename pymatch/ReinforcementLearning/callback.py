@@ -1,7 +1,5 @@
 import torch
 from pymatch.DeepLearning.callback import Callback
-from pymatch.utils.functional import sliding_window
-from pymatch.ReinforcementLearning.memory import Memory
 import matplotlib.pyplot as plt
 from pymatch.utils.functional import eval_mode
 from pymatch.ReinforcementLearning.selection_policy import GreedyValueSelection
@@ -9,72 +7,8 @@ import numpy as np
 from tqdm import tqdm
 from pymatch.DeepLearning.pipeline import Pipeline
 from pymatch.DeepLearning.hat import EnsembleHatStd
-
-
-
-# class MemoryUpdater(Callback):
-#     def __init__(self, memory_refresh_rate, update_frequ=1):
-#         super().__init__()
-#         if not 0. <= memory_refresh_rate <= 1.:
-#             raise ValueError(f'memory_refresh_rate was set to {memory_refresh_rate} but has to be in ]0., 1.]')
-#         self.memory_refresh_rate = memory_refresh_rate
-#         self.update_frequ = update_frequ
-#
-#     def __call__(self, agent):
-#         if agent.train_dict['epochs_run'] % self.update_frequ == 0:
-#             reduce_to = int(len(agent.memory) * (1 - self.memory_refresh_rate))
-#             self.memory.reduce_buffer(reduce_to)
-#             self.fill_memory()
-#
-#     def fill_memory(self, agent):
-#         while len(agent.memory) < agent.memory.buffer_size:
-#             game = self.play_episode(agent=agent)
-#             agent.memory.memorize(game)
-#         agent.memory.reduce_buffer()
-#
-#     def play_episode(self, agent):
-#         observation = agent.env.reset().detach()
-#         episode_reward = 0
-#         step_counter = 0
-#         terminate = False
-#         episode_memory = Memory(['log_prob', 'reward'])
-#
-#         while not terminate:
-#             step_counter += 1
-#             action, log_prob = agent.chose_action(observation)
-#             new_observation, reward, done, _ = self.env.step(action)
-#
-#             episode_reward += reward
-#             episode_memory.memorize((log_prob, torch.tensor(reward)), ['log_prob', 'reward'])
-#             observation = new_observation
-#             terminate = done or (self.max_episode_length is not None and step_counter >= self.max_episode_length)
-#
-#             # self.env.render()
-#             if done:
-#                 break
-#
-#         episode_memory.cumul_reward(gamma=self.gamma)
-#         agent.memory.memorize(episode_memory, episode_memory.memory_cell_names)
-#         agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
-#         return episode_reward
-
-### DEPRICATED! THIS SHOULD BE REPLACED BY MetricPlotter
-# class SmoothedRewardPlotter(Callback):
-#     def __init__(self, window=10, metrics=None, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.window = window
-#         self.metrics = metrics if metrics is not None else ['rewards']
-#
-#     def forward(self, model):
-#         for metric in self.metrics:
-#             if len(model.train_dict['rewards']) >= self.window:
-#                 plt.plot(*sliding_window(self.window, model.train_dict['rewards']))
-#         plt.ylabel('averaged rewards')
-#         plt.xlabel('episodes')
-#         plt.title('Smoothed Average rewards')
-#         plt.tight_layout()
-#         plt.savefig(f'{model.dump_path}/smoothed_rewards.png')
-#         plt.close()
+from pymatch.ReinforcementLearning.learner import ReinforcementLearner
+import time
 
 
 class EnvironmentEvaluator(Callback):
@@ -125,7 +59,8 @@ class EnvironmentEvaluator(Callback):
             print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}', flush=True)
             for name, func in self.metrics.items():
                 model.train_dict[name] = model.train_dict.get(name, []) + [func(episode_rewards)]
-            model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [model.train_dict['epochs_run']]
+            model.train_dict[self.epoch_name] = model.train_dict.get(self.epoch_name, []) + [
+                model.train_dict['epochs_run']]
 
 
 class AgentVisualizer(Callback):
@@ -230,14 +165,31 @@ class EpisodeUpdater(Callback):
     """
     Sampels and writes a singe episode to the memory of an agent.
     """
+
+    def __init__(self, init_samples=0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.init_samples = init_samples
+
     def forward(self, agent):
         reward = agent.play_episode()
         agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
-    def start(self, model):
-        if not self.started:
-            self.forward(model)
+    def start(self, agent: ReinforcementLearner):
+        if self.started:
+            return
+        if self.init_samples == 0:
+            self.forward(agent)
+        else:
+            i = 0
+            s_time = time.time()
+            if not self.started:
+                while len(agent.train_loader) < self.init_samples:
+                    if i % 10 == 0:
+                        print(f'Filling memory [{len(agent.train_loader)}/{self.init_samples}]')
+                    self.forward(agent)
+                    i += 1
+                print(f'Memory filled [{len(agent.train_loader)}/{self.init_samples}] in {time.time() - s_time}s')
         self.started = True
 
 
@@ -245,6 +197,7 @@ class SingleEpisodeSampler(Callback):
     """
     Always samples just a single episode from the environment.
     """
+
     def forward(self, agent):
         agent.train_loader.memory_reset()
         reward = agent.play_episode()
@@ -267,3 +220,38 @@ class StateCertaintyEstimator(Callback):
         certainty /= certainty.sum()
 
         agent.train_loader.set_certainty(certainty.numpy())
+
+
+class UncertaintyUpdater(Callback):
+    def __init__(self, head=EnsembleHatStd()):
+        super().__init__()
+        self.head = head
+
+    def forward(self, model: ReinforcementLearner):  # , *args, **kwargs):
+
+        # data_loader = model.train_loader.sample_loader(shuffle=False)
+        print('Updating uncertainties...', flush=True)
+
+        uncertainties = []
+        pipe = Pipeline(pipes=[model, self.head])
+
+        for batch, (action, state, reward, new_state, terminal) in tqdm(
+                enumerate(model.train_loader.sample_loader(shuffle=False))):
+            state = state.to(model.device)
+            uncertainties += pipe(state.squeeze(1))[1]
+        uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
+        model.train_loader.memory['uncertainty'] = uncertainties
+
+
+        #     target = prediction.clone().detach()
+        #     max_next = self.get_max_Q_for_states(new_state)
+        #
+        #     mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
+        #     target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
+        #             reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
+        #
+        #     loss = self.crit(prediction, target)
+        #     losses += [loss.item()]
+        #     self._backward(loss)
+        #
+        # self.train_dict['train_losses'] += [loss.item()]

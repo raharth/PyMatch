@@ -4,7 +4,22 @@ import numpy as np
 import torch
 
 
-class DQNPlayer:
+class RLPlayer:
+    def __init__(self):
+        """
+        A player determine how an episode is played by an RL agent.
+        This is only a base class to inherent from
+        """
+        pass
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError
+
+
+class DQNPlayer(RLPlayer):
+    """
+    This determines how a DQN plays a single episode, storing the trajectory in the agents memory.
+    """
     def __call__(self, agent, selection_strategy, memory):
         observation = agent.env.reset().detach()
         episode_reward = 0
@@ -36,13 +51,18 @@ class DQNPlayer:
         return episode_reward
 
 
-class DQNPlayerCertainty:
+class DQNPlayerCertainty(RLPlayer):
+    """
+    This determiens how a uncertainty aware agents plays a single episode storing the trajectory in the agents memory.
+    """
     def __call__(self, agent, selection_strategy, memory):
         observation = agent.env.reset().detach()
         episode_reward = 0
         step_counter = 0
         terminate = False
-        episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal', 'certainty'],
+
+        # episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'],
+        episode_memory = Memory(agent.train_loader.memory_cell_names,
                                 gamma=memory.gamma)
         with eval_mode(agent):
             while not terminate:
@@ -57,7 +77,7 @@ class DQNPlayerCertainty:
                                          new_observation,
                                          terminate,
                                          certainty),
-                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'certainty'])
+                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'])
                 observation = new_observation
 
         memory.memorize(episode_memory, episode_memory.memory_cell_names)

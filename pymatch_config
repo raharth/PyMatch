@@ -1,6 +1,6 @@
 {
     "hardware_monitor":
     {
-        "dll_path": "C:\Program Files\OpenHardwareMonitor\OpenHardwareMonitorLib.dll"
+        "dll_path": "C:\\Program Files\\OpenHardwareMonitor\\OpenHardwareMonitorLib.dll"
     }
 }

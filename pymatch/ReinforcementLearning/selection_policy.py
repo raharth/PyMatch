@@ -155,8 +155,54 @@ class QActionSelectionCertainty(SelectionPolicy):
         probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
-        return action.item(), stds.mean(-1)
+        return action.item(), stds
 
+
+class AdaptiveQActionSelection(SelectionPolicy):
+    def __init__(self, temperature=1., history=1000, hist_scaling=1., min_length=100, return_uncertainty=True,
+                 *args, **kwargs):
+        """
+        Adaptive value selection based on the uncertainty of the model
+
+        Args:
+            temperature:    Temperature, which controls the degree of randomness. This is the standard parameter of q-selection
+            history:        Number of previous states on which the normalization of certainty is based.
+            hist_scaling:   This determins how much impact uncertainty has. Basically it is used as a temperature for
+                            the sigmoid when adapting the temperature.
+            min_length:     Minimal number of samples to base the scaling of uncertainty on. Before that the temperature
+                            is not altered in any way.
+
+        """
+        super().__init__(*args, **kwargs)
+        self.temperature = temperature
+        self.values = []
+        self.history = history
+        self.hist_scaling = hist_scaling
+        self.min_length = min_length
+        self.return_uncertainty = return_uncertainty
+
+    def __call__(self, agent, observation):
+        agent.to(agent.device)
+        observation = self.pre_pipe(observation)
+        qs = agent(observation.to(agent.device))
+        qs, uncertainties = self.post_pipe(qs)
+
+        probs = F.softmax(qs / self.adjust_temp(uncertainties=uncertainties), dim=-1)
+        dist = Categorical(probs.squeeze())
+        action = dist.sample()
+        if self.return_uncertainty:
+            return action.item(), uncertainties
+        else:
+            return action.item()
+
+    def adjust_temp(self, uncertainties):
+        uncertainty = uncertainties.max()
+        self.values += [uncertainty.item()]
+        self.values = self.values[-self.history:]
+        if self.min_length > len(self.values):
+            return self.temperature
+        uncertainty = (uncertainty - np.mean(self.values)) / np.std(self.values)
+        return torch.sigmoid(uncertainty / self.hist_scaling) * self.temperature
 
 class EpsilonGreedyActionSelection(SelectionPolicy):
     def __init__(self, action_space, epsilon=.1, **kwargs):

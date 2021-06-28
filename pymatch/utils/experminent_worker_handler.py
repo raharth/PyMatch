@@ -24,7 +24,7 @@ class ExperimentWorkerHandler:
             folders = []
             for dir in os.listdir(self.experiment_root):
                 sub_dir = f'{self.experiment_root}/{dir}'
-                if os.listdir(sub_dir):
+                if os.path.isdir(f'{self.experiment_root}/{dir}/{sub_dir}'):
                     folders += [sub_dir]
         return [Process(target=self.get_func(), args=(folder, f'{self.source_file}.py')) for folder in folders]
 

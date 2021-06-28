@@ -1,5 +1,4 @@
 import torch
-from tqdm import tqdm
 from pymatch.utils.exception import TerminationException
 
 
@@ -126,7 +125,11 @@ class Ensemble:
         for trainer in self.learners:
             trainer.dump_checkpoint(path=path, tag=tag)
         path = self.get_path(path=path, tag=tag)
-        torch.save({'train_dict': self.train_dict}, path)
+        torch.save(self.create_state_dict(), path)
+
+    def create_state_dict(self):
+        state_dict = {'train_dict': self.train_dict}
+        return state_dict
 
     def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
         """
@@ -149,45 +152,15 @@ class Ensemble:
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
         checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
+        self.restore_checkpoint(checkpoint)
+
+    def restore_checkpoint(self, checkpoint):
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def fit_resume(self, epochs, **fit_args):
         self.load_checkpoint(path=f'{self.dump_path}/checkpoint')
         epochs = epochs - self.train_dict['epochs_run']
         return self.fit(epochs=epochs, **fit_args)
-
-    # @todo depricated
-    # def resume_training(self, epochs, device='cpu', restore_early_stopping=False, verbose=1):
-    #     # self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0
-    #     """
-    #     The primarily purpose of this method is to return to training after an interrupted trainings cycle of the ensemble.
-    #
-    #     Args:
-    #         epochs: max number of epochs to run the learners for
-    #         device: device to run the models on
-    #         checkpoint_int: every checkpoint_int iterations the model is checkpointed
-    #         validation_int:  every validation_int iterations the model is validated
-    #         restore_early_stopping: restores the best performing weights after training
-    #         verbose: verbosity
-    #
-    #     Returns:
-    #         None
-    #
-    #     """
-    #     for learner in self.learners:
-    #         train_epochs = epochs - learner.train_dict['epochs_run']
-    #         if train_epochs > 0:
-    #             print('Trainer {} - train for {} epochs'.format(learner.name, train_epochs))
-    #             learner.fit(epochs=train_epochs,
-    #                         device=device,
-    #                         restore_early_stopping=restore_early_stopping,
-    #                         verbose=verbose)
-    #         else:
-    #             print(f'Trainer {learner.name} - was already trained')
-    #
-    #         if self.save_memory:
-    #             del learner
-    #             torch.cuda.empty_cache()
 
     def to(self, device):
         self.device = device
@@ -223,30 +196,6 @@ class Ensemble:
         return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
 
-# @ todo is this actually still in use?
-class BaysianEnsemble(Ensemble):
-
-    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[]):
-        super(BaysianEnsemble, self).__init__(model_class, trainer_factory, n_model, trainer_args=trainer_args, callbacks=callbacks)
-
-    def predict(self, x, device='cpu', eval=True):
-        self.to(device)
-        if eval:
-            self.eval()
-        else:
-            self.train()
-        with torch.no_grad():
-            return torch.stack([learner.forward(x, device=device) for learner in self.learners])
-
-    @staticmethod
-    def get_confidence(y_mean, y_std):
-        y_prob, y_pred = torch.max(y_mean, 1)
-        y_confidence = []
-        for y_p, y_s in zip(y_pred, y_std):
-            y_confidence += [y_s[y_p]]
-        return y_pred, y_prob, torch.stack(y_confidence)
-
-
 class DQNEnsemble(Ensemble):
 
     def __init__(self, memory, selection_strategy, env, player, *args, **kwargs):
@@ -259,4 +208,13 @@ class DQNEnsemble(Ensemble):
         self.player = player
 
     def play_episode(self):
-        return self.player(self, self.selection_strategy, self.memory)
+        return self.player(self, self.selection_strategy, self.train_loader)
+
+    def create_state_dict(self):
+        state_dict = super().create_state_dict()
+        state_dict['memory'] = self.train_loader.create_state_dict()
+        return state_dict
+
+    def restore_checkpoint(self, checkpoint):
+        super().restore_checkpoint(checkpoint=checkpoint)
+        self.memory = checkpoint.get('memory', self.memory)

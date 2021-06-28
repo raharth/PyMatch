@@ -15,3 +15,10 @@ test.py
 experiments
 
 *.mdl
+
+# wandbd files
+wandb
+
+# images
+*.png
+*.jpg

@@ -2,7 +2,6 @@ import torch
 from tqdm import tqdm
 import numpy as np
 
-from pymatch.DeepLearning.ensemble import Ensemble
 from pymatch.ReinforcementLearning.memory import Memory
 from pymatch.ReinforcementLearning.loss import REINFORCELoss
 from pymatch.DeepLearning.learner import Learner
@@ -59,7 +58,6 @@ class ReinforcementLearner(Learner):
                          )
 
         self.env = env
-        # self.memory_updater = memory_updater
         self.train_dict['rewards'] = []
         self.gamma = gamma
         self.chose_action = action_selector
@@ -487,51 +485,15 @@ class DoubleQLearner(QLearner):
 
 
 class SARSA(DoubleQLearner):
-    def __init__(self,
-                 # model,
-                 # optimizer,
-                 # crit,
-                 # env,
-                 # action_selector,
-                 # gamma,
-                 # alpha,
-                 # memory_size,
-                 # n_samples,
-                 # batch_size,
-                 # tau,
-                 # grad_clip=None,
-                 # name='q_learner',
-                 # callbacks=[],
-                 # dump_path='./tmp',
-                 # device='cpu',
-                 **kwargs):
+    def __init__(self, *args, **kwargs):
         # memory = Memory(['action', 'state', 'reward', 'new_state', 'new_action', 'terminal'],
         #                 memory_size=memory_size,
         #                 n_samples=n_samples,
         #                 gamma=gamma,
         #                 batch_size=batch_size)
-        super().__init__(
-            # model=model,
-            # optimizer=optimizer,
-            # crit=crit,
-            # env=env,
-            # action_selector=action_selector,
-            # gamma=gamma,
-            # alpha=alpha,
-            # tau=tau,
-            # memory_size=None,
-            # n_samples=None,
-            # batch_size=None,
-            # grad_clip=grad_clip,
-            # name=name,
-            # callbacks=callbacks,
-            # dump_path=dump_path,
-            # device=device,
-            # # memory=memory,
-            **kwargs)
+        super().__init__(*args, **kwargs)
 
     def fit_epoch(self, device, verbose=1):
-        # self.memory_updater(self)
         self.model.train()
         self.model.to(device)
         self.target_model.to(device)
