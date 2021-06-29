@@ -324,7 +324,7 @@ class QLearner(ReinforcementLearner):
 
             mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
             target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                    reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
+                    reward.view(-1) + self.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(self.device))
 
             loss = self.crit(prediction, target)
             losses += [loss.item()]

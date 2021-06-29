@@ -14,3 +14,11 @@ for i in range(10):
 print(memory.memory)
 
 memory[3]
+
+
+(1 - self.alpha) * target[mask] + self.alpha * (
+                    reward + self.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(self.device))
+
+test = (1 - self.alpha) * target[mask] + self.alpha * (
+                    reward + self.gamma * max_next)
+test.shape

@@ -239,8 +239,8 @@ class UncertaintyUpdater(Callback):
                 enumerate(model.train_loader.sample_loader(shuffle=False))):
             state = state.to(model.device)
             uncertainties += pipe(state.squeeze(1))[1]
-        uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
-        model.train_loader.memory['uncertainty'] = uncertainties
+        # uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
+        model.train_loader.memory['uncertainty'] = torch.stack(uncertainties)
 
 
         #     target = prediction.clone().detach()
