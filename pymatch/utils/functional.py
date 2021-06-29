@@ -97,8 +97,12 @@ class train_mode:
         return False
 
 
-def one_hot_encoding(categorical_data, n_categories=None):
+def one_hot_encoding(categorical_data, n_categories=None, unsqueeze=False):
     if n_categories is None:
         n_categories = categorical_data.max().item() + 1
-    encoding = torch.zeros(list(categorical_data.shape) + [n_categories], device=categorical_data.device)
-    return encoding.scatter_(-1, categorical_data.unsqueeze(-1), 1)
+    if unsqueeze:
+        encoding = torch.zeros(list(categorical_data.shape) + [n_categories], device=categorical_data.device)
+        return encoding.scatter_(-1, categorical_data.unsqueeze(-1), 1)
+    else:
+        encoding = torch.zeros(list(categorical_data.shape[:-1]) + [n_categories], device=categorical_data.device)
+        return encoding.scatter_(-1, categorical_data, 1)

@@ -54,12 +54,23 @@ class Memory(Dataset):
 
     def _memorize_values(self, values, cell_name: list, memory):
         for val, cell in zip(values, cell_name):
-            memory[cell] += [val]
+            val = torch.tensor(val)
+            if val.shape == 0:
+                val = val.unsqueeze(0)
+            if val.shape == 1:
+                val = val.unsqueeze(0)
+            if memory[cell] is None:
+                memory[cell] = torch.tensor(values)
+            else:
+                memory[cell] = torch.cat([memory[cell], val])
         return memory
 
     def _merge_memory(self, values, cell_name, memory):
         for key in cell_name:
-            memory[key] += values.memory[key]
+            if memory[key] is None:
+                memory[key] = values.memory[key]
+            else:
+                memory[key] = torch.cat([memory[key], values.memory[key]], 0)
         return memory
 
     def reduce_buffer(self, reduce_to=None):
@@ -83,7 +94,7 @@ class Memory(Dataset):
         Resets the memory to an empty one.
         The first element of each memory cell is always a default element.
         """
-        self.memory = {key: [] for key in self.memory_cell_names}
+        self.memory = {key: None for key in self.memory_cell_names}
 
     def cumul_reward(self, cell_name='reward'):
         """
@@ -213,7 +224,7 @@ class PriorityMemory(Memory):
     #     self.probability = probability
 
     def compute_probs_from_certainty(self):
-        prob = torch.cat(self.memory['uncertainty']).max(-1)[0]
+        prob = self.memory['uncertainty'].max(-1)[0]
         prob = (prob - prob.mean()) / prob.std()
         prob = torch.sigmoid(prob / self.temp)
         prob /= prob.sum()

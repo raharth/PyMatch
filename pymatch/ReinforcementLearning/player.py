@@ -76,7 +76,7 @@ class DQNPlayerCertainty(RLPlayer):
                                          torch.tensor(reward).float(),
                                          new_observation,
                                          terminate,
-                                         certainty),
+                                         certainty.detach()),
                                         ['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'])
                 observation = new_observation
 
