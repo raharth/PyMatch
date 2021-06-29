@@ -55,12 +55,12 @@ class Memory(Dataset):
     def _memorize_values(self, values, cell_name: list, memory):
         for val, cell in zip(values, cell_name):
             val = torch.tensor(val)
-            if val.shape == 0:
+            if len(val.shape) == 0:
                 val = val.unsqueeze(0)
-            if val.shape == 1:
+            if len(val.shape) == 1:
                 val = val.unsqueeze(0)
             if memory[cell] is None:
-                memory[cell] = torch.tensor(values)
+                memory[cell] = val
             else:
                 memory[cell] = torch.cat([memory[cell], val])
         return memory
