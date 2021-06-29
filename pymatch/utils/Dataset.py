@@ -46,8 +46,6 @@ class Dataset(data.Dataset):
         return Dataset(data=data, labels=label)
 
 
-
-
 class HardDriveDataset(data.Dataset):
 
     def __init__(self, list_IDs, labels):
@@ -84,3 +82,68 @@ class HardDriveDataset(data.Dataset):
         y = self.labels[ID]
 
         return X, y
+
+
+class ObjectDetectionDataset(data.Dataset):
+    def __init__(self, img_root, label_root, transforms, class_mapping):
+        self.root = img_root
+        self.transforms = transforms
+        self.imgs = list(sorted(os.listdir(img_root)))
+
+        data = {}
+        for file in os.listdir(label_root):
+            if file[-4:] == 'json':
+                with open(f'{label_root}/{file}', 'r') as f:
+                    values = json.load(f)
+                boxes = torch.FloatTensor(
+                    [list(region['points'][0].values()) + list(region['points'][-2].values()) for region in
+                     values['regions']])
+                img_data = {
+                    'boxes': boxes,
+                    'labels': torch.tensor([class_mapping[region['tags'][0]] for region in values['regions']],
+                                           dtype=torch.int64),
+                    'image_id': None,
+                    'area': (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]),
+                    'iscrowd': torch.zeros((len(values['regions']),), dtype=torch.int64)
+                }
+                data[values['asset']['name']] = img_data
+        self.data = data
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.root, self.imgs[idx])
+        img = Image.open(img_path).convert("RGB")
+        target = self.data[self.imgs[idx]]
+        target['image_id'] = torch.tensor([idx])
+
+        if self.transforms is not None:
+            img, target = self.transforms(img, target)
+
+        return img, target
+
+    def __len__(self):
+        return len(self.imgs)
+
+
+class ExtendedInageDataset(data.Dataset):
+
+    def __init__(self, img_root, data_file, transforms=None):
+        self.root = img_root
+        self.transforms = transforms
+        self.imgs = list(sorted(os.listdir(img_root)))
+
+        with open(data_file, 'r') as f:
+            self.data = json.load(f)
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.root, self.imgs[idx])
+        img = Image.open(img_path).convert("RGB")
+        target = self.data[self.imgs[idx]]['y']
+        # target['image_id'] = torch.tensor([idx])
+
+        if self.transforms is not None:
+            img, target = self.transforms(img, target)
+
+        return img, target
+
+    def __len__(self):
+        return len(self.imgs)
