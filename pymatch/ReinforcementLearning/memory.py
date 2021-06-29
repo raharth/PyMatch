@@ -54,7 +54,8 @@ class Memory(Dataset):
 
     def _memorize_values(self, values, cell_name: list, memory):
         for val, cell in zip(values, cell_name):
-            val = torch.tensor(val)
+            if type(val) != torch.tensor:
+                val = torch.tensor(val)
             if len(val.shape) == 0:
                 val = val.unsqueeze(0)
             if len(val.shape) == 1:

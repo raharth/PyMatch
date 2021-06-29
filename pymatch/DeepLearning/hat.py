@@ -1,6 +1,8 @@
 import torch
 import os
 import shutil
+from scipy.stats import entropy
+
 from pymatch.utils.functional import one_hot_encoding
 
 
@@ -163,28 +165,33 @@ class ImageSorter(Hat):
         return y_pred
 
 
-class EntropyHat(Hat):
+class EntropyHat(EnsembleHat):
     def __init__(self):
         """
         Computes the entropy over the probabilistic label distribution of an ensemble.
         """
         super().__init__()
 
-    def __call__(self, y_pred, device='cpu'):
+    def __call__(self, pred, device='cpu'):
         """
 
         Args:
-            y_pred:     probability distribution over classes by each model of the ensemble
+            pred:       probability distribution over classes by each model of the ensemble
             device:     not needed
 
         Returns:
             torch tensor of entropy for label distribution over the models
         """
-        y_labels = y_pred.max(2)[1]
-        counts = one_hot_encoding(y_labels)
-        p = counts/y_labels.shape[0]
-        entropy = (- p * torch.log(p + 1e-16)).sum(-1)
-        return entropy
+        # y_labels = y_pred.max(2)[1]
+        # counts = one_hot_encoding(y_labels)
+        # p = counts/y_labels.shape[0]
+        # entropy = (- p * torch.log(p + 1e-16)).sum(-1)
+        actions = pred.max(-1)[1]
+        ohe_actions = one_hot_encoding(actions, n_categories=4, unsqueeze=True)
+        action_dist = ohe_actions.mean(0)
+        action_entropy = entropy(torch.transpose(action_dist, 0, 1))
+
+        return super(EntropyHat, self).__call__(pred), action_entropy
 
 
 class InputRepeater:
