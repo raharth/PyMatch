@@ -24,6 +24,7 @@ class ReinforcementLearner(Learner):
                  callbacks=None,
                  dump_path='./tmp',
                  device='cpu',
+                 store_memory=False,
                  *args,
                  **kwargs
                  ):
@@ -61,6 +62,7 @@ class ReinforcementLearner(Learner):
         self.train_dict['rewards'] = []
         self.gamma = gamma
         self.chose_action = action_selector
+        self.store_memory = store_memory
 
     def fit_epoch(self, device, verbose=1):
         raise NotImplementedError
@@ -80,7 +82,8 @@ class ReinforcementLearner(Learner):
 
         """
         state_dict = super().create_state_dict()
-        state_dict['memory'] = self.train_loader.create_state_dict()
+        if self.store_memory:
+            state_dict['memory'] = self.train_loader.create_state_dict()
         return state_dict
 
     def restore_checkpoint(self, checkpoint):
