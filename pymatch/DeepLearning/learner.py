@@ -12,7 +12,7 @@ from pymatch.utils import DataHandler
 
 class Predictor(ABC):
 
-    def __init__(self, model, name, dump_path='./tmp', device='cpu'):
+    def __init__(self, model, name, dump_path='./tmp', device='cpu', train=False):
         """
 
         Args:
@@ -23,6 +23,7 @@ class Predictor(ABC):
         self.name = name
         self.device = device
         self.dump_path = dump_path
+        self.training = train
 
     def __call__(self, data, device=None):
         return self.forward(data=data, device=device)
@@ -113,6 +114,7 @@ class Predictor(ABC):
         return f'{path}/{tag}_{self.name}.mdl'
 
     def eval(self):
+        self.training = False
         self.model.eval()
 
     def to(self, device):
@@ -136,8 +138,8 @@ class Learner(Predictor):
             dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
             device:             device to run the learner on
         """
-        super().__init__(model=model, name=name, device=device, dump_path=dump_path)
-        self.training = True
+        super().__init__(model=model, name=name, device=device, dump_path=dump_path, train=True)
+        # self.training = True
         # self.model = model
         # self.device = device
         self.optimizer = optimizer

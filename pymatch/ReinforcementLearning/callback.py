@@ -234,13 +234,13 @@ class UncertaintyUpdater(Callback):
 
         uncertainties = []
         pipe = Pipeline(pipes=[model, self.head])
-
-        for batch, (action, state, reward, new_state, terminal) in tqdm(
-                enumerate(model.train_loader.sample_loader(shuffle=False))):
-            state = state.to(model.device)
-            uncertainties += pipe(state.squeeze(1))[1]
-        # uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
-        model.train_loader.memory['uncertainty'] = torch.stack(uncertainties)
+        with torch.no_grad():
+            for batch, (action, state, reward, new_state, terminal) in tqdm(
+                    enumerate(model.train_loader.sample_loader(shuffle=False))):
+                state = state.to(model.device)
+                uncertainties += pipe(state.squeeze(1))[1]
+            # uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
+            model.train_loader.memory['uncertainty'] = torch.stack(uncertainties)
 
 
         #     target = prediction.clone().detach()

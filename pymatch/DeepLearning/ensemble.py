@@ -1,34 +1,33 @@
 import torch
 from pymatch.utils.exception import TerminationException
+from pymatch.DeepLearning.learner import Predictor
 
 
-class Ensemble:
-
-    def __init__(self, model_class, trainer_factory, n_model, trainer_args={}, callbacks=[], save_memory=False):
+class EnsemblePredictor:
+    def __init__(self, model_class, n_model, trainer_factory=Predictor, trainer_args=None, train=False):
+        if trainer_args is None:
+            trainer_args = {}
         self.learners = []
         for i in range(n_model):
             t_args = dict(trainer_args)
             t_args['name'] = trainer_args['name'] + '_{}'.format(i) if 'name' in trainer_args else '{}'.format(i)
             self.learners.append(trainer_factory(model_class, **t_args))
-        self.epochs_run = 0
-        self.callbacks = callbacks
-        self.save_memory = save_memory
-        self.train_dict = {'epochs_run': 0}
+
         self.dump_path = trainer_args['learner_args'].get('dump_path', 'tmp')
-        self.training = True
         self.device = 'cpu'
         self.name = 'ensemble'
+        self.training = train
 
-    def predict(self, x, device='cpu', return_prob=False, return_certainty=False, learner_args=None):
+    def predict(self, x, device='cpu',
+                # learner_args=None
+                ):
         """
         Predicting a data tensor.
 
         Args:
             x (torch.tensor): data
             device: device to run the model on
-            return_prob: return probability or class label
-            learner_args: additional learner arguments (this may not include the 'return_prob' argument)
-            return_certainty: returns certainty about predictions
+            # learner_args: additional learner arguments (this may not include the 'return_prob' argument)
 
         Returns:
             prediction with certainty measure.
@@ -38,17 +37,98 @@ class Ensemble:
                 (Majority vote, percentage of learners voted for that label)
 
         """
-        if learner_args is None:
-            learner_args = {}
+        # if learner_args is None:
+        #     learner_args = {}
 
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=0)
+
+    def load_checkpoint(self, path=None, tag='checkpoint', device='cpu', secure=True):
+        """
+        Loads a set of checkpoints, one for each learner
+
+        Args:
+            secure:     secure loading, throws exception if a learner fails to load, otherwise it will just print the
+                        error. Missing agents will thereby just be skipped.
+            device:     device to move the ensemble to
+            path:       source folder of the checkpoints
+            tag:        addition tags of the checkpoints
+
+        Returns:
+            None
+
+        """
+        for learner in self.learners:
+            try:
+                learner.load_checkpoint(path=path, tag=tag, device=device)
+            except FileNotFoundError as e:
+                if secure:
+                    raise e
+                else:
+                    print(f'learner `{learner.name}` could not be found and is hence newly initialized')
+        # checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
+        # self.restore_checkpoint(checkpoint)
+
+    # def restore_checkpoint(self, checkpoint):
+    #     self.train_dict = checkpoint.get('train_dict', self.train_dict)
+
+    def to(self, device):
+        self.device = device
+        for learner in self.learners:
+            learner.to(device)
+
+    def eval(self):
+        self.training = False
+        for learner in self.learners:
+            learner.eval()
+
+    def __call__(self, x, device='cpu'):
+        return self.predict(x, device=device)
+
+    def get_path(self, path, tag):
+        """
+        Returns the path for dumping or loading a checkpoint.
+
+        Args:
+            path: target folder
+            tag: additional name tag
+
+        Returns:
+
+        """
+        if path is None:
+            path = self.dump_path
+        return f'{path}/{tag}_{self.name}.mdl'
+
+
+class Ensemble(EnsemblePredictor):
+
+    def __init__(self, model_class, trainer_factory, n_model, trainer_args=None, callbacks=None, save_memory=False,
+                 train=True):
+        if callbacks is None:
+            callbacks = []
+        if trainer_args is None:
+            trainer_args = {}
+        super().__init__(model_class=model_class,
+                         trainer_factory=trainer_factory,
+                         n_model=n_model,
+                         trainer_args=trainer_args,
+                         train=train)
+        self.epochs_run = 0
+        self.callbacks = callbacks
+        self.save_memory = save_memory
+        self.save_memory = save_memory
+        self.train_dict = {'epochs_run': 0}
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0):
         """
         Trains each learner of the ensemble for a number of epochs
 
         Args:
+            learning_partition:
+            verbose:
+            restore_early_stopping:
+            device:
             epochs:                     number of epochs to train each learner
         device:                         device to run the models on
             restore_early_stopping:     restores the best performing weights after training
@@ -143,17 +223,17 @@ class Ensemble:
             None
 
         """
-        for learner in self.learners:
-            try:
-                learner.load_checkpoint(path=path, tag=tag, device=device)
-            except FileNotFoundError as e:
-                if secure:
-                    raise e
-                else:
-                    print(f'learner `{learner.name}` could not be found and is hence newly initialized')
-        checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
-        self.restore_checkpoint(checkpoint)
-
+        # for learner in self.learners:
+        #     try:
+        #         learner.load_checkpoint(path=path, tag=tag, device=device)
+        #     except FileNotFoundError as e:
+        #         if secure:
+        #             raise e
+        #         else:
+        #             print(f'learner `{learner.name}` could not be found and is hence newly initialized')
+        super(Ensemble, self).load_checkpoint(path=None, tag='checkpoint', device='cpu', secure=True)
+        self.restore_checkpoint(torch.load(self.get_path(path=path, tag=tag), map_location=device))
+    #
     def restore_checkpoint(self, checkpoint):
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
@@ -167,33 +247,33 @@ class Ensemble:
         for learner in self.learners:
             learner.to(device)
 
-    def eval(self):
-        self.training = False
-        for learner in self.learners:
-            learner.eval()
+    # def eval(self):
+    #     self.training = False
+    #     for learner in self.learners:
+    #         learner.eval()
 
     def train(self):
         self.training = True
         for learner in self.learners:
             learner.train()
 
-    def __call__(self, x, device='cpu'):
-        return self.predict(x, device=device)
+    # def __call__(self, x, device='cpu'):
+    #     return self.predict(x, device=device)
 
-    def get_path(self, path, tag):
-        """
-        Returns the path for dumping or loading a checkpoint.
-
-        Args:
-            path: target folder
-            tag: additional name tag
-
-        Returns:
-
-        """
-        if path is None:
-            path = self.dump_path
-        return '{}/{}_{}.mdl'.format(path, tag, self.name)
+    # def get_path(self, path, tag):
+    #     """
+    #     Returns the path for dumping or loading a checkpoint.
+    #
+    #     Args:
+    #         path: target folder
+    #         tag: additional name tag
+    #
+    #     Returns:
+    #
+    #     """
+    #     if path is None:
+    #         path = self.dump_path
+    #     return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
 
 class DQNEnsemble(Ensemble):
@@ -218,3 +298,5 @@ class DQNEnsemble(Ensemble):
     def restore_checkpoint(self, checkpoint):
         super().restore_checkpoint(checkpoint=checkpoint)
         self.memory = checkpoint.get('memory', self.memory)
+
+
