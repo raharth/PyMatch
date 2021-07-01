@@ -10,9 +10,9 @@ import pandas as pd
 from pymatch.utils import DataHandler
 
 
-class Predictor:
+class Predictor(ABC):
 
-    def __init__(self, model, name):
+    def __init__(self, model, name, dump_path='./tmp', device='cpu'):
         """
 
         Args:
@@ -21,6 +21,34 @@ class Predictor:
         """
         self.model = model
         self.name = name
+        self.device = device
+        self.dump_path = dump_path
+
+    def __call__(self, data, device=None):
+        return self.forward(data=data, device=device)
+
+    def forward(self, data, device=None, eval=True):
+        """
+        Predicting a batch as tensor.
+
+        Args:
+            data: data to forward
+            device: device to run the model on
+
+        Returns:
+            prediction (, true label)
+        """
+        if device is None:
+            device = self.device
+
+        if eval:
+            self.model.eval()
+        else:
+            self.model.train()
+        self.model.to(device)
+        data = data.to(device)
+        y_pred = self.model.forward(data)
+        return y_pred
 
     def predict(self, data, device='cpu'):
         """
@@ -80,23 +108,20 @@ class Predictor:
         Returns:
 
         """
-        return '{}/{}_{}'.format(path, tag, self.name)
+        if path is None:
+            path = self.dump_path
+        return f'{path}/{tag}_{self.name}.mdl'
+
+    def eval(self):
+        self.model.eval()
+
+    def to(self, device):
+        self.model.to(device)
 
 
-class Learner(ABC):
+class Learner(Predictor):
 
-    def __init__(self,
-                 model,
-                 optimizer,
-                 crit,
-                 train_loader,
-                 grad_clip=None,
-                 # load_checkpoint=False,
-                 name='',
-                 callbacks=None,
-                 dump_path='./tmp',
-                 device='cpu'
-                 ):
+    def __init__(self, model, optimizer, crit, train_loader, grad_clip=None, name='', callbacks=None, dump_path='./tmp', device='cpu'):
         """
 
         Args:
@@ -111,29 +136,30 @@ class Learner(ABC):
             dump_path:          path to dump the model to when saving. Many callbacks rely on it as well
             device:             device to run the learner on
         """
+        super().__init__(model=model, name=name, device=device, dump_path=dump_path)
         self.training = True
-        self.model = model
-        self.device = device
+        # self.model = model
+        # self.device = device
         self.optimizer = optimizer
         self.crit = crit
 
         self.grad_clip = grad_clip
 
         self.train_loader = train_loader
-        self.dump_path = dump_path
+        # self.dump_path = dump_path
 
-        self.name = name  # name for the learner used for checkpointing and early stopping
+        # self.name = name  # name for the learner used for checkpointing and early stopping
         self.callbacks = [] if callbacks is None else callbacks
 
         self.train_dict = {'train_losses': [],                  # list of all training losses
                            'epochs_run': 0,                     # number of epochs the model has been trained
                            'best_train_performance': np.inf,    # best training performance
-                           'best_val_performance': np.inf,    # best training performance
+                           'best_val_performance': np.inf,      # best training performance
                            'epochs_since_last_val_improvement': 0   # @todo ugly shit, shouldnt be here
                            }
 
-    def __call__(self, data, device=None):
-        return self.forward(data=data, device=device)
+    # def __call__(self, data, device=None):
+    #     return self.forward(data=data, device=device)
 
     def _backward(self, loss):
         """
@@ -184,20 +210,20 @@ class Learner(ABC):
                       }
         return state_dict
 
-    def load_checkpoint(self, path, tag, device='cpu'):
-        """
-        Loads dumped checkpoint.
-
-        Args:
-            path: source path
-            tag: additional name tag
-
-        Returns:
-            None
-
-        """
-        checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
-        self.restore_checkpoint(checkpoint)
+    # def load_checkpoint(self, path, tag, device='cpu'):
+    #     """
+    #     Loads dumped checkpoint.
+    #
+    #     Args:
+    #         path: source path
+    #         tag: additional name tag
+    #
+    #     Returns:
+    #         None
+    #
+    #     """
+    #     checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
+    #     self.restore_checkpoint(checkpoint)
 
     def restore_checkpoint(self, checkpoint):
         """
@@ -210,24 +236,25 @@ class Learner(ABC):
         Returns:
             None
         """
+        super(Learner, self).restore_checkpoint(checkpoint=checkpoint)
         self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.train_dict = checkpoint['train_dict']
+        # self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        # self.train_dict = checkpoint['train_dict']
 
-    def get_path(self, path, tag):
-        """
-        Returns the path for dumping or loading a checkpoint.
-
-        Args:
-            path: target folder
-            tag: additional name tag
-
-        Returns:
-
-        """
-        if path is None:
-            path = self.dump_path
-        return f'{path}/{tag}_{self.name}.mdl'
+    # def get_path(self, path, tag):
+    #     """
+    #     Returns the path for dumping or loading a checkpoint.
+    #
+    #     Args:
+    #         path: target folder
+    #         tag: additional name tag
+    #
+    #     Returns:
+    #
+    #     """
+    #     if path is None:
+    #         path = self.dump_path
+    #     return f'{path}/{tag}_{self.name}.mdl'
 
     def fit(self, epochs, device, restore_early_stopping=False, verbose=1):
         """
@@ -276,31 +303,32 @@ class Learner(ABC):
         self.training = True
         self.model.train()
 
-    def to(self, device):
-        self.model.to(device)
+    # def to(self, device):
+    #     self.model.to(device)
 
-    def forward(self, data, device=None, eval=True):
-        if device is None:
-            device = self.device
-        """
-        Predicting a batch as tensor.
-
-        Args:
-            data: data to forward
-            device: device to run the model on
-
-        Returns:
-            prediction (, true label)
-        """
-        with torch.no_grad():
-            if eval:
-                self.model.eval()
-            else:
-                self.model.train()
-            self.model.to(device)
-            data = data.to(device)
-            y_pred = self.model.forward(data)
-            return y_pred
+    # def forward(self, data, device=None, eval=True):
+    #     """
+    #     Predicting a batch as tensor.
+    #
+    #     Args:
+    #         data: data to forward
+    #         device: device to run the model on
+    #
+    #     Returns:
+    #         prediction (, true label)
+    #     """
+    #     if device is None:
+    #         device = self.device
+    #
+    #     # with torch.no_grad():
+    #     if eval:
+    #         self.model.eval()
+    #     else:
+    #         self.model.train()
+    #     self.model.to(device)
+    #     data = data.to(device)
+    #     y_pred = self.model.forward(data)
+    #     return y_pred
 
     @abstractmethod
     def fit_epoch(self, device, verbose=1):
