@@ -18,9 +18,7 @@ class EnsemblePredictor:
         self.name = 'ensemble'
         self.training = train
 
-    def predict(self, x, device='cpu',
-                # learner_args=None
-                ):
+    def predict(self, x, device='cpu'):
         """
         Predicting a data tensor.
 
@@ -37,9 +35,6 @@ class EnsemblePredictor:
                 (Majority vote, percentage of learners voted for that label)
 
         """
-        # if learner_args is None:
-        #     learner_args = {}
-
         preds = [leaner.forward(x, device=device) for leaner in self.learners]
         return torch.stack(preds, dim=0)
 
@@ -66,11 +61,6 @@ class EnsemblePredictor:
                     raise e
                 else:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
-        # checkpoint = torch.load(self.get_path(path=path, tag=tag), map_location=device)
-        # self.restore_checkpoint(checkpoint)
-
-    # def restore_checkpoint(self, checkpoint):
-    #     self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def to(self, device):
         self.device = device
@@ -223,17 +213,9 @@ class Ensemble(EnsemblePredictor):
             None
 
         """
-        # for learner in self.learners:
-        #     try:
-        #         learner.load_checkpoint(path=path, tag=tag, device=device)
-        #     except FileNotFoundError as e:
-        #         if secure:
-        #             raise e
-        #         else:
-        #             print(f'learner `{learner.name}` could not be found and is hence newly initialized')
         super(Ensemble, self).load_checkpoint(path=None, tag='checkpoint', device='cpu', secure=True)
         self.restore_checkpoint(torch.load(self.get_path(path=path, tag=tag), map_location=device))
-    #
+
     def restore_checkpoint(self, checkpoint):
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
@@ -247,33 +229,10 @@ class Ensemble(EnsemblePredictor):
         for learner in self.learners:
             learner.to(device)
 
-    # def eval(self):
-    #     self.training = False
-    #     for learner in self.learners:
-    #         learner.eval()
-
     def train(self):
         self.training = True
         for learner in self.learners:
             learner.train()
-
-    # def __call__(self, x, device='cpu'):
-    #     return self.predict(x, device=device)
-
-    # def get_path(self, path, tag):
-    #     """
-    #     Returns the path for dumping or loading a checkpoint.
-    #
-    #     Args:
-    #         path: target folder
-    #         tag: additional name tag
-    #
-    #     Returns:
-    #
-    #     """
-    #     if path is None:
-    #         path = self.dump_path
-    #     return '{}/{}_{}.mdl'.format(path, tag, self.name)
 
 
 class DQNEnsemble(Ensemble):
