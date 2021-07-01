@@ -177,15 +177,11 @@ class EntropyHat(EnsembleHat):
 
         Args:
             pred:       probability distribution over classes by each model of the ensemble
-            device:     not needed
+            device:     not used
 
         Returns:
             torch tensor of entropy for label distribution over the models
         """
-        # y_labels = y_pred.max(2)[1]
-        # counts = one_hot_encoding(y_labels)
-        # p = counts/y_labels.shape[0]
-        # entropy = (- p * torch.log(p + 1e-16)).sum(-1)
         actions = pred.max(-1)[1]
         ohe_actions = one_hot_encoding(actions, n_categories=4, unsqueeze=True)
         action_dist = ohe_actions.mean(0)
@@ -200,28 +196,3 @@ class InputRepeater:
 
     def __call__(self, y):
         return torch.stack(self.n_repeats * [y])
-#
-# y_pred = torch.rand(size=(10,5,3))
-# for e in y_pred:
-#     y_sum = e.sum(1)
-#     for e2, s in zip(e, y_sum):
-#         e2 /= s
-#
-#
-# y_labels = y_pred.max(2)[1]
-# counts = one_hot_encoding(y_labels).sum(0)
-# p = counts / 10
-# (- p * torch.log(p + 1e-16)).sum(-1)
-#
-# counts = torch.tensor([[12, 0, 0],
-#                        [11,1,0],
-#                        [11,0,1],
-#                        [10,1,1],
-#                        [4,4,4]])
-# p = counts / 12.
-# (- p * torch.log(p + 1e-16)).sum(-1)
-#
-# torch.stack(3*[torch.tensor([1,2,3])])
-#
-# rep = InputRepeater(3)
-# rep(torch.tensor([1,2,3]))

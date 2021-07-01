@@ -31,8 +31,8 @@ class SelectionPolicy:
         self.pre_pipeline = pre_pipeline
         self.post_pipeline = post_pipeline
 
-    def forward(self, agent, observation):
-        raise NotImplementedError
+    # def forward(self, agent, observation):
+    #     raise NotImplementedError
 
     def pre_pipe(self, x):
         for pipe in self.pre_pipeline:
@@ -44,34 +44,6 @@ class SelectionPolicy:
             x = pipe(x)
         return x
 
-    # def __call__(self, agent, observation):
-    #     observation = self.preparation(observation)
-    #     x = self.forward(agent, observation)
-    #     return self.aggregation(x)
-
-# class Softmax_Selection(SelectionPolicy):
-#
-#     def __init__(self, temperature=1.):
-#         super(Softmax_Selection, self).__init__()
-#         self.temperature = temperature
-#
-#     def choose(self, q_values):
-#         p = F.softmax(q_values / self.temperature, dim=1)
-#         dist = Categorical(p.squeeze())
-#         return dist.sample()
-#
-#
-# class EpsilonGreedy(SelectionPolicy):
-#
-#     def __init__(self, epsilon):
-#         super(EpsilonGreedy, self).__init__()
-#         self.epsilon = epsilon
-#
-#     def choose(self, q_values):
-#         if torch.rand(1) < self.epsilon:
-#             return torch.LongTensor(q_values.shape[0]).random_(0, q_values.shape[1])
-#         else:
-#             return q_values.argmax(dim=1)
 
 class PolicyGradientActionSelection(SelectionPolicy):
     """
@@ -86,7 +58,6 @@ class PolicyGradientActionSelection(SelectionPolicy):
         action = dist.sample()
         log_prob = dist.log_prob(action)
         return action.item(), log_prob
-
 
 
 class BayesianDropoutPGActionSelection(SelectionPolicy):
@@ -158,7 +129,7 @@ class QActionSelectionCertainty(SelectionPolicy):
         return action.item(), stds
 
 
-class AdaptiveQActionSelection(SelectionPolicy):
+class AdaptiveQActionSelectionStd(SelectionPolicy):
     def __init__(self, temperature=1., history=1000, hist_scaling=1., min_length=100, return_uncertainty=True,
                  *args, **kwargs):
         """
@@ -203,6 +174,53 @@ class AdaptiveQActionSelection(SelectionPolicy):
             return self.temperature
         uncertainty = (uncertainty - np.mean(self.values)) / np.std(self.values)
         return torch.sigmoid(uncertainty / self.hist_scaling) * self.temperature
+
+
+class AdaptiveQActionSelectionEntropy(SelectionPolicy):
+    def __init__(self, sensitivity=5., selection_temp=1., min_temp=.1, return_uncertainty=True, warm_up=1000, *args, **kwargs):
+        """
+        Adaptive value selection based on the entropy of the model.
+
+        Args:
+            sensitivity:            Determines how sensible it is to uncertainty. A larger value leads to higher
+                                    exploration even at low entropy. A smaller values means less random actions even at
+                                    high entropy
+            selection_temp:         Max temperature used for action sampling
+            min_temp:               Min temperature used for action sampling
+            warm_up:                Initial steps for which the unscaled selection temperature is used
+            return_uncertainty:     If set to `True` entropy is returned in addition to the action
+        """
+        if 'post_pipeline' not in kwargs.keys():
+            kwargs['post_pipeline'] = [hat.EntropyHat()]
+
+        super().__init__(*args, **kwargs)
+        self.selection_temp = selection_temp
+        self.min_temp = min_temp
+        self.sensitivity = sensitivity
+        self.return_uncertainty = return_uncertainty
+        self.warm_up = warm_up
+
+    def __call__(self, agent, observation):
+        agent.to(agent.device)
+        observation = self.pre_pipe(observation)
+        qs = agent(observation.to(agent.device))
+        qs, uncertainties = self.post_pipe(qs)
+
+        probs = F.softmax(qs / self.adjust_temp(uncertainties=uncertainties), dim=-1)
+        dist = Categorical(probs.squeeze())
+        action = dist.sample()
+        if self.return_uncertainty:
+            return action.item(), uncertainties
+        else:
+            return action.item()
+
+    def adjust_temp(self, uncertainties):
+        self.warm_up -= 1
+        if self.warm_up < 0:
+            return max(self.selection_temp * (1 - torch.exp(-uncertainties * self.sensitivity)), self.min_temp)
+        return self.selection_temp
+
+
 
 class EpsilonGreedyActionSelection(SelectionPolicy):
     def __init__(self, action_space, epsilon=.1, **kwargs):
