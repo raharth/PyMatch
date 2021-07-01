@@ -88,7 +88,8 @@ class ReinforcementLearner(Learner):
 
     def restore_checkpoint(self, checkpoint):
         super(ReinforcementLearner, self).restore_checkpoint(checkpoint=checkpoint)
-        self.train_loader.restore_checkpoint(checkpoint['memory'])
+        if self.store_memory:
+            self.train_loader.restore_checkpoint(checkpoint['memory'])
 
 
 class PolicyGradient(ReinforcementLearner):
