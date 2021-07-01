@@ -12,7 +12,7 @@ from pymatch.utils import DataHandler
 
 class Predictor(ABC):
 
-    def __init__(self, model, name, dump_path='./tmp', device='cpu', train=False):
+    def __init__(self, model, name, dump_path='./tmp', device='cpu', train=False, **kwargs):
         """
 
         Args:
@@ -24,6 +24,9 @@ class Predictor(ABC):
         self.device = device
         self.dump_path = dump_path
         self.training = train
+        if len(kwargs) > 0:
+            print(f'There are unused and ignored kwargs: {kwargs.keys()}')
+
 
     def __call__(self, data, device=None):
         return self.forward(data=data, device=device)
