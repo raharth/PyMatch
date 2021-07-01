@@ -110,7 +110,7 @@ class Ensemble(EnsemblePredictor):
         self.save_memory = save_memory
         self.train_dict = {'epochs_run': 0}
 
-    def fit(self, epochs, device, restore_early_stopping=False, verbose=1, learning_partition=0):
+    def fit(self, epochs, device, verbose=1, learning_partition=0):
         """
         Trains each learner of the ensemble for a number of epochs
 
@@ -139,8 +139,7 @@ class Ensemble(EnsemblePredictor):
                     print('Trainer {}'.format(learner.name))
                 try:
                     learner.fit(epochs=run_epochs,
-                                device=device,
-                                restore_early_stopping=restore_early_stopping)
+                                device=device)
                 except TerminationException as te:
                     print(te)
 

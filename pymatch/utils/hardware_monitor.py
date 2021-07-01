@@ -3,7 +3,7 @@ Inspired by the monitoring solution from https://stackoverflow.com/questions/326
 To run this you need to download the OpenHardwareMonitor from https://openhardwaremonitor.org/downloads/ and reference
 the `OpenHardwareMonitorLib.dll` using clr
 """
-import clr  # package pythonnet, not clr
+
 import time
 import pandas as pd
 import threading
@@ -14,6 +14,7 @@ with open("pymatch_config", "r") as f:
     config = json.load(f)
 
 if config.get("hardware_monitor", None) is not None:
+    import clr  # package pythonnet, not clr
     clr.AddReference(f"{config['hardware_monitor']['dll_path']}")
     from OpenHardwareMonitor import Hardware
 else:
