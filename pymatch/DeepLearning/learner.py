@@ -98,7 +98,7 @@ class Predictor(ABC):
         Returns:
             None
         """
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(state_dict=checkpoint['model_state_dict'])
 
     def get_path(self, path, tag):
         """
