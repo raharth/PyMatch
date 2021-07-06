@@ -1,7 +1,11 @@
-import torch
-from torchvision import datasets
-from torch.utils import data
+import json
+import os
+from PIL import Image
+
 import pandas as pd
+import torch
+from torch.utils import data
+from torchvision import datasets
 
 
 class ImageFolderWithPaths(datasets.ImageFolder):
@@ -124,7 +128,7 @@ class ObjectDetectionDataset(data.Dataset):
         return len(self.imgs)
 
 
-class ExtendedInageDataset(data.Dataset):
+class ExtendedImageDataset(data.Dataset):
 
     def __init__(self, img_root, data_file, transforms=None):
         self.root = img_root

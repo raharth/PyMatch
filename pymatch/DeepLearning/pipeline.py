@@ -1,4 +1,5 @@
 import torch
+from tqdm import tqdm
 
 
 class Pipeline:
@@ -19,9 +20,9 @@ class Pipeline:
         y_pred = []
         y_true = []
 
-        for data, y in data_loader:
-            data = data.to(device)
-            y = y.to(device)
+        for data, y in tqdm(data_loader):
+            data = data.to(self.device)
+            y = y.to(self.device)
 
             yp = self.__call__(data)
             y_pred += [yp]
