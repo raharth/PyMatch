@@ -20,8 +20,16 @@ class Memory(Dataset):
         Memory class for RL algorithm.
 
         Args:
-            memory_size (int): max buffer size
-
+            memory_cell_names:  key with which the memory can be accessed (necesseray when storing)
+            n_samples:          samples that are drawn for each forward pass
+            memory_cell_space:  dimensionality of each element stored in the memory (depricated @todo clean this up)
+            memory_size:        max number of individual steps the memory can hold
+            batch_size:         batch size used when drawing samples from the memory
+            gamma:              discount factor used for REINFORCE
+                                (@todo this is weird to have here since it is not used for other algorithms)
+            replace:            Used when drawing samples from the memory. If set to true it replaces already drawn
+                                memories. This can be used to create bootstrap samples of the memory, when it is used
+                                by multiple agents at the same time.
         """
         if memory_cell_space is None:
             memory_cell_space = [1 for _ in range(len(memory_cell_names))]
@@ -67,6 +75,18 @@ class Memory(Dataset):
         return memory
 
     def _merge_memory(self, values, cell_name, memory):
+        """
+        This merges two memories
+
+        Args:
+            values:     new memory that has to be merge into an already existing one (@todo rename variable)
+            cell_name:  keys, that have to be merged
+                        (@todo this is weird just check if the keys are the same and merge them then)
+            memory:     memory the new memory has to be merged into
+
+        Returns:
+            Merged Memory
+        """
         for key in cell_name:
             if memory[key] is None:
                 memory[key] = values.memory[key]
@@ -76,7 +96,10 @@ class Memory(Dataset):
 
     def reduce_buffer(self, reduce_to=None):
         """
-        Reduces the memory to its max capacity.
+        Reduces the memory to its max capacity, throwing away the oldest memories.
+
+        Args:
+            reduce_to:  number of memories to reduce to. Setting this to 0 will reset the memory
 
         """
         reduce_to = reduce_to if reduce_to is not None else self.memory_size
@@ -88,6 +111,13 @@ class Memory(Dataset):
                     self.memory[key] = self.memory[key][-reduce_to:]
 
     def get_size(self):
+        """
+        Gives back the size of the Memory. (@todo depricated and shouldn't be used anymore, use `len()` instead)
+
+        Returns:
+            Current of the memory
+
+        """
         return self.__len__()
 
     def memory_reset(self):
@@ -102,7 +132,7 @@ class Memory(Dataset):
         Computes the cumulative reward of the memory.
 
         Args:
-            cell_name (str): name of the reward memory cell.
+            cell_name (str):    name of the reward memory cell.
 
         Returns:
             None
@@ -126,6 +156,17 @@ class Memory(Dataset):
         return tuple(result)
 
     def sample_indices(self, n_samples):
+        """
+        Samples indices from the memory, either random shuffling the entire memory, or sampling with replacement, as
+        determined in the constructor of the memory. This can be used for random subset necessary to create dataloader.
+
+        Args:
+            n_samples:  number of samples to draw
+
+        Returns:
+            numpy array of indices
+
+        """
         if n_samples is None:
             idx = np.arange(self.__len__())
             np.random.shuffle(idx)
@@ -135,6 +176,16 @@ class Memory(Dataset):
         return idx
 
     def sample_loader(self, n_samples=None, shuffle=True):
+        """
+        Samples a dataloader from the memory.
+
+        Args:
+            n_samples:  number of samples to draw (@todo we should create some default value as the full data set)
+            shuffle:    determines if the memory should be shuffled
+
+        Returns:
+
+        """
         if shuffle:
             if n_samples is None:
                 raise ValueError(f'n_samples is None')
@@ -151,9 +202,24 @@ class Memory(Dataset):
         return iter(self.sample_loader(self.n_samples))
 
     def create_state_dict(self):
+        """
+        Creates a state dict of the memory to store.
+
+        Returns:
+
+        """
         return {'memory': self.memory}
 
     def restore_checkpoint(self, checkpoint):
+        """
+        Restores a previously stored checkpoint to the memory.
+
+        Args:
+            checkpoint: loaded checkpoint
+
+        Returns:
+
+        """
         self.memory = checkpoint['memory']
 
 

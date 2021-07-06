@@ -5,6 +5,22 @@ from pymatch.DeepLearning.learner import Predictor
 
 class EnsemblePredictor:
     def __init__(self, model_class, n_model, trainer_factory=Predictor, trainer_args=None, train=False):
+        """
+        Base class for the Ensemble. If one wants  to train an ensemble one has to use the regular Ensemble class.
+        This class is only meant to be used with an already trained ensemble and only serves the purpose of being able
+        to apply the ensemble to data.
+
+        Args:
+            model_class:        class that defines the model architecture and forward pass. Has to be derived from
+                                torch.nn.Module
+            n_model:            number of individual learners that are part of the ensemble
+            trainer_factory:    factory function/object, that generates a full learner. If this is only used as a
+                                predictor one does not need to provide any factory function. This is only necessary
+                                if this class is used as the super class of an other ensemble
+            trainer_args:       arguments, used to call the factory with. In the case of using this only as predictor
+                                this can be left empty.
+            train:              bool that defines if the model is set to train or eval mode
+        """
         if trainer_args is None:
             trainer_args = {}
         self.learners = []
@@ -63,11 +79,26 @@ class EnsemblePredictor:
                     print(f'learner `{learner.name}` could not be found and is hence newly initialized')
 
     def to(self, device):
+        """
+        Moves the ensemble and all learners to to given device.
+
+        Args:
+            device: device to move the ensemble to
+
+        Returns:
+
+        """
         self.device = device
         for learner in self.learners:
             learner.to(device)
 
     def eval(self):
+        """
+        Sets the ensemble and all learners that are part of it to eval mode.
+
+        Returns:
+
+        """
         self.training = False
         for learner in self.learners:
             learner.eval()
@@ -84,7 +115,7 @@ class EnsemblePredictor:
             tag: additional name tag
 
         Returns:
-
+            The path to store or load the model to/from
         """
         if path is None:
             path = self.dump_path
@@ -95,6 +126,20 @@ class Ensemble(EnsemblePredictor):
 
     def __init__(self, model_class, trainer_factory, n_model, trainer_args=None, callbacks=None, save_memory=False,
                  train=True):
+        """
+        Ensemble around a number of learners, that can be trained and called as a individual agent.
+
+        Args:
+            model_class:        class that defines the model architecture and forward pass. Has to be derived from
+                                torch.nn.Module
+            trainer_factory:    factory function/object, that generates a full learner, containing a model, loss, optim
+            n_model:            number of individual learners that are part of the ensemble
+            trainer_args:       arguments, used to call the factory with
+            callbacks:          list of callbacks that can be called from the ensemble
+            save_memory:        if set to true the ensemble deletes each agent after it was trained. This is useful to
+                                free up VRAM during training
+            train:              bool that defines if the model is set to train or eval mode
+        """
         if callbacks is None:
             callbacks = []
         if trainer_args is None:
@@ -155,6 +200,12 @@ class Ensemble(EnsemblePredictor):
             self.train_dict['epochs_run'] = self.train_dict.get('epochs_run', 0) + 1
 
     def start_callbacks(self):
+        """
+        Calling this function starts all callbacks part of the ensemble itself and all learners below it.
+
+        Returns:
+
+        """
         for cb in self.callbacks:
             cb.start(self)
         for learner in self.learners:
@@ -164,13 +215,14 @@ class Ensemble(EnsemblePredictor):
     def partition_learning_steps(self, epochs, learning_partition):
         """
         Divides the entire epochs to run into shorter trainings phases. This is used to train multiple agents
-        simultaneously.
+        "simultaneously". This is useful if you want to evaluate the ensemble during training as a hole.
+
         Args:
-            epochs:
-            learning_partition:
+            epochs:                 number of epochs that have to be run
+            learning_partition:     number of epochs before the next agent gets trained
 
         Returns:
-
+            List of number of epochs to be run at a time, summing up to the full number of required epochs
         """
         if learning_partition > 0:
             epoch_iter = [learning_partition for _ in range(epochs // learning_partition)]
@@ -182,7 +234,7 @@ class Ensemble(EnsemblePredictor):
 
     def dump_checkpoint(self, path=None, tag='checkpoint'):
         """
-        Dumps a checkpoint for each learner.
+        Dumps a checkpoint for each learner and the ensemble itself.
 
         Args:
             path: source folder of the checkpoints
@@ -197,6 +249,12 @@ class Ensemble(EnsemblePredictor):
         torch.save(self.create_state_dict(), path)
 
     def create_state_dict(self):
+        """
+        Creates a state dict for the entire ensemble.
+
+        Returns:
+
+        """
         state_dict = {'train_dict': self.train_dict}
         return state_dict
 
@@ -205,8 +263,8 @@ class Ensemble(EnsemblePredictor):
         Loads a set of checkpoints, one for each learner
 
         Args:
-            path: source folder of the checkpoints
-            tag: addition tags of the checkpoints
+            path:   source folder of the checkpoints
+            tag:    addition tags of the checkpoints
 
         Returns:
             None
@@ -216,19 +274,41 @@ class Ensemble(EnsemblePredictor):
         self.restore_checkpoint(torch.load(self.get_path(path=path, tag=tag), map_location=device))
 
     def restore_checkpoint(self, checkpoint):
+        """
+        Restores a checkpoint from the given path-
+
+        Args:
+            checkpoint: path to the checkpoint
+
+        Returns:
+
+        """
         self.train_dict = checkpoint.get('train_dict', self.train_dict)
 
     def fit_resume(self, epochs, **fit_args):
+        """
+        Resumes training after it was interrupted, or can continue with learning after a previous `fit` call. This is
+        especially useful if the training was interrupted and you want all agents to be trained a specific number of
+        epochs.
+
+        Args:
+            epochs:         full number of epochs it has to be trained
+            **fit_args:     arguments used to call the `fit` method
+
+        Returns:
+
+        """
         self.load_checkpoint(path=f'{self.dump_path}/checkpoint')
         epochs = epochs - self.train_dict['epochs_run']
         return self.fit(epochs=epochs, **fit_args)
 
-    def to(self, device):
-        self.device = device
-        for learner in self.learners:
-            learner.to(device)
-
     def train(self):
+        """
+        Sets the entire ensemble including its individual agents to training mode
+
+        Returns:
+
+        """
         self.training = True
         for learner in self.learners:
             learner.train()
@@ -237,6 +317,20 @@ class Ensemble(EnsemblePredictor):
 class DQNEnsemble(Ensemble):
 
     def __init__(self, memory, selection_strategy, env, player, *args, **kwargs):
+        """
+        Ensemble of DQN agents. This assumes to have a single unique memory, potentially filled and use by the agents
+        together. If the ensemble is not meant to train as a single instance on a common memory that is generated by the
+        ensembles instead of the individual agents, one can also use the regular Ensemble.
+
+        Args:
+            memory:                 memory of the ensemble
+            selection_strategy:     action selection strategy used by the ensemble when playing
+            env:                    environment to interact with
+            player:                 Player that defines how an episodes is played by the ensemble as well as which and
+                                    how memories are stored.
+            *args:                  Arguments to pass to super class
+            **kwargs:               Arguments to pass to super class
+        """
         super().__init__(*args, **kwargs)
         # todo this needs to be cleaned up
         self.train_loader = memory
@@ -246,14 +340,34 @@ class DQNEnsemble(Ensemble):
         self.player = player
 
     def play_episode(self):
+        """
+        Plays an episode using the player provided to the ensemble
+
+        Returns:
+
+        """
         return self.player(self, self.selection_strategy, self.train_loader)
 
     def create_state_dict(self):
+        """
+        Creates a state dictionary, also storing the ensembles memory
+        Returns:
+
+        """
         state_dict = super().create_state_dict()
         state_dict['memory'] = self.train_loader.create_state_dict()
         return state_dict
 
     def restore_checkpoint(self, checkpoint):
+        """
+        Restores a checkpoint including the memory from the provided path.
+
+        Args:
+            checkpoint: path to the checkpoint file.
+
+        Returns:
+
+        """
         super().restore_checkpoint(checkpoint=checkpoint)
         self.memory = checkpoint.get('memory', self.memory)
 
