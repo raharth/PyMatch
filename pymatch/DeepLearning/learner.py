@@ -119,6 +119,10 @@ class Predictor(ABC):
         self.training = False
         self.model.eval()
 
+    def train(self):
+        self.training = True
+        self.model.train()
+
     def to(self, device):
         self.model.to(device)
 
@@ -256,14 +260,6 @@ class Learner(Predictor):
                     cb(model=self)
                 except Exception as e:
                     print(f'callback {cb} failed with exception\n{e}')
-
-    def eval(self):
-        self.training = False
-        self.model.eval()
-
-    def train(self):
-        self.training = True
-        self.model.train()
 
     @abstractmethod
     def fit_epoch(self, device, verbose=1):

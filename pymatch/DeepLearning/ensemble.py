@@ -24,7 +24,6 @@ class EnsemblePredictor:
         self.name = 'ensemble'
         self.training = train
 
-
     def predict(self, x, device='cpu'):
         """
         Predicting a data tensor.

@@ -221,15 +221,14 @@ class AdaptiveQActionSelectionEntropy(SelectionPolicy):
         return self.selection_temp
 
 
-
 class EpsilonGreedyActionSelection(SelectionPolicy):
     def __init__(self, action_space, epsilon=.1, **kwargs):
         """
-        Epsilon greedy selection strategy, choosing the best or with p=1-epsilon choosing a random action
+        Epsilon greedy selection strategy, choosing the best or with p=epsilon choosing a random action
 
         Args:
             action_space:   list of possible actions
-            epsilon:        probability for max
+            epsilon:        probability for random action
         """
         super().__init__(**kwargs)
         self.action_space = action_space
@@ -243,6 +242,38 @@ class EpsilonGreedyActionSelection(SelectionPolicy):
         if np.random.uniform() > self.epsilon:
             return qs.argmax().item()
         return np.random.choice(self.action_space)
+
+
+class AdaptiveEpsilonGreedyActionSelection(SelectionPolicy):
+    def __init__(self, action_space, epsilon=1.0, min_epsilon=0.0, warm_up=1000, sensitivity=.1, **kwargs):
+        """
+        Adaptive Epsilon greedy selection strategy, choosing the best or with p=epsilon choosing a random action
+
+        Args:
+            action_space:   list of possible actions
+            epsilon:        probability for random action
+        """
+        super().__init__(**kwargs)
+        self.action_space = action_space
+        self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
+        self.warm_up = warm_up
+        self.sensitivity = sensitivity
+
+    def __call__(self, agent, observation):
+        agent.to(agent.device)
+        observation = self.pre_pipe(observation)
+        qs = agent(observation.to(agent.device))
+        qs, uncertainties = self.post_pipe(qs)
+        if np.random.uniform() > self.adjust_temp(uncertainties=uncertainties):
+            return qs.argmax().item()
+        return np.random.choice(self.action_space)
+
+    def adjust_temp(self, uncertainties):
+        self.warm_up -= 1
+        if self.warm_up < 0:
+            return max(self.epsilon * (1 - torch.exp(-uncertainties * self.sensitivity)), self.min_epsilon)
+        return self.epsilon
 
 
 class GreedyValueSelection(SelectionPolicy):
