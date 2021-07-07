@@ -9,6 +9,6 @@ setup(name='pymatch',
       license='MIT',
       packages=find_packages(),
       install_requires=[
-          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn', 'tables', 'PIL'
+          'tqdm', 'numpy', 'torch', 'torchvision', 'pandas', 'matplotlib', 'seaborn', 'scikit-learn', 'tables'
       ],
       zip_safe=False)
