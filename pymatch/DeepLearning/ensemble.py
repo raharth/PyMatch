@@ -10,7 +10,10 @@ def _predictor_factory(Model, model_args, learner_args, name, *args, **kwargs):
 
 
 class EnsemblePredictor:
-    def __init__(self, model_class, n_model, trainer_factory=_predictor_factory, trainer_args=None, train=False):
+    def __init__(self, model_class, n_model, dump_path=None, trainer_factory=_predictor_factory, trainer_args=None, train=False):
+        if dump_path is None:
+            dump_path = 'tmp'
+            print('Warning: Using default dump_path at `./tmp`')
         if trainer_args is None:
             trainer_args = {}
         self.learners = []
@@ -19,7 +22,8 @@ class EnsemblePredictor:
             t_args['name'] = trainer_args['name'] + '_{}'.format(i) if 'name' in trainer_args else '{}'.format(i)
             self.learners.append(trainer_factory(model_class, **t_args))
 
-        self.dump_path = trainer_args.get('dump_path', 'tmp')
+        self.dump_path = dump_path
+        # self.dump_path = trainer_args.get('dump_path', 'tmp')
         self.device = 'cpu'
         self.name = 'ensemble'
         self.training = train
@@ -100,7 +104,7 @@ class EnsemblePredictor:
 class Ensemble(EnsemblePredictor):
 
     def __init__(self, model_class, trainer_factory, n_model, trainer_args=None, callbacks=None, save_memory=False,
-                 train=True):
+                 train=True, *args, **kwargs):
         if callbacks is None:
             callbacks = []
         if trainer_args is None:
@@ -109,7 +113,9 @@ class Ensemble(EnsemblePredictor):
                          trainer_factory=trainer_factory,
                          n_model=n_model,
                          trainer_args=trainer_args,
-                         train=train)
+                         train=train,
+                         *args,
+                         **kwargs)
         self.epochs_run = 0
         self.callbacks = callbacks
         self.save_memory = save_memory
