@@ -223,35 +223,18 @@ class StateCertaintyEstimator(Callback):
 
 
 class UncertaintyUpdater(Callback):
-    def __init__(self, head=EnsembleHatStd()):
+    def __init__(self, hat=EnsembleHatStd()):
         super().__init__()
-        self.head = head
+        self.hat = hat
 
     def forward(self, model: ReinforcementLearner):  # , *args, **kwargs):
-
-        # data_loader = model.train_loader.sample_loader(shuffle=False)
         print('Updating uncertainties...', flush=True)
 
         uncertainties = []
-        pipe = Pipeline(pipes=[model, self.head])
+        pipe = Pipeline(pipes=[model, self.hat])
         with torch.no_grad():
             for batch, (action, state, reward, new_state, terminal) in tqdm(
                     enumerate(model.train_loader.sample_loader(shuffle=False))):
                 state = state.to(model.device)
                 uncertainties += pipe(state.squeeze(1))[1]
-            # uncertainties = [u.unsqueeze(0) for u in torch.stack(uncertainties)]
-            model.train_loader.memory['uncertainty'] = torch.stack(uncertainties)
-
-
-        #     target = prediction.clone().detach()
-        #     max_next = self.get_max_Q_for_states(new_state)
-        #
-        #     mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
-        #     target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-        #             reward + self.gamma * max_next * (1 - terminal.type(torch.FloatTensor)).to(self.device))
-        #
-        #     loss = self.crit(prediction, target)
-        #     losses += [loss.item()]
-        #     self._backward(loss)
-        #
-        # self.train_dict['train_losses'] += [loss.item()]
+            model.train_loader.memory['uncertainty'] = torch.stack(uncertainties).view(-1, 1)
