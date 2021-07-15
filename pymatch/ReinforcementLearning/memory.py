@@ -291,7 +291,7 @@ class PriorityMemory(Memory):
     #     self.probability = probability
 
     def compute_probs_from_certainty(self):
-        prob = self.memory['uncertainty'].max(-1)[0]
+        prob = self.memory['uncertainty'].max(-1)[0] + 1e-16 # this was added for numeric stability
         prob = (prob - prob.mean()) / prob.std()
         prob = torch.sigmoid(prob / self.temp)
         prob /= prob.sum()
