@@ -195,7 +195,7 @@ class Memory(Dataset):
                 sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
             )
         else:
-            data_loader = torch.utils.data.DataLoader(self, batch_size=self.batch_size)
+            data_loader = torch.utils.data.DataLoader(self, batch_size=self.batch_size, shuffle=shuffle)
         return data_loader
 
     def __iter__(self):

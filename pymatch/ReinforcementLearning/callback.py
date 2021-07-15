@@ -6,7 +6,7 @@ from pymatch.ReinforcementLearning.selection_policy import GreedyValueSelection
 import numpy as np
 from tqdm import tqdm
 from pymatch.DeepLearning.pipeline import Pipeline
-from pymatch.DeepLearning.hat import EnsembleHatStd
+from pymatch.DeepLearning.hat import EnsembleHatStd, EntropyHat
 from pymatch.ReinforcementLearning.learner import ReinforcementLearner
 import time
 
@@ -223,8 +223,8 @@ class StateCertaintyEstimator(Callback):
 
 
 class UncertaintyUpdater(Callback):
-    def __init__(self, hat=EnsembleHatStd()):
-        super().__init__()
+    def __init__(self, hat=EntropyHat(), *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.hat = hat
 
     def forward(self, model: ReinforcementLearner):  # , *args, **kwargs):
