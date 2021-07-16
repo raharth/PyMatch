@@ -334,7 +334,7 @@ class QLearner(ReinforcementLearner):
             losses += [loss.item()]
             self._backward(loss)
 
-        self.train_dict['train_losses'] += [loss.item()]
+        self.train_dict['train_losses'] += [np.mean(losses).item()]
 
         # This is using the DQL loss defined in 'Asynchronous Methods for Deep Reinforcement Learning' by Mnih et al.,
         # though this is not working

@@ -147,6 +147,8 @@ class Memory(Dataset):
         self.memory[cell_name] = Reward
 
     def __len__(self):
+        if self.memory[list(self.memory.keys())[0]] is None:
+            return 0
         return len(self.memory[list(self.memory.keys())[0]])
 
     def __getitem__(self, idx):
