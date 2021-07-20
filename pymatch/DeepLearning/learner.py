@@ -124,6 +124,7 @@ class Predictor(ABC):
         self.model.train()
 
     def to(self, device):
+        self.device = device
         self.model.to(device)
 
 
