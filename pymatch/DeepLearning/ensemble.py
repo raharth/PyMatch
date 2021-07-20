@@ -270,3 +270,13 @@ class DQNEnsemble(Ensemble):
         self.memory = checkpoint.get('memory', self.memory)
 
 
+class EfficientDQNEnsemble(DQNEnsemble):
+    def __init__(self, max_uncertainty, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_uncertainty = max_uncertainty
+
+    def play_episode(self):
+        if self.memory['uncertainty'].mean() < self.max_uncertainty:
+            super(EfficientDQNEnsemble, self).play_episode()
+
+
