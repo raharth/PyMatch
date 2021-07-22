@@ -15,7 +15,8 @@ class Memory(Dataset):
                  memory_size=None,
                  batch_size=64,
                  gamma=.0,
-                 replace=True):
+                 replace=True,
+                 ignore_col=[]):
         """
         Memory class for RL algorithm.
 
@@ -44,6 +45,7 @@ class Memory(Dataset):
         self.memory_reset()
         self.batch_size = batch_size
         self.n_samples = n_samples
+        self.ignore_col = ignore_col
 
     def memorize(self, values, cell_name: list):
         """
@@ -154,6 +156,8 @@ class Memory(Dataset):
     def __getitem__(self, idx):
         result = []
         for key in self.memory:
+            if key in self.ignore_col:
+                continue
             result += [self.memory[key][idx]]
         return tuple(result)
 

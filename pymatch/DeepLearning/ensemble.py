@@ -271,12 +271,19 @@ class DQNEnsemble(Ensemble):
 
 
 class EfficientDQNEnsemble(DQNEnsemble):
-    def __init__(self, max_uncertainty, *args, **kwargs):
+    def __init__(self, max_uncertainty, init_samples, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.max_uncertainty = max_uncertainty
+        self.init_samples = init_samples
+        self.episode_count = 0
 
     def play_episode(self):
-        if self.memory['uncertainty'].mean() < self.max_uncertainty:
+        if (len(self.memory) < self.init_samples) or (self.memory.memory['uncertainty'].mean() < self.max_uncertainty):
+            self.train_dict['episode_count'] = self.train_dict.get('episode_count', 0) + 1
+            self.train_dict['episode_sampled'] = self.train_dict.get('episode_sampled', []) + [self.train_dict['epochs_run']]
+            print(f'Sampling episode {self.train_dict["episode_count"]}')
             super(EfficientDQNEnsemble, self).play_episode()
+        else:
+            print('Uncertainty was to high to sample new episodes')
 
 
