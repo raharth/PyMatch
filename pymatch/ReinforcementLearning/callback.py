@@ -238,3 +238,4 @@ class UncertaintyUpdater(Callback):
                 state = state.to(model.device)
                 uncertainties += pipe(state.squeeze(1))[1]
             model.train_loader.memory['uncertainty'] = torch.stack(uncertainties).view(-1, 1)
+        model.train_dict['avg_uncertainty'] = model.train_dict.get('avg_uncertainty', []) + [torch.stack(uncertainties).mean()]
