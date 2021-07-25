@@ -196,3 +196,13 @@ class InputRepeater:
 
     def __call__(self, y):
         return torch.stack(self.n_repeats * [y])
+
+
+class ImageArrange:
+    """
+    By default images have the channels in the 'wrong' dimension. This module does nothing but permuting the
+    dimensions, so that a standard image can be fed to a Conv2d-layer
+    """
+
+    def __call__(self, x):
+        return x.permute(0, 3, 1, 2)
