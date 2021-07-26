@@ -30,7 +30,8 @@ class DQNPlayer(RLPlayer):
         with eval_mode(agent):
             while not terminate:
                 step_counter += 1
-                action = selection_strategy(agent, observation)
+                agent.to(agent.device)
+                action = selection_strategy(agent, observation.to(agent.device))
                 new_observation, reward, terminate, _ = agent.env.step(action)
 
                 episode_reward += reward
@@ -44,6 +45,7 @@ class DQNPlayer(RLPlayer):
 
         memory.memorize(episode_memory, episode_memory.memory_cell_names)
         agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
+        agent.train_dict['env_steps'] = agent.train_dict.get('env_steps', 0) + 1
 
         if episode_reward > agent.train_dict.get('best_performance', -np.inf):
             agent.train_dict['best_performance'] = episode_reward
@@ -67,7 +69,8 @@ class DQNPlayerCertainty(RLPlayer):
         with eval_mode(agent):
             while not terminate:
                 step_counter += 1
-                action, certainty = selection_strategy(agent, observation)
+                agent.to(agent.device)
+                action, certainty = selection_strategy(agent, observation.to(agent.device))
                 new_observation, reward, terminate, _ = agent.env.step(action)
 
                 episode_reward += reward
