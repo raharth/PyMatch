@@ -158,7 +158,10 @@ class Memory(Dataset):
         for key in self.memory:
             if key in self.ignore_col:
                 continue
-            result += [self.memory[key][idx]]
+            try:
+                result += [self.memory[key][idx]]
+            except Exception as e:
+                raise e
         return tuple(result)
 
     def sample_indices(self, n_samples):

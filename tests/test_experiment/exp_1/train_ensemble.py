@@ -1,16 +1,16 @@
 import sys
 import os
 import numpy as np
-from pymatch.ReinforcementLearning.memory import PriorityMemory
+from pymatch.ReinforcementLearning.memory import PriorityMemory, Memory
 from pymatch.DeepLearning.hat import EnsembleHatStd, EnsembleHat
 import pymatch.DeepLearning.callback as cb
 import pymatch.ReinforcementLearning.callback as rcb
 import pymatch.ReinforcementLearning.selection_policy as sp
-from pymatch.ReinforcementLearning.torch_gym import TorchGym
+from pymatch.ReinforcementLearning.torch_gym import TorchGym, MultiInstanceGym
 from pymatch.utils.experiment import Experiment, with_experiment
 from pymatch.utils.functional import interactive_python_mode
 from pymatch.DeepLearning.ensemble import DQNEnsemble
-from pymatch.ReinforcementLearning.player import DQNPlayerCertainty
+from pymatch.ReinforcementLearning.player import DQNPlayerCertainty, DQNPlayer
 
 
 def run(root, path_script):
@@ -23,16 +23,16 @@ def run(root, path_script):
     Model = experiment.get_model_class()
     experiment.document_script(path_script, overwrite=params['overwrite'])
     env = TorchGym(**params['factory_args']['env_args'])
-    params['factory_args']['model_args']['in_nodes'] = env.env.observation_space.shape[0]
+    params['factory_args']['model_args']['in_nodes'] = env.observation_space.shape[0]
     params['factory_args']['model_args']['out_nodes'] = env.action_space.n
 
-    dqn_player = DQNPlayerCertainty()
-    selection_strategy = sp.AdaptiveQActionSelection(temperature=params['temp'],
-                                                     min_length=10,
-                                                     post_pipeline=[EnsembleHatStd()])
+    dqn_player = DQNPlayer()
+    # selection_strategy = sp.AdaptiveQActionSelectionEntropy(warm_up=0,
+    #                                                         post_pipeline=[EnsembleHatStd()])
+    selection_strategy = sp.QActionSelection(post_pipeline=[EnsembleHatStd()])
 
     with with_experiment(experiment=experiment, overwrite=params['overwrite']):
-        memory = PriorityMemory(**params["factory_args"]['memory_args'])
+        memory = Memory(**params["factory_args"]['memory_args'])
         params['factory_args']['learner_args']['memory'] = memory
 
         learner = DQNEnsemble(model_class=Model,
@@ -48,7 +48,7 @@ def run(root, path_script):
                                   cb.Checkpointer(frequency=1),
                                   rcb.UncertaintyUpdater(),
                                   rcb.EnvironmentEvaluator(
-                                      env=TorchGym(**params['factory_args']['env_args']),
+                                      env=TorchGym(params['factory_args']['env_args']['env_name']),
                                       n_evaluations=10,
                                       action_selector=sp.GreedyValueSelection(
                                           post_pipeline=[EnsembleHat()]
@@ -58,9 +58,10 @@ def run(root, path_script):
                                       epoch_name='det_val_epoch'
                                   ),
                                   rcb.EnvironmentEvaluator(
-                                      env=TorchGym(**params['factory_args']['env_args']),
+                                      env=TorchGym(params['factory_args']['env_args']['env_name']),
                                       n_evaluations=10,
-                                      action_selector=sp.QActionSelection(temperature=params['temp'], post_pipeline=[EnsembleHat()]),
+                                      action_selector=sp.QActionSelection(temperature=params['temp'],
+                                                                          post_pipeline=[EnsembleHat()]),
                                       metrics={'prob_val_reward_mean': np.mean, 'prob_val_reward_std': np.std},
                                       frequency=1,
                                       epoch_name='prob_val_epoch'

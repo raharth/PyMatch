@@ -10,7 +10,7 @@ from pymatch.ReinforcementLearning.memory import Memory
 
 def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, crit_args, temp, name):
     model = Model(**model_args)
-    env = TorchGym(**env_args)
+    # env = TorchGym(**env_args)
 
     optim = torch.optim.SGD(model.parameters(), **optim_args)
     crit = torch.nn.MSELoss(**crit_args)
@@ -18,7 +18,7 @@ def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, 
     l_args = dict(learner_args)
     l_args['name'] = f"{learner_args['name']}_{name}"
 
-    return rl.QLearner(env=env,
+    return rl.QLearner(env=None,
                        model=model,
                        optimizer=optim,
                        crit=crit,

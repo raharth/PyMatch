@@ -49,6 +49,7 @@ class PolicyGradientActionSelection(SelectionPolicy):
     """
     Probability based selection strategy, used for Policy Gradient
     """
+
     def __call__(self, agent, observation):
         agent.to(agent.device)
         observation = self.pre_pipe(observation)
@@ -130,7 +131,7 @@ class QActionSelectionCertainty(SelectionPolicy):
 
 
 class AdaptiveQActionSelectionStd(SelectionPolicy):
-    def __init__(self, temperature=1., history=1000, hist_scaling=1., min_length=100, return_uncertainty=True,
+    def __init__(self, temperature=1., history=1000, hist_scaling=1., warm_up=100, return_uncertainty=True,
                  *args, **kwargs):
         """
         Adaptive value selection based on the uncertainty of the model
@@ -149,7 +150,7 @@ class AdaptiveQActionSelectionStd(SelectionPolicy):
         self.values = []
         self.history = history
         self.hist_scaling = hist_scaling
-        self.min_length = min_length
+        self.warm_up = warm_up
         self.return_uncertainty = return_uncertainty
 
     def __call__(self, agent, observation):
@@ -170,14 +171,15 @@ class AdaptiveQActionSelectionStd(SelectionPolicy):
         uncertainty = uncertainties.max()
         self.values += [uncertainty.item()]
         self.values = self.values[-self.history:]
-        if self.min_length > len(self.values):
+        if self.warm_up > len(self.values):
             return self.temperature
         uncertainty = (uncertainty - np.mean(self.values)) / np.std(self.values)
         return torch.sigmoid(uncertainty / self.hist_scaling) * self.temperature
 
 
 class AdaptiveQActionSelectionEntropy(SelectionPolicy):
-    def __init__(self, sensitivity=5., selection_temp=1., min_temp=.1, return_uncertainty=True, warm_up=1000, *args, **kwargs):
+    def __init__(self, sensitivity=5., selection_temp=1., min_temp=.1, return_uncertainty=True, warm_up=1000, *args,
+                 **kwargs):
         """
         Adaptive value selection based on the entropy of the model.
 
@@ -209,15 +211,19 @@ class AdaptiveQActionSelectionEntropy(SelectionPolicy):
         probs = F.softmax(qs / self.adjust_temp(uncertainties=uncertainties), dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
         if self.return_uncertainty:
-            return action.item(), uncertainties
+            return action, uncertainties
         else:
-            return action.item()
+            return action
 
     def adjust_temp(self, uncertainties):
         self.warm_up -= 1
         if self.warm_up < 0:
-            return max(self.selection_temp * (1 - torch.exp(-uncertainties * self.sensitivity)), self.min_temp)
+            return torch.clamp(
+                (self.selection_temp * (1 - torch.exp(-uncertainties * self.sensitivity))).max(-1)[0],
+                min=self.min_temp).view(-1, 1)
+            # return max(self.selection_temp * (1 - torch.exp(-uncertainties * self.sensitivity)), self.min_temp)
         return self.selection_temp
 
 
@@ -280,6 +286,7 @@ class GreedyValueSelection(SelectionPolicy):
     """
     Choosing the best possible option, necessary for evaluation
     """
+
     def __call__(self, agent, observation):
         observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
@@ -296,12 +303,13 @@ class NormalThompsonSampling(SelectionPolicy):
             distribution but no other.
             Why is this part of the sampling in the first place?
     """
+
     def __call__(self, agent, observation):
         pipeline = Pipeline(pipes=self.pre_pipes + [agent] + self.post_pipes)
-        with torch.no_grad():   # @todo why am I using a no grad here? This policy can then not be used for training?
+        with torch.no_grad():  # @todo why am I using a no grad here? This policy can then not be used for training?
             with eval_mode(agent):
                 y_mean, y_std = pipeline(observation)
         shape = y_mean.shape
         dist = MultivariateNormal(loc=y_mean.view(-1),
-                                  covariance_matrix=y_std.view(-1)**2 * torch.eye(len(y_std.view(-1))))
+                                  covariance_matrix=y_std.view(-1) ** 2 * torch.eye(len(y_std.view(-1))))
         return dist.sample().view(shape)
