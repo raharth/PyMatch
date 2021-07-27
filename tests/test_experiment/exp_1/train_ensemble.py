@@ -22,14 +22,16 @@ def run(root, path_script):
 
     Model = experiment.get_model_class()
     experiment.document_script(path_script, overwrite=params['overwrite'])
-    env = TorchGym(**params['factory_args']['env_args'])
+    # env = MultiInstanceGym(**params['factory_args']['env_args'])
+    env = TorchGym(params['factory_args']['env_args']['env_name'])
     params['factory_args']['model_args']['in_nodes'] = env.observation_space.shape[0]
     params['factory_args']['model_args']['out_nodes'] = env.action_space.n
 
     dqn_player = DQNPlayer()
     # selection_strategy = sp.AdaptiveQActionSelectionEntropy(warm_up=0,
     #                                                         post_pipeline=[EnsembleHatStd()])
-    selection_strategy = sp.QActionSelection(post_pipeline=[EnsembleHatStd()])
+    # selection_strategy = sp.QActionSelection(post_pipeline=[EnsembleHat()])
+    selection_strategy = sp.EpsilonGreedyActionSelection(action_space=[0, 1, 2, 3], post_pipeline=[EnsembleHat()])
 
     with with_experiment(experiment=experiment, overwrite=params['overwrite']):
         memory = Memory(**params["factory_args"]['memory_args'])
@@ -46,7 +48,7 @@ def run(root, path_script):
                               callbacks=[
                                   rcb.EpisodeUpdater(**params.get('memory_update', {})),
                                   cb.Checkpointer(frequency=1),
-                                  rcb.UncertaintyUpdater(),
+                                  # rcb.UncertaintyUpdater(),
                                   rcb.EnvironmentEvaluator(
                                       env=TorchGym(params['factory_args']['env_args']['env_name']),
                                       n_evaluations=10,
@@ -60,8 +62,7 @@ def run(root, path_script):
                                   rcb.EnvironmentEvaluator(
                                       env=TorchGym(params['factory_args']['env_args']['env_name']),
                                       n_evaluations=10,
-                                      action_selector=sp.QActionSelection(temperature=params['temp'],
-                                                                          post_pipeline=[EnsembleHat()]),
+                                      action_selector=selection_strategy,
                                       metrics={'prob_val_reward_mean': np.mean, 'prob_val_reward_std': np.std},
                                       frequency=1,
                                       epoch_name='prob_val_epoch'

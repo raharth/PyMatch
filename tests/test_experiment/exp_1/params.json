@@ -8,7 +8,8 @@
             "out_nodes": 4
         },
         "env_args": {
-            "env_name": "LunarLander-v2"
+            "env_name": "LunarLander-v2",
+            "n_instances": 10
         },
         "optim_args": {
             "lr": 0.001,
@@ -30,8 +31,7 @@
                 "state",
                 "reward",
                 "new_state",
-                "terminal",
-                "uncertainty"
+                "terminal"
             ]
         },
         "crit_args": {},
