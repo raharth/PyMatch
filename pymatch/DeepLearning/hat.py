@@ -187,7 +187,7 @@ class EntropyHat(EnsembleHat):
         action_dist = ohe_actions.mean(0)
         action_entropy = entropy(torch.transpose(action_dist, 0, 1))
 
-        return super(EntropyHat, self).__call__(pred), torch.tensor(action_entropy)
+        return super(EntropyHat, self).__call__(pred), torch.tensor(action_entropy).view(-1, 1)
 
 
 class InputRepeater:

@@ -320,8 +320,7 @@ class QLearner(ReinforcementLearner):
         losses = []
 
         # for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
-        for batch, test in tqdm(enumerate(self.train_loader)):
-            action, state, reward, new_state, terminal = test
+        for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
             action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
                 self.device), new_state.to(self.device)
             prediction = self.model(state.squeeze(1))

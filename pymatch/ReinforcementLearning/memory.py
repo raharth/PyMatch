@@ -56,6 +56,8 @@ class Memory(Dataset):
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
+        if len(np.unique([len(v) for v in values])) > 1:
+            raise ValueError('Different length of values to memorize')
         if isinstance(values, Memory):  # create list of values from memory
             self.memory = self._merge_memory(values, cell_name, self.memory)
         else:
@@ -158,10 +160,7 @@ class Memory(Dataset):
         for key in self.memory:
             if key in self.ignore_col:
                 continue
-            try:
-                result += [self.memory[key][idx]]
-            except Exception as e:
-                raise e
+            result += [self.memory[key][idx]]
         return tuple(result)
 
     def sample_indices(self, n_samples):
@@ -197,12 +196,13 @@ class Memory(Dataset):
         """
         if shuffle:
             if n_samples is None:
-                raise ValueError(f'n_samples is None')
-            data_loader = torch.utils.data.DataLoader(
-                self,
-                batch_size=self.batch_size,
-                sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
-            )
+                data_loader = torch.utils.data.DataLoader(self, batch_size=self.batch_size, shuffle=shuffle)
+            else:
+                data_loader = torch.utils.data.DataLoader(
+                    self,
+                    batch_size=self.batch_size,
+                    sampler=SubsetRandomSampler(indices=self.sample_indices(n_samples=n_samples))
+                )
         else:
             data_loader = torch.utils.data.DataLoader(self, batch_size=self.batch_size, shuffle=shuffle)
         return data_loader
@@ -264,7 +264,8 @@ class StateTrackingMemory(Memory):
 
         """
         super(StateTrackingMemory, self).memorize(values, cell_name)
-
+        if len(np.unique([len(v) for v in values])) > 1:
+            raise ValueError('Different length of values to memorize')
         if isinstance(values, Memory):  # create list of values from memory
             for detach in self.detach_tensors:
                 values.memory[detach] = values.memory[detach].detach()
@@ -281,6 +282,7 @@ class StateTrackingMemory(Memory):
 
 class PriorityMemory(Memory):
     def __init__(self, memory_cell_names, temp=1., *args, **kwargs):
+        kwargs['ignore_col'] = kwargs.get('ignore_col', ['uncertainty'])
         super().__init__(memory_cell_names, *args, **kwargs)
         # self.probability = None
         self.temp = temp
@@ -306,10 +308,10 @@ class PriorityMemory(Memory):
         prob /= prob.sum()
         return prob
 
-    def __getitem__(self, idx):
-        result = []
-        for key in self.memory:
-            if key == 'uncertainty':
-                continue
-            result += [self.memory[key][idx]]
-        return tuple(result)
+    # def __getitem__(self, idx):
+    #     result = []
+    #     for key in self.memory:
+    #         if key == 'uncertainty':
+    #             continue
+    #         result += [self.memory[key][idx]]
+    #     return tuple(result)

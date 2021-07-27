@@ -50,10 +50,10 @@ class EnvironmentEvaluator(Callback):
                     observation = self.env.reset().detach()
                     while not terminate:
                         action = self.action_selector(model, observation)
-                        new_observation, reward, done, _ = self.env.step(action)
-                        episode_reward += reward
+                        new_observation, reward, terminate, _ = self.env.step(action)
+                        episode_reward += torch.sum(torch.tensor(reward)).item() / self.env.n_instances
                         observation = new_observation
-                        terminate = done
+                        terminate = terminate.min().item()
                     episode_rewards += [episode_reward]
 
             print(f'Evaluation reward for {model.name}: {np.mean(episode_rewards):.2f}', flush=True)
@@ -86,7 +86,7 @@ class AgentVisualizer(Callback):
             while not terminate:
                 action = self.action_selector(model, observation)
                 new_observation, reward, done, _ = self.env.step(action)
-                episode_reward += reward
+                episode_reward += torch.sum(torch.tensor(reward)).item() /self.env.n_instances
                 observation = new_observation
                 terminate = done
                 self.env.render()
@@ -150,7 +150,7 @@ class MemoryUpdater(Callback):
         print('Filling Memory')
         reward, games = 0, 0
         while len(agent.train_loader) < agent.train_loader.memory_size:
-            reward += agent.play_episode()
+            reward += torch.sum(torch.tensor(agent.play_episode())).item() / agent.env.n_instances
             games += 1
         agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward / games]
@@ -171,7 +171,7 @@ class EpisodeUpdater(Callback):
         self.init_samples = init_samples
 
     def forward(self, agent):
-        reward = agent.play_episode()
+        reward = torch.sum(torch.tensor(agent.play_episode())).item() / agent.env.n_instances
         agent.train_loader.reduce_buffer()
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
@@ -200,7 +200,7 @@ class SingleEpisodeSampler(Callback):
 
     def forward(self, agent):
         agent.train_loader.memory_reset()
-        reward = agent.play_episode()
+        reward = torch.sum(torch.tensor(agent.play_episode())).item() / agent.env.n_instances
         agent.train_dict['avg_reward'] = agent.train_dict.get('avg_reward', []) + [reward]
 
     def start(self, model):

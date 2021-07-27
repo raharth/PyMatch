@@ -58,7 +58,8 @@ class PolicyGradientActionSelection(SelectionPolicy):
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        return action.item(), log_prob
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+        return action, log_prob
 
 
 class BayesianDropoutPGActionSelection(SelectionPolicy):
@@ -83,7 +84,8 @@ class BayesianDropoutPGActionSelection(SelectionPolicy):
         dist = Categorical(prob_mean.squeeze())
         action = dist.sample()
         log_prob = dist.log_prob(action)
-        return action.item(), log_prob
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+        return action, log_prob
 
 
 class QActionSelection(SelectionPolicy):
@@ -105,7 +107,8 @@ class QActionSelection(SelectionPolicy):
         probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
-        return action.item()
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+        return action
 
 
 class QActionSelectionCertainty(SelectionPolicy):
@@ -127,7 +130,8 @@ class QActionSelectionCertainty(SelectionPolicy):
         probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
-        return action.item(), stds
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+        return action, stds
 
 
 class AdaptiveQActionSelectionStd(SelectionPolicy):
@@ -162,6 +166,7 @@ class AdaptiveQActionSelectionStd(SelectionPolicy):
         probs = F.softmax(qs / self.adjust_temp(uncertainties=uncertainties), dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
         if self.return_uncertainty:
             return action.item(), uncertainties
         else:
@@ -228,7 +233,7 @@ class AdaptiveQActionSelectionEntropy(SelectionPolicy):
 
 
 class EpsilonGreedyActionSelection(SelectionPolicy):
-    def __init__(self, action_space, epsilon=.1, **kwargs):
+    def __init__(self, action_space: list, epsilon=.1, **kwargs):
         """
         Epsilon greedy selection strategy, choosing the best or with p=epsilon choosing a random action
 
@@ -245,9 +250,15 @@ class EpsilonGreedyActionSelection(SelectionPolicy):
         observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
         qs = self.post_pipe(qs)
-        if np.random.uniform() > self.epsilon:
-            return qs.argmax().item()
-        return np.random.choice(self.action_space)
+        greedy_actions = qs.max(-1)[1].type(torch.int64)
+        random_actions = torch.tensor(np.random.choice(self.action_space, size=len(observation)), dtype=torch.int64)
+        epsilon_mask = torch.rand(len(observation)).le(self.epsilon)
+        if epsilon_mask.sum() > 0:
+            greedy_actions[epsilon_mask] = random_actions[epsilon_mask]
+        return greedy_actions.view(-1, 1)
+        # if np.random.uniform() > self.epsilon:
+        #     return qs.max(-1)[1]
+        # return np.random.choice(self.action_space)
 
 
 class AdaptiveEpsilonGreedyActionSelection(SelectionPolicy):
@@ -271,9 +282,16 @@ class AdaptiveEpsilonGreedyActionSelection(SelectionPolicy):
         observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
         qs, uncertainties = self.post_pipe(qs)
-        if np.random.uniform() > self.adjust_temp(uncertainties=uncertainties):
-            return qs.argmax().item()
-        return np.random.choice(self.action_space)
+        greedy_actions = qs.max(-1)[1].type(torch.int64)
+        random_actions = torch.tensor(np.random.choice(self.action_space, size=len(observation)), dtype=torch.int64)
+        epsilon_mask = torch.rand(len(observation)).le(self.adjust_temp(uncertainties=uncertainties))
+        if epsilon_mask.sum() > 0:
+            greedy_actions[epsilon_mask] = random_actions[epsilon_mask]
+        return greedy_actions.view(-1, 1)
+
+        # if np.random.uniform() > self.adjust_temp(uncertainties=uncertainties):
+        #     return qs.argmax()
+        # return np.random.choice(self.action_space)
 
     def adjust_temp(self, uncertainties):
         self.warm_up -= 1
@@ -291,7 +309,8 @@ class GreedyValueSelection(SelectionPolicy):
         observation = self.pre_pipe(observation)
         qs = agent(observation.to(agent.device))
         qs = self.post_pipe(qs)
-        return qs.argmax().item()
+        return qs.max(-1)[1].type(torch.int64).view(-1, 1)
+        # return qs.argmax()
 
 
 class NormalThompsonSampling(SelectionPolicy):

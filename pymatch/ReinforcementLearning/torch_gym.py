@@ -9,6 +9,7 @@ class TorchGym:
         self.env = gym.make(env_name)
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        self.n_instances = 1
         # self.max_episode_length = max_episode_length
         # @todo this is an unused variably there is a way of registering new env with the gym framework and reduced
         #   number of max episodes, this should be used instead
@@ -32,24 +33,24 @@ class TorchGym:
 
 
 # @todo depricated should not be used anymore
-class CartPole(TorchGym):
-
-    def __init__(self):
-        super().__init__('CartPole-v1')
-        self.steps = 0
-
-    def reset(self):
-        self.steps = 0
-        return torch.tensor(self.env.reset()).float().unsqueeze(0)
-
-    def step(self, action):
-        self.steps += 1
-        observation, reward, done, info = super().step(action.item())
-        if done:  # and self.steps < 500:
-            reward = -10
-        if self.steps == 500:
-            reward = 0
-        return observation, reward, done, info
+# class CartPole(TorchGym):
+#
+#     def __init__(self):
+#         super().__init__('CartPole-v1')
+#         self.steps = 0
+#
+#     def reset(self):
+#         self.steps = 0
+#         return torch.tensor(self.env.reset()).float().unsqueeze(0)
+#
+#     def step(self, action):
+#         self.steps += 1
+#         observation, reward, done, info = super().step(action.item())
+#         if done:  # and self.steps < 500:
+#             reward = -10
+#         if self.steps == 500:
+#             reward = 0
+#         return observation, reward, done, info
 
 
 class MultiInstanceGym:
@@ -73,18 +74,21 @@ class MultiInstanceGym:
 
     def step(self, actions):
         observations, rewards, infos = [], [], []
-
-        for action, i in zip(actions, torch.where(torch.tensor(self.done) == False)[0]):
-            if not self.done[i]:
-                observation, reward, done, info = self.envs[i].step(action.item())
-                observation = torch.tensor(observation).float()
-                observations += [observation]
-                rewards += [reward]
-                self.done[i] = done
-                infos += [info]
+        done_mask = list(torch.where(torch.tensor(self.done) == False)[0].numpy())
+        try:
+            for action, i in zip(actions, done_mask):
+                if not self.done[i]:
+                    observation, reward, done, info = self.envs[i].step(action.item())
+                    observation = torch.tensor(observation).float()
+                    observations += [observation]
+                    rewards += [reward]
+                    self.done[i] = done
+                    infos += [info]
+        except Exception as e:
+            raise e
         return torch.stack(observations), \
                torch.tensor(rewards, dtype=torch.double).view(-1, 1), \
-               torch.tensor(self.done).view(-1, 1), \
+               torch.tensor(self.done)[done_mask].view(-1, 1), \
                infos
 
     def render(self, mode='human', **kwargs):
