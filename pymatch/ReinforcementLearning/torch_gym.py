@@ -4,12 +4,22 @@ import gym
 
 class TorchGym:
 
-    def __init__(self, env_name):
+    def __init__(self, env_name, post_pipeline=[]):
+        """
+
+        Args:
+            env_name:       Gym environment name to make
+            post_pipeline:  List of pipeline elements that can be used to alter the output of the environment.
+                            This can be used e.g. to down-sample states that are images to save memory.
+        """
         self.env_name = env_name
         self.env = gym.make(env_name)
         self.action_space = self.env.action_space
         self.observation_space = self.env.observation_space
+        # `n_instances` is not used in the default version but necessary to properly run the MultiInstanceEnvironment
         self.n_instances = 1
+        self.post_pipeline = post_pipeline
+
         # self.max_episode_length = max_episode_length
         # @todo this is an unused variably there is a way of registering new env with the gym framework and reduced
         #   number of max episodes, this should be used instead
@@ -19,7 +29,10 @@ class TorchGym:
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action.item())
-        # observation = torch.tensor(observation).float().unsqueeze(0)
+
+        for pipe in self.post_pipeline:
+            observation, reward, done, info = pipe(observation, reward, done, info)
+
         return torch.tensor(observation).float().unsqueeze(0), \
                torch.tensor(reward).float().unsqueeze(0), \
                torch.tensor(done).unsqueeze(0), \
@@ -101,6 +114,7 @@ class MultiInstanceGym:
 
 
 if __name__ == '__main__':
+
     import time
 
     m_env = MultiInstanceGym('CartPole-v1', 2)
