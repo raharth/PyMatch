@@ -73,7 +73,7 @@ class AgentVisualizer(Callback):
             frequency:          Every 'frequency'-th epoch the environment is evaluated
             action_selector:    Selection Policy with which the agent is used
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.env = env
         self.action_selector = action_selector
 

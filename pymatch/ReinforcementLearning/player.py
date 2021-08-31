@@ -56,7 +56,7 @@ class DQNPlayer(RLPlayer):
 
 class DQNPlayerCertainty(RLPlayer):
     """
-    This determiens how a uncertainty aware agents plays a single episode storing the trajectory in the agents memory.
+    This determines how a uncertainty aware agents plays a single episode storing the trajectory in the agents memory.
     """
     def __call__(self, agent, selection_strategy, memory):
         observation = agent.env.reset().detach()

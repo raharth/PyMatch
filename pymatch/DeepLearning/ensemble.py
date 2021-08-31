@@ -224,7 +224,7 @@ class Ensemble(EnsemblePredictor):
             None
 
         """
-        super(Ensemble, self).load_checkpoint(path=None, tag='checkpoint', device='cpu', secure=True)
+        super(Ensemble, self).load_checkpoint(path=path, tag='checkpoint', device='cpu', secure=True)
         self.restore_checkpoint(torch.load(self.get_path(path=path, tag=tag), map_location=device))
 
     def restore_checkpoint(self, checkpoint):
