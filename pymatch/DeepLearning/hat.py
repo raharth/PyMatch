@@ -206,3 +206,11 @@ class ImageArrange:
 
     def __call__(self, x):
         return x.permute(0, 3, 1, 2)
+
+
+class ThompsonAggregation(EnsembleHat):
+    def __call__(self, pred, device='cpu'):
+        pred = torch.rand(size=(3, 5, 4))  # agent, states, actions
+        idx = torch.randint(low=0, high=pred.shape[0], size=pred.shape[1:]).to(pred.device)
+        idx_ohe = one_hot_encoding(idx, n_categories=pred.shape[0], unsqueeze=True)
+        return (pred * torch.permute(idx_ohe, [2, 0, 1])).sum(0)
