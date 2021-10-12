@@ -22,6 +22,7 @@ def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, 
                        model=model,
                        optimizer=optim,
                        crit=crit,
+                       fitter=rl.DQNFitter(),
                        action_selector=sp.QActionSelection(temperature=temp),
                        callbacks=[],
                        **l_args)
