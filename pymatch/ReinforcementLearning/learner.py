@@ -17,8 +17,9 @@ class ReinforcementLearner(Learner):
                  crit,
                  memory,
                  env,
-                 action_selector,
+                 selection_strategy,
                  gamma,
+                 fitter=None,
                  grad_clip=None,
                  name='',
                  callbacks=None,
@@ -39,6 +40,7 @@ class ReinforcementLearner(Learner):
             env:                environment to interact with
             action_selector:    action selection strategy
             gamma:              discount factor for reward over time
+            fitter:             module that updates the weights of the agent
             grad_clip:          gradient clipping
             name:               name of the model
             callbacks:          list of callbacks to use
@@ -57,15 +59,16 @@ class ReinforcementLearner(Learner):
                          *args,
                          **kwargs
                          )
-
+        self.memory = memory
         self.env = env
+        self.fitter = fitter
         self.train_dict['rewards'] = []
         self.gamma = gamma
-        self.chose_action = action_selector
+        self.selection_strategy = selection_strategy
         self.store_memory = store_memory
 
     def fit_epoch(self, device, verbose=1):
-        raise NotImplementedError
+        return self.fitter(self, device)
 
     def play_episode(self):
         raise NotImplementedError
@@ -207,7 +210,7 @@ class PolicyGradient(ReinforcementLearner):
 
         while not terminate:
             step_counter += 1
-            action, log_prob = self.chose_action(self, observation)
+            action, log_prob = self.selection_strategy(self, observation)
             new_observation, reward, terminate, _ = self.env.step(action)
 
             episode_reward += reward
@@ -242,24 +245,9 @@ class PolicyGradient(ReinforcementLearner):
 
 
 class QLearner(ReinforcementLearner):
-    def __init__(self,
-                 model,
-                 optimizer,
-                 crit,
-                 env,
-                 action_selector,
-                 alpha,
-                 gamma,
-                 memory_size=None,
-                 n_samples=None,
-                 batch_size=None,
-                 memory=None,
-                 grad_clip=None,
-                 name='q_learner',
-                 callbacks=[],
-                 dump_path='./tmp',
-                 device='cpu',
-                 **kwargs):
+    def __init__(self, model, optimizer, crit, env, selection_strategy, alpha, gamma, player, memory_size=None,
+                 n_samples=None, batch_size=None, memory=None, grad_clip=None, name='q_learner', callbacks=[],
+                 dump_path='./tmp', device='cpu', **kwargs):
         """
         Deep Q-Learning algorithm, as introduced by http://arxiv.org/abs/1312.5602
         Args:
@@ -268,7 +256,7 @@ class QLearner(ReinforcementLearner):
             crit:               loss function
             env:                environment to interact with
             memory_updater:     object that iteratively updates the memory
-            action_selector:    policy after which actions are selected, it has to be a stochastic one to be used in
+            selection_strategy:    policy after which actions are selected, it has to be a stochastic one to be used in
                                 learning
             alpha:              TD-learning rate @todo this might be dropped in a future implementation
             gamma:              disount factor for future rewards
@@ -303,7 +291,7 @@ class QLearner(ReinforcementLearner):
                          env=env,
                          gamma=gamma,
                          memory=memory,
-                         action_selector=action_selector,
+                         selection_strategy=selection_strategy,
                          grad_clip=grad_clip,
                          name=name,
                          callbacks=callbacks,
@@ -311,86 +299,139 @@ class QLearner(ReinforcementLearner):
                          device=device,
                          **kwargs)
         self.train_dict['train_losses'] = []
+        self.player = player
         self.alpha = alpha
 
-    def fit_epoch(self, device, verbose=1):
-        self.model.train()
-        self.model.to(device)
-
-        losses = []
-
-        # for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
-        for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
-            action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
-                self.device), new_state.to(self.device)
-            prediction = self.model(state.squeeze(1))
-            target = prediction.clone().detach()
-            max_next = self.get_max_Q_for_states(new_state)
-
-            mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
-            target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                    reward.view(-1) + self.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(self.device))
-
-            loss = self.crit(prediction, target)
-            losses += [loss.item()]
-            self._backward(loss)
-
-        self.train_dict['train_losses'] += [np.mean(losses).item()]
-
-        # This is using the DQL loss defined in 'Asynchronous Methods for Deep Reinforcement Learning' by Mnih et al.,
-        # though this is not working
-        # for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
-        #     action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
-        #         self.device), new_state.to(self.device)
-        #     prediction = self.model(state.squeeze(1))
-        #     max_next = self.get_max_Q_for_states(new_state)
-        #     mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor)
-        #
-        #     loss = self.crit(gamma=self.gamma, pred=prediction[mask], max_next=max_next, reward=reward)
-        #     self.train_dict['train_losses'] += [loss.item()]
-        #     self._backward(loss)
-
-        if verbose == 1:
-            print(f'epoch: {self.train_dict["epochs_run"]}\t'
-                  f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t',
-                  f'last loss: {self.train_dict["train_losses"][-1]:.2f}',
-                  f'latest average reward: {self.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
-        return loss
-
     def get_max_Q_for_states(self, states):
-        with eval_mode(self):  # @todo we might have trouble with the MC Dropout here
+        """
+        Computes the max Q value estimates for states.
+
+        Args:
+            states: to get the max Q-value for
+
+        Returns:
+
+        """
+        with eval_mode(self):
             max_Q = self.model(states.squeeze(1)).max(dim=1)[0]
         return max_Q
 
     def play_episode(self):
-        observation = self.env.reset().detach()
+        """
+        Plays an episode, memorizing all state transitions.
+
+        Returns:
+
+        """
+        return self.player(self, self.selection_strategy, self.train_loader)
+
+
+class DQNFitter:  # @todo this could become a callback
+    def __call__(self, agent, device, verbose=True):
+        agent.model.train()
+        agent.model.to(device)
+
+        losses = []
+
+        for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(agent.train_loader)):
+            action, state, reward, new_state = action.to(agent.device), state.to(agent.device), reward.to(
+                agent.device), new_state.to(agent.device)
+            prediction = agent.model(state.squeeze(1))
+            target = prediction.clone().detach()
+            max_next = agent.get_max_Q_for_states(new_state)
+
+            mask = one_hot_encoding(action, n_categories=agent.env.action_space.n).type(torch.BoolTensor).to(
+                agent.device)
+            target[mask] = (1 - agent.alpha) * target[mask] + agent.alpha * (
+                    reward.view(-1) + agent.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(
+                agent.device))
+
+            loss = agent.crit(prediction, target)
+            losses += [loss.item()]
+            agent._backward(loss)
+
+        loss = np.mean(losses).item()
+        agent.train_dict['train_losses'] += [loss]
+
+        if verbose == 1:
+            print(f'epoch: {agent.train_dict["epochs_run"]}\t'
+                  f'average reward: {np.mean(agent.train_dict["rewards"]):.2f}\t',
+                  f'last loss: {agent.train_dict["train_losses"][-1]:.2f}',
+                  f'latest average reward: {agent.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
+        return loss
+
+
+class DQNIntegratedFitter:
+    def __init__(self, sample_size=32, skip_steps=4):
+        self.skip_steps = skip_steps
+        self.step_counter = 0
+        self.sample_size = sample_size
+
+    def __call__(self, agent, device, verbose=True):
+        observation = agent.env.reset().detach()
         episode_reward = 0
-        step_counter = 0
         terminate = False
-        episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
-        with eval_mode(self):
-            while not terminate:
-                step_counter += 1
-                with torch.no_grad():
-                    action = self.chose_action(self, observation)
-                new_observation, reward, terminate, _ = self.env.step(action)
+        # episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'],
+        #                         gamma=agent.memory.gamma)
+        # with eval_mode(agent):
+        while not terminate:
+            self.step_counter += 1
+            agent.to(agent.device)
+            action = agent.selection_strategy(agent, observation.to(agent.device))
+            new_observation, reward, terminate, _ = agent.env.step(action)
 
-                episode_reward += reward
-                episode_memory.memorize((action,
-                                         observation,
-                                         torch.tensor(reward).float(),
-                                         new_observation,
-                                         terminate),
-                                        ['action', 'state', 'reward', 'new_state', 'terminal'])
-                observation = new_observation
+            episode_reward += torch.sum(reward).item() / agent.env.n_instances
+            agent.memory.memorize((action,
+                                   observation,
+                                   torch.tensor(reward).float(),
+                                   new_observation,
+                                   terminate),
+                                  ['action', 'state', 'reward', 'new_state', 'terminal'])
+            observation = new_observation[~terminate.view(-1)]
+            terminate = terminate.min().item()
 
-        self.train_loader.memorize(episode_memory, episode_memory.memory_cell_names)
-        self.train_dict['rewards'] = self.train_dict.get('rewards', []) + [episode_reward]
+            if self.step_counter % self.skip_steps == 0:
+                self.update(agent, verbose)
 
-        if episode_reward > self.train_dict.get('best_performance', -np.inf):
-            self.train_dict['best_performance'] = episode_reward
+        agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
+        agent.train_dict['env_steps'] = agent.train_dict.get('env_steps', 0) + 1
+
+        if episode_reward > agent.train_dict.get('best_performance', -np.inf):
+            agent.train_dict['best_performance'] = episode_reward
 
         return episode_reward
+
+    def update(self, agent, verbose):
+        with train_mode(agent):
+            agent.model.to(agent.device)
+            losses = []
+
+            for batch, (action, state, reward, new_state, terminal) in tqdm(
+                    enumerate(agent.memory.sample_loader(n_samples=self.sample_size))):
+                action, state, reward, new_state = action.to(agent.device), state.to(agent.device), reward.to(
+                    agent.device), new_state.to(agent.device)
+                prediction = agent.model(state.squeeze(1))
+                target = prediction.clone().detach()
+                max_next = agent.get_max_Q_for_states(new_state)
+
+                mask = one_hot_encoding(action, n_categories=agent.env.action_space.n).type(torch.BoolTensor).to(
+                    agent.device)
+                target[mask] = (1 - agent.alpha) * target[mask] + agent.alpha * (
+                        reward.view(-1) + agent.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(
+                    agent.device))
+
+                loss = agent.crit(prediction, target)
+                losses += [loss.item()]
+                agent._backward(loss)
+
+            agent.train_dict['train_losses'] += [np.mean(losses).item()]
+
+            if verbose == 1:
+                print(f'epoch: {agent.train_dict["epochs_run"]}\t'
+                      f'average reward: {np.mean(agent.train_dict["rewards"]):.2f}\t',
+                      f'last loss: {agent.train_dict["train_losses"][-1]:.2f}',
+                      f'latest average reward: {agent.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
+            return loss
 
 
 class DoubleQLearner(QLearner):
@@ -442,24 +483,10 @@ class DoubleQLearner(QLearner):
             dump_path:          path to root folder, where the model and its callbacks is dumping stuff to
             device:             device on which the learning has to be performed
         """
-        super().__init__(
-            model=model,
-            optimizer=optimizer,
-            crit=crit,
-            env=env,
-            action_selector=action_selector,
-            alpha=alpha,
-            gamma=gamma,
-            memory_size=memory_size,
-            n_samples=n_samples,
-            batch_size=batch_size,
-            memory=memory,
-            grad_clip=grad_clip,
-            name=name,
-            callbacks=callbacks,
-            dump_path=dump_path,
-            device=device,
-            **kwargs)
+        super().__init__(model=model, optimizer=optimizer, crit=crit, env=env, selection_strategy=action_selector,
+                         alpha=alpha, gamma=gamma, memory_size=memory_size, n_samples=n_samples, batch_size=batch_size,
+                         memory=memory, grad_clip=grad_clip, name=name, callbacks=callbacks, dump_path=dump_path,
+                         device=device, **kwargs)
         self.target_model = copy.deepcopy(model)
         self.tau = tau
 
@@ -540,7 +567,7 @@ class SARSA(DoubleQLearner):
 
         while not terminate:
             with eval_mode(self):
-                action = self.chose_action(self, state_old)
+                action = self.selection_strategy(self, state_old)
             state, reward, terminate, _ = self.env.step(action)
 
             episode_reward += reward
@@ -686,7 +713,7 @@ class A3C(PolicyGradient):
 
         while not terminate:
             step_counter += 1
-            action, log_prob = self.chose_action(self, observation)
+            action, log_prob = self.selection_strategy(self, observation)
             new_observation, reward, terminate, _ = self.env.step(action)
 
             episode_reward += reward

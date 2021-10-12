@@ -46,6 +46,7 @@ class Memory(Dataset):
         self.batch_size = batch_size
         self.n_samples = n_samples
         self.ignore_col = ignore_col
+        self.nr_seen_states = 0
 
     def memorize(self, values, cell_name: list):
         """
@@ -56,6 +57,7 @@ class Memory(Dataset):
             cell_name (list): list of strings containing the memory cell names the tensors have to be added to
 
         """
+        self.nr_seen_states += len(values)
         if len(np.unique([len(v) for v in values])) > 1:
             raise ValueError('Different length of values to memorize')
         if isinstance(values, Memory):  # create list of values from memory

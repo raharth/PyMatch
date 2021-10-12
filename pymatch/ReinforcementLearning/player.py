@@ -27,22 +27,23 @@ class DQNPlayer(RLPlayer):
         terminate = False
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'],
                                 gamma=memory.gamma)
-        with eval_mode(agent):
-            while not terminate:
-                step_counter += 1
-                agent.to(agent.device)
+        # with eval_mode(agent):
+        while not terminate:
+            step_counter += 1
+            agent.to(agent.device)
+            with torch.no_grad():
                 action = selection_strategy(agent, observation.to(agent.device))
-                new_observation, reward, terminate, _ = agent.env.step(action)
+            new_observation, reward, terminate, _ = agent.env.step(action)
 
-                episode_reward += torch.sum(reward).item() / agent.env.n_instances
-                episode_memory.memorize((action,
-                                         observation,
-                                         torch.tensor(reward).float(),
-                                         new_observation,
-                                         terminate),
-                                        ['action', 'state', 'reward', 'new_state', 'terminal'])
-                observation = new_observation[~terminate.view(-1)]
-                terminate = terminate.min().item()
+            episode_reward += torch.sum(reward).item() / agent.env.n_instances
+            episode_memory.memorize((action,
+                                     observation,
+                                     torch.tensor(reward).float(),
+                                     new_observation,
+                                     terminate),
+                                    ['action', 'state', 'reward', 'new_state', 'terminal'])
+            observation = new_observation[~terminate.view(-1)]
+            terminate = terminate.min().item()
 
         memory.memorize(episode_memory, episode_memory.memory_cell_names)
         agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
