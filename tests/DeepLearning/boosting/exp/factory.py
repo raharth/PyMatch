@@ -19,14 +19,8 @@ def factory(Model, core, model_args, env_args, optim_args, memory_args, learner_
     crit = torch.nn.MSELoss()
     learner_args['name'] = name
 
-    return pg.QLearner(env=env,
-                       model=model,
-                       optimizer=optim,
-                       memory_updater=memory_updater,
-                       crit=crit,
-                       action_selector=sp.QActionSelection(temperature=.3),
-                       callbacks=[
-                           cb.Checkpointer(),
-                           rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=1),
-                       ],
-                       **learner_args)
+    return pg.QLearner(model=model, optimizer=optim, crit=crit, env=env,
+                       selection_strategy=sp.QActionSelection(temperature=.3), callbacks=[
+            cb.Checkpointer(),
+            rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=1),
+        ], memory_updater=memory_updater, **learner_args)

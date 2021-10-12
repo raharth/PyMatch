@@ -18,11 +18,6 @@ def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, 
     l_args = dict(learner_args)
     l_args['name'] = f"{learner_args['name']}_{name}"
 
-    return rl.QLearner(env=env,
-                       model=model,
-                       optimizer=optim,
-                       crit=crit,
-                       fitter=rl.DQNFitter(),
-                       action_selector=sp.QActionSelection(temperature=temp),
-                       callbacks=[],
+    return rl.QLearner(model=model, optimizer=optim, crit=crit, env=env,
+                       selection_strategy=sp.QActionSelection(temperature=temp), callbacks=[], fitter=rl.DQNFitter(),
                        **l_args)

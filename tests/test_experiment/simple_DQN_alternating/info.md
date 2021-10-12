@@ -1,0 +1,1 @@
+This is a simple DQN agent, with a replay memory. It is trained in an alternated fashion, sampling a full trajectory on a fixed policy, before the policy gets updated on the entire memory.

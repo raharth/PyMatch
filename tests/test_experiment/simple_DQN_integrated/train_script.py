@@ -42,7 +42,7 @@ def get_player(key, params={}):
         return DQNPlayerCertainty(**params)
 
 
-root = "tests/test_experiment/simple_DQN"
+root = "tests/test_experiment/simple_DQN_integrated"
 
 experiment = Experiment(root=root)
 factory = experiment.get_factory()
@@ -59,39 +59,38 @@ selection_strategy = get_selection_strategy(params['selection_strategy'], params
 
 memory = get_memory(params['memory_type'], params['memory_args'])
 params['factory_args']['learner_args']['memory'] = memory
-params['factory_args']['learner_args']['action_selector'] = selection_strategy
-params['factory_args']['learner_args']['player'] = dqn_player
+params['factory_args']['learner_args']['selection_strategy'] = selection_strategy
+# params['factory_args']['learner_args']['player'] = dqn_player
 model = Model(**params['factory_args']['model_args'])
 
 optim = torch.optim.SGD(model.parameters(), **params['factory_args']['optim_args'])
 crit = torch.nn.MSELoss(**params['factory_args']['crit_args'])
 
-learner = rl.QLearner(env=env,
-                      model=model,
-                      optimizer=optim,
-                      crit=crit,
-                      fitter=rl.DQNFitter(),
+learner = rl.QLearner(model=model, optimizer=optim, crit=crit, env=env,
+                      player=dqn_player,
                       callbacks=[
-                                  rcb.EpisodeUpdater(**params.get('memory_update', {})),
-                                  cb.Checkpointer(frequency=10),
-                                  rcb.EnvironmentEvaluator(
-                                      env=env,
-                                      n_evaluations=10,
-                                      action_selector=sp.GreedyValueSelection(),
-                                      metrics={'det_val_reward_mean': np.mean},
-                                      frequency=10,
-                                      epoch_name='det_val_epoch'
-                                  ),
-                                  rcb.EnvironmentEvaluator(
-                                      env=env,
-                                      n_evaluations=10,
-                                      action_selector=get_selection_strategy(params['eval_selection_strategy'],
-                                                                             params.get('selection_args', {})),
-                                      metrics={'prob_val_reward_mean': np.mean, 'prob_val_reward_std': np.std},
-                                      frequency=10,
-                                      epoch_name='prob_val_epoch'
-                                  ),
-                                  ],
+                          # rcb.EpisodeUpdater(**params.get('memory_update', {})),
+                          cb.Checkpointer(frequency=10),
+                          rcb.EnvironmentEvaluator(
+                              env=env,
+                              n_evaluations=10,
+                              action_selector=sp.GreedyValueSelection(),
+                              metrics={'det_val_reward_mean': np.mean},
+                              frequency=10,
+                              epoch_name='det_val_epoch'
+                          ),
+                          rcb.EnvironmentEvaluator(
+                              env=env,
+                              n_evaluations=10,
+                              action_selector=get_selection_strategy(params['eval_selection_strategy'],
+                                                                     params.get('selection_args', {})),
+                              metrics={'prob_val_reward_mean': np.mean, 'prob_val_reward_std': np.std},
+                              frequency=10,
+                              epoch_name='prob_val_epoch'
+                          ),
+                          cb.MetricPlotter()
+                      ],
+                      fitter=rl.DQNIntegratedFitter(sample_size=1024),
                       **params['factory_args']['learner_args'])
 
 learner.fit(epochs=params['fit']['epochs'],

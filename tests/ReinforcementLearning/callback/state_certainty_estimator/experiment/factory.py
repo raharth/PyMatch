@@ -14,12 +14,7 @@ def factory(Model, model_args, env_args, optim_args, memory_args, learner_args, 
     l_args = dict(learner_args)
     l_args['name'] = f"{learner_args['name']}_{name}"
 
-    return pg.QLearner(env=env,
-                       model=model,
-                       optimizer=optim,
-                       crit=crit,
-                       action_selector=sp.QActionSelection(temperature=.3),
-                       callbacks=[
-                           rcb.MemoryUpdater(1.)
-                       ],
-                       **l_args)
+    return pg.QLearner(model=model, optimizer=optim, crit=crit, env=env,
+                       selection_strategy=sp.QActionSelection(temperature=.3), callbacks=[
+            rcb.MemoryUpdater(1.)
+        ], **l_args)

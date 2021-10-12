@@ -19,19 +19,12 @@ def factory(Model, model_args, optim_args, learner_args, crit_args, name, env):
     l_args = dict(learner_args)
     l_args['name'] = f"{learner_args['name']}_{name}"
 
-    return rl.QLearner(env=env,
-                       model=model,
-                       optimizer=optim,
-                       crit=crit,
-                       action_selector=None,
-                       # memory=Memory(**memory_args),
-                       callbacks=[
-                           # rcb.EnvironmentEvaluator(env=env,
-                           #                          n_evaluations=10,
-                           #                          frequency=10,
-                           #                          action_selector=sp.GreedyValueSelection()),
-                       ],
-                       **l_args)
+    return rl.QLearner(model=model, optimizer=optim, crit=crit, env=env, selection_strategy=None, callbacks=[
+        # rcb.EnvironmentEvaluator(env=env,
+        #                          n_evaluations=10,
+        #                          frequency=10,
+        #                          action_selector=sp.GreedyValueSelection()),
+    ], **l_args)
 
 
 def get_ens_callbacks(params, env):

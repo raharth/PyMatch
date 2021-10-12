@@ -1,0 +1,1 @@
+This is a simple DQN agent, with a replay memory. It is trained in an integrated fashion, updating the policy with a batch drawn from the memory every n steps

@@ -17,32 +17,16 @@ optim = torch.optim.SGD(model.parameters(), lr=.01, momentum=.9)
 crit = torch.nn.MSELoss()
 memory_updater = MemoryUpdater(memory_refresh_rate=.1)
 
-learner = pg.QLearner(env=env,
-                      model=model,
-                      optimizer=optim,
-                      memory_updater=memory_updater,
-                      crit=crit,
-                      action_selector=pg.QActionSelection(temperature=.3),
-                      # action_selector=pg.EpsilonGreedyActionSelection(action_space=np.arange(env.action_space.n),
-                      #                                                 epsilon=.95),
-                      gamma=.95,
-                      alpha=.2,
-                      batch_size=256,
-                      n_samples=8000,
-                      grad_clip=5.,
-                      memory_size=10000,
-                      load_checkpoint=False,
-                      name='test_Q',
-                      callbacks=[
-                          rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=5),
-                          # rcb.AgentVisualizer(env=env, frequency=5),
-                          cb.MetricPlotter(frequency=1, metric='rewards', smoothing_window=100),
-                          cb.MetricPlotter(frequency=1, metric='train_losses', smoothing_window=100),
-                          cb.MetricPlotter(frequency=1, metric='avg_reward', smoothing_window=5),
-                          cb.MetricPlotter(frequency=5, metric='val_reward', x='val_epoch', smoothing_window=5),
-                      ],
-                      dump_path='tests/q_learner/tmp',
-                      device='cpu')
+learner = pg.QLearner(model=model, optimizer=optim, crit=crit, env=env,
+                      selection_strategy=pg.QActionSelection(temperature=.3), alpha=.2, gamma=.95, player=,
+                      memory_size=10000, n_samples=8000, batch_size=256, grad_clip=5., name='test_Q', callbacks=[
+        rcb.EnvironmentEvaluator(env=env, n_evaluations=10, frequency=5),
+        # rcb.AgentVisualizer(env=env, frequency=5),
+        cb.MetricPlotter(frequency=1, metric='rewards', smoothing_window=100),
+        cb.MetricPlotter(frequency=1, metric='train_losses', smoothing_window=100),
+        cb.MetricPlotter(frequency=1, metric='avg_reward', smoothing_window=5),
+        cb.MetricPlotter(frequency=5, metric='val_reward', x='val_epoch', smoothing_window=5),
+    ], dump_path='tests/q_learner/tmp', device='cpu', memory_updater=memory_updater, load_checkpoint=False)
 
 learner.fit(30, 'cpu', restore_early_stopping=False, verbose=False)
 
