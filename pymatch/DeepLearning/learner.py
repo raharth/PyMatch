@@ -241,9 +241,6 @@ class Learner(Predictor):
         self.init_callbacks()
 
         for epoch in range(epochs):
-
-            self.train_dict['epochs_since_last_val_improvement'] += 1   # @todo this shouldn't be here... since is is related to the callback
-
             if verbose == 1:
                 name = '' if self.name == '' else ' - name: {}'.format(self.name)
                 print('\nepoch: {}{}'.format(self.train_dict['epochs_run'], name), flush=True)
