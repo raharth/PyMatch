@@ -149,7 +149,7 @@ class DuelingQActionSelection(SelectionPolicy):
         agent.to(agent.device)
         observation = self.pre_pipe(observation)
         qs, val_q, adv_q = agent(observation.to(agent.device))
-        qs = self.post_pipe(qs)
+        qs, val_q, adv_q = self.post_pipe(qs, val_q, adv_q)
         probs = F.softmax(qs / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()

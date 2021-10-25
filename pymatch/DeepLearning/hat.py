@@ -214,3 +214,8 @@ class ThompsonAggregation(EnsembleHat):
         idx = torch.randint(low=0, high=pred.shape[0], size=pred.shape[1:]).to(pred.device)
         idx_ohe = one_hot_encoding(idx, n_categories=pred.shape[0], unsqueeze=True)
         return (pred * torch.permute(idx_ohe, [2, 0, 1])).sum(0)
+
+
+class DuelingQHat(EnsembleHat):
+    def __call__(self, q, v, a, device='cpu'):
+        return q.mean(dim=0), v.unsqueeze(0), a.unsqueeze(0)

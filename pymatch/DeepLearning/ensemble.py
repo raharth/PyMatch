@@ -287,3 +287,25 @@ class EfficientDQNEnsemble(DQNEnsemble):
             print('Uncertainty was to high to sample new episodes')
 
 
+class DuelingDQNEnsemble(DQNEnsemble):
+    def predict(self, x, device='cpu'):
+        """
+        Predicting a data tensor.
+
+        Args:
+            x (torch.tensor): data
+            device: device to run the model on
+            # learner_args: additional learner arguments (this may not include the 'return_prob' argument)
+
+        Returns:
+            prediction with certainty measure.
+            return_prob = True:
+                (Mean percentage, standard deviation of probability)
+            return_prob = False:
+                (Majority vote, percentage of learners voted for that label)
+
+        """
+        preds = [leaner.forward(x, device=device) for leaner in self.learners]
+        if isinstance(preds[0], tuple):
+            return tuple(map(torch.stack, zip(*preds)))
+        return torch.stack(preds, dim=0)
