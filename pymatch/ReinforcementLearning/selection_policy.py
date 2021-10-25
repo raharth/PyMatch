@@ -134,6 +134,29 @@ class QActionSelectionCertainty(SelectionPolicy):
         return action, stds
 
 
+class DuelingQActionSelection(SelectionPolicy):
+    def __init__(self, temperature=1., *args, **kwargs):
+        """
+        Temperature based exponential selection strategy
+
+        Args:
+            temperature:    Temperature, which controls the degree of randomness.
+        """
+        super().__init__(*args, **kwargs)
+        self.temperature = temperature
+
+    def __call__(self, agent, observation):
+        agent.to(agent.device)
+        observation = self.pre_pipe(observation)
+        qs, val_q, adv_q = agent(observation.to(agent.device))
+        qs = self.post_pipe(qs)
+        probs = F.softmax(qs / self.temperature, dim=-1)
+        dist = Categorical(probs.squeeze())
+        action = dist.sample()
+        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+        return action, val_q, adv_q
+
+
 class AdaptiveQActionSelectionStd(SelectionPolicy):
     def __init__(self, temperature=1., history=1000, hist_scaling=1., warm_up=100, return_uncertainty=True,
                  *args, **kwargs):
