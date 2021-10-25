@@ -91,3 +91,45 @@ class DQNPlayerCertainty(RLPlayer):
             agent.train_dict['best_performance'] = episode_reward
 
         return episode_reward
+
+
+class DuelingDQNPlayer(RLPlayer):
+    """
+    This determines how a uncertainty aware agents plays a single episode storing the trajectory in the agents memory.
+    """
+    def __call__(self, agent, selection_strategy, memory):
+        observation = agent.env.reset().detach()
+        episode_reward = 0
+        step_counter = 0
+        terminate = False
+
+        # episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal', 'uncertainty'],
+        episode_memory = Memory(agent.train_loader.memory_cell_names,
+                                gamma=memory.gamma)
+        with eval_mode(agent):
+            while not terminate:
+                step_counter += 1
+                agent.to(agent.device)
+                action, val_certainty, advantage_certainty = selection_strategy(agent, observation.to(agent.device))
+                new_observation, reward, terminate, _ = agent.env.step(action)
+
+                episode_reward += torch.sum(reward).item() / agent.env.n_instances
+                episode_memory.memorize((action,
+                                         observation,
+                                         torch.tensor(reward).float(),
+                                         new_observation,
+                                         terminate,
+                                         val_certainty.detach(),
+                                         advantage_certainty.detach()
+                                         ),
+                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'val_uncertainty',
+                                         'advantage_uncertainty'])
+                observation = new_observation[~terminate.view(-1)]
+                terminate = terminate.min().item()
+        memory.memorize(episode_memory, episode_memory.memory_cell_names)
+        agent.train_dict['rewards'] = agent.train_dict.get('rewards', []) + [episode_reward]
+
+        if episode_reward > agent.train_dict.get('best_performance', -np.inf):
+            agent.train_dict['best_performance'] = episode_reward
+
+        return episode_reward
