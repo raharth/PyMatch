@@ -7,7 +7,7 @@ from pymatch.utils.functional import eval_mode
 from pymatch.DeepLearning.pipeline import Pipeline
 
 
-def get_selection_strategy(key, params):
+def get_selection_policy(key, params):
     if key == 'AdaptiveQSelection':
         return AdaptiveQActionSelectionEntropy(post_pipeline=[hat.EntropyHat()], **params)
     if key == 'QSelectionCertainty':
