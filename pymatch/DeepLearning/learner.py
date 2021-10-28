@@ -222,7 +222,8 @@ class Learner(Predictor):
             None
         """
         super(Learner, self).restore_checkpoint(checkpoint=checkpoint)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(checkpoint['model_state_dict'])  # @todo this should be redundant
+        # @todo yes it is but instead I should probably load the optim and the loss.....
 
     def fit(self, epochs, device, verbose=1):
         """
@@ -304,7 +305,7 @@ class ClassificationLearner(Learner):
                                                     dump_path=dump_path,
                                                     **kwargs)
         self.train_dict['train_accuracy'] = []
-        self.train_dict['val_accuracy'] = []
+        # self.train_dict['val_accuracy'] = []
 
     def fit_epoch(self, device, verbose=1):
         """

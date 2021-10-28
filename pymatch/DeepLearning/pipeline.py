@@ -43,3 +43,17 @@ class Pipeline:
             if hasattr(pipe, "to"):
                 pipe.to(device)
 
+    def train(self):
+        for pipe in self.pipes:
+            if hasattr(pipe, "train"):
+                pipe.train()
+
+    def forward(self, X):
+        for pipe in self.pipes:
+            if hasattr(pipe, "forward"):
+                X = pipe.forward(X)
+            else:
+                X = pipe(X)
+        return X
+
+

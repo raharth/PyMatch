@@ -131,8 +131,8 @@ class DuelingDQNPlayer(RLPlayer):
                                          val_certainty.detach(),
                                          advantage_certainty.detach()
                                          ),
-                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'val_uncertainty',
-                                         'advantage_uncertainty'])
+                                        ['action', 'state', 'reward', 'new_state', 'terminal', 'value',
+                                         'advantages'])
                 observation = new_observation[~terminate.view(-1)]
                 terminate = terminate.min().item()
         memory.memorize(episode_memory, episode_memory.memory_cell_names)

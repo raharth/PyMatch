@@ -220,3 +220,17 @@ class ThompsonAggregation(EnsembleHat):
 class DuelingQHat(EnsembleHat):
     def __call__(self, q, v, a, device='cpu'):
         return q.mean(dim=0), v.unsqueeze(0), a.unsqueeze(0)
+
+
+class IdxFilterHat(Hat):
+    def __init__(self, var_idx):
+        """
+        This hat is assuming that the input is a tuple. It filters the element of that tuple that is required.
+
+        Args:
+            var_idx:    index of the tuple that is supposed to be isolated from the rest
+        """
+        self.var_idx = var_idx
+
+    def __call__(self, x):
+        return x[self.var_idx]
