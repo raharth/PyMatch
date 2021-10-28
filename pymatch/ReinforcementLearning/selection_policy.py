@@ -7,6 +7,26 @@ from pymatch.utils.functional import eval_mode
 from pymatch.DeepLearning.pipeline import Pipeline
 
 
+def get_selection_strategy(key, params):
+    if key == 'AdaptiveQSelection':
+        return AdaptiveQActionSelectionEntropy(post_pipeline=[hat.EntropyHat()], **params)
+    if key == 'QSelectionCertainty':
+        return QActionSelectionCertainty(post_pipeline=[hat.EntropyHat()], **params)
+    if key == 'QSelection':
+        return QActionSelection(post_pipeline=[hat.EnsembleHat()], **params)
+    if key == 'DuelingQSelection':
+        return DuelingQActionSelection(post_pipeline=[hat.DuelingQHat()], **params)
+    if key == 'EpsilonGreedy':
+        return EpsilonGreedyActionSelection(post_pipeline=[hat.EnsembleHat()], **params)
+    if key == 'AdaptiveEpsilonGreedy':
+        return AdaptiveEpsilonGreedyActionSelection(post_pipeline=[hat.EntropyHat()], **params)
+    if key == 'Greedy':
+        return GreedyValueSelection(post_pipeline=[hat.EnsembleHat()], **params)
+    if key == 'ThompsonGreedy':
+        return EpsilonGreedyActionSelection(post_pipeline=[hat.ThompsonAggregation()], **params)
+    raise ValueError('Unknown selection strategy')
+
+
 class SelectionPolicy:
     def __init__(self, pre_pipeline=[], post_pipeline=[]):
         """

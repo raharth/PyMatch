@@ -113,17 +113,18 @@ class ThresholdHat(Hat):
         return torch.cat([y, y_default], dim=1)
 
 
-class EnsembleHat3Best(Hat):
-    def __init__(self):
+class EnsembleHatNBest(Hat):
+    def __init__(self, nr_pred=3):
         """
         Predict the top 3 labels of a prediction by probability.
         """
-        super(EnsembleHat3Best, self).__init__()
+        super(EnsembleHatNBest, self).__init__()
+        self.nr_pred = nr_pred
 
     def __call__(self, y, device='cpu'):
         probs, classes = y.sort(1, descending=True)
-        probs = probs[:, :3]
-        classes = classes[:, :3]
+        probs = probs[:, :self.nr_pred]
+        classes = classes[:, :self.nr_pred]
         return classes, probs
 
 

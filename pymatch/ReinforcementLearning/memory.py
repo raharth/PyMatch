@@ -6,6 +6,14 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import pandas as pd
 
 
+def get_memory(key, params):
+    if key == 'Memory':
+        return Memory(**params)
+    if key == 'PriorityMemory':
+        return PriorityMemory(**params)
+    raise ValueError('Unknown memory type')
+
+
 class Memory(Dataset):
 
     def __init__(self,

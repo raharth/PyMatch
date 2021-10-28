@@ -4,6 +4,15 @@ import numpy as np
 import torch
 
 
+def get_player(key, params={}):
+    if key == 'DQN':
+        return DQNPlayer(**params)
+    if key == 'DuelingDQN':
+        return DuelingDQNPlayer(**params)
+    if key == 'DQNCertainty':
+        return DQNPlayerCertainty(**params)
+
+
 class RLPlayer:
     def __init__(self):
         """
