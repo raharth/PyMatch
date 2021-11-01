@@ -92,7 +92,7 @@ class ReinforcementLearner(Learner):
             self.train_loader.restore_checkpoint(checkpoint['memory'])
 
 
-class PolicyGradient(ReinforcementLearner):
+class PolicyGradient(ReinforcementLearner): #@todo should be renamed to ``REINFORCE``
     def __init__(self,
                  env,
                  model,
@@ -368,7 +368,7 @@ class QLearner(ReinforcementLearner):
         step_counter = 0
         terminate = False
         episode_memory = Memory(['action', 'state', 'reward', 'new_state', 'terminal'], gamma=self.gamma)
-        with eval_mode(self):
+        with eval_mode(self): # @todo it is strange that this is here?
             while not terminate:
                 step_counter += 1
                 with torch.no_grad():

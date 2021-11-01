@@ -376,7 +376,7 @@ class RegressionLearner(Learner):
         Returns:
             current loss
         """
-        self.model.fit()
+        self.model.train()
         self.model.to(device)
 
         losses = []

@@ -191,6 +191,31 @@ class EntropyHat(EnsembleHat):
         return super(EntropyHat, self).__call__(pred), torch.tensor(action_entropy).view(-1, 1)
 
 
+class AdvantageValueUncertainty(EnsembleHat):
+    def __init__(self):
+        """
+        Computes the entropy over the probabilistic label distribution of an ensemble.
+        """
+        super().__init__()
+
+    def __call__(self, pred, device='cpu'):
+        """
+
+        Args:
+            pred:       probability distribution over classes by each model of the ensemble
+            device:     not used
+
+        Returns:
+            torch tensor of entropy for label distribution over the models
+        """
+        actions = pred.max(-1)[1]
+        ohe_actions = one_hot_encoding(actions, n_categories=4, unsqueeze=True)
+        action_dist = ohe_actions.mean(0)
+        action_entropy = entropy(torch.transpose(action_dist, 0, 1))
+
+        return super(EntropyHat, self).__call__(pred), torch.tensor(action_entropy).view(-1, 1)
+
+
 class InputRepeater:
     def __init__(self, n_repeats):
         self.n_repeats = n_repeats

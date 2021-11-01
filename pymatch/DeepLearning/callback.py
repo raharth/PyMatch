@@ -32,22 +32,65 @@ class Callback:
 
 class Checkpointer(Callback):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, path=None, overwrite=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.path = None
+        self.path = path
+        self.overwrite = overwrite
 
     def start(self, model):
-        if not self.started:
+        if not self.started and self.path is None:
             self.path = f'{model.dump_path}/checkpoint'
-            if not os.path.exists(self.path):
-                os.makedirs(self.path)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
         self.started = True
 
     def forward(self, model):
-        model.dump_checkpoint(path=self.path, tag='checkpoint')
+        if self.overwrite:
+            path = self.path
+        else:
+            path = f'{self.path}/epoch_{model.train_dict["epochs_run"]}'
+            os.makedirs(path)
+        model.dump_checkpoint(path=path, tag='checkpoint')
 
 
-class Validator(Callback):
+class RegressionValidator(Callback):
+    def __init__(self, data_loader, verbose=1, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.data_loader = data_loader
+        self.verbose = verbose
+
+    def forward(self, model):
+        train_mode = model.model.training
+
+        # with eval_mode(model):
+        with torch.no_grad():
+            model.eval()
+            model.to(model.device)
+            loss = []
+            for data, y in self.data_loader:
+                data = data.to(model.device)
+                y = y.to(model.device)
+                y_pred = model.model(data)
+                loss += [model.crit(y_pred, y)]
+
+                # y_pred = y_pred.max(dim=1)[1]
+
+            loss = torch.stack(loss).mean().item()
+            model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
+            model.train_dict['val_epochs'] = model.train_dict.get('val_epochs', []) + [model.train_dict['epochs_run']]
+
+        if loss < model.train_dict.get('best_val_performance', np.inf):
+            model.train_dict['best_train_performance'] = loss
+            model.train_dict['epochs_since_last_val_improvement'] = 0
+
+        if self.verbose == 1:
+            print('val loss: {:.4f}'.format(loss))
+        if train_mode:  # reset to original mode
+            model.train()
+        return loss
+
+
+class AccuracyValidator(Callback):
     def __init__(self, data_loader, verbose=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_loader = data_loader
@@ -86,7 +129,7 @@ class Validator(Callback):
         return loss
 
 
-class EarlyStopping(Validator):
+class EarlyStopping(AccuracyValidator):
     def __init__(self, data_loader, verbose=1, *args, **kwargs):
         super(EarlyStopping, self).__init__(data_loader, verbose, *args, **kwargs)
         self.path = None
@@ -103,7 +146,7 @@ class EarlyStopping(Validator):
             os.makedirs(model.early_stopping_path)
         if self.verbose == 1:
             print('evaluating')
-        val_loss = Validator.__call__(self, model=model)
+        val_loss = AccuracyValidator.__call__(self, model=model)
         if val_loss < model.train_dict['best_val_performance']:
             model.train_dict['best_val_performance'] = val_loss
             model.dump_checkpoint(path=self.path, tag='early_stopping')

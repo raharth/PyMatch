@@ -145,6 +145,7 @@ class Ensemble(EnsemblePredictor):
 
         self.start_callbacks()
 
+        # @todo use the fucking itertools
         for run_epochs in epoch_iter:
             for learner in self.learners:
                 if verbose >= 1:
@@ -160,7 +161,7 @@ class Ensemble(EnsemblePredictor):
                     torch.cuda.empty_cache()
             for cb in self.callbacks:
                 try:
-                    cb.__call__(self)
+                    cb(self)
                 except Exception as e:
                     print(f'Ensemble callback {cb} failed with exception:\n{e}')
                     raise e
@@ -203,8 +204,8 @@ class Ensemble(EnsemblePredictor):
         Returns:
             None
         """
-        for trainer in self.learners:
-            trainer.dump_checkpoint(path=path, tag=tag)
+        for learner in self.learners:
+            learner.dump_checkpoint(path=path, tag=tag)
         path = self.get_path(path=path, tag=tag)
         torch.save(self.create_state_dict(), path)
 
@@ -251,8 +252,7 @@ class DQNEnsemble(Ensemble):
     def __init__(self, memory, selection_strategy, env, player, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # todo this needs to be cleaned up
-        self.train_loader = memory
-        self.memory = memory
+        self.memory = self.train_loader = memory
         self.selection_strategy = selection_strategy
         self.env = env
         self.player = player
