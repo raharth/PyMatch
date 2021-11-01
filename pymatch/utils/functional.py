@@ -6,6 +6,8 @@ import sys
 import os
 import numpy as np
 import torch
+from scipy.stats import entropy
+
 
 def scale_confusion_matrix(confm):
     return (confm.transpose() / confm.sum(1)).transpose()
@@ -106,3 +108,25 @@ def one_hot_encoding(categorical_data, n_categories=None, unsqueeze=False):
     else:
         encoding = torch.zeros(list(categorical_data.shape[:-1]) + [n_categories], device=categorical_data.device)
         return encoding.scatter_(-1, categorical_data, 1)
+
+
+def entropy_from_prob(values):
+    actions = values.max(-1)[1]
+    ohe_actions = one_hot_encoding(actions, n_categories=4, unsqueeze=True)
+    action_dist = ohe_actions.mean(0)
+    return entropy(torch.transpose(action_dist, 0, 1))
+
+
+# class device:
+#     def __init__(self, device, obj_list):
+#         self.obj_list = obj_list
+#         self.device = device
+#         self.obj_dev = [dev.device for dev in obj_list]
+#
+#     def __enter__(self):
+#         for obj in self.obj_list:
+#             obj.to(device)
+#
+#     def __exit__(self):
+#         for obj, dev in zip(self.obj_list, self.obj_dev):
+#             obj.to(dev)
