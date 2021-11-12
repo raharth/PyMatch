@@ -15,7 +15,7 @@ def get_selection_policy(key, params):
     if key == 'QSelection':
         return QActionSelection(post_pipeline=[hat.EnsembleHat()], **params)
     if key == 'DuelingQSelection':
-        return DuelingQActionSelection(post_pipeline=[hat.DuelingQHat()], **params)
+        return QActionSelection(post_pipeline=[hat.IdxFilterHat(var_idx=1), hat.EnsembleHat()], **params)
     if key == 'EpsilonGreedy':
         return EpsilonGreedyActionSelection(post_pipeline=[hat.EnsembleHat()], **params)
     if key == 'AdaptiveEpsilonGreedy':
@@ -155,7 +155,7 @@ class QActionSelectionCertainty(SelectionPolicy):
 
 
 class DuelingQActionSelection(SelectionPolicy):
-    def __init__(self, temperature=1., return_full=True, *args, **kwargs):
+    def __init__(self, temperature=1., return_full=False, *args, **kwargs):
         """
         Temperature based exponential selection strategy
 
@@ -168,15 +168,15 @@ class DuelingQActionSelection(SelectionPolicy):
 
     def post_pipe(self, val_q, adv_q):
         for pipe in self.post_pipeline:
-            qs, val_q, adv_q = pipe(val_q, adv_q)
-        return qs, val_q, adv_q
+            val_q, adv_q = pipe(val_q, adv_q)
+        return val_q, adv_q
 
     def __call__(self, agent, observation):
         agent.to(agent.device)
         observation = self.pre_pipe(observation)
         val_q, adv_q = agent(observation.to(agent.device))
-        qs, val_q, adv_q = self.post_pipe(val_q, adv_q)
-        probs = F.softmax(qs / self.temperature, dim=-1)
+        val_q, adv_q = self.post_pipe(val_q, adv_q)
+        probs = F.softmax(adv_q / self.temperature, dim=-1)
         dist = Categorical(probs.squeeze())
         action = dist.sample()
         action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, classification_report
 
-from pymatch.utils.functional import scale_confusion_matrix, sliding_window
+from pymatch.utils.functional import scale_confusion_matrix, sliding_window, eval_mode
 from pymatch.utils.DataHandler import DataHandler
 from pymatch.utils.exception import TerminationException
 
@@ -60,11 +60,7 @@ class RegressionValidator(Callback):
         self.verbose = verbose
 
     def forward(self, model):
-        train_mode = model.model.training
-
-        # with eval_mode(model):
-        with torch.no_grad():
-            model.eval()
+        with eval_mode(model):
             model.to(model.device)
             loss = []
             for data, y in self.data_loader:
@@ -72,8 +68,6 @@ class RegressionValidator(Callback):
                 y = y.to(model.device)
                 y_pred = model.model(data)
                 loss += [model.crit(y_pred, y)]
-
-                # y_pred = y_pred.max(dim=1)[1]
 
             loss = torch.stack(loss).mean().item()
             model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
@@ -85,8 +79,6 @@ class RegressionValidator(Callback):
 
         if self.verbose == 1:
             print('val loss: {:.4f}'.format(loss))
-        if train_mode:  # reset to original mode
-            model.train()
         return loss
 
 
@@ -97,9 +89,7 @@ class AccuracyValidator(Callback):
         self.verbose = verbose
 
     def forward(self, model):
-        train_mode = model.model.training
-        with torch.no_grad():
-            model.eval()
+        with eval_mode(model):
             model.to(model.device)
             loss = []
             accuracies = []
@@ -124,8 +114,6 @@ class AccuracyValidator(Callback):
 
         if self.verbose == 1:
             print('val loss: {:.4f} - val accuracy: {:.4f}'.format(loss, accuracy))
-        if train_mode:  # reset to original mode
-            model.train()
         return loss
 
 

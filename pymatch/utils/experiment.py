@@ -6,6 +6,7 @@ import datetime
 import sys
 import wandb
 import threading
+import logging
 
 from pymatch.DeepLearning.ensemble import Ensemble
 from pymatch.DeepLearning.learner import Learner
@@ -25,7 +26,7 @@ class Experiment:
         self.start_time = datetime.datetime.now()
         self.info = {"mode": "interactive" if sys.argv[0] == '' or sys.argv[0].split('\\')[-1] == 'pydevconsole.py'
                                            else "script"}
-        self.params = None
+        self.params = {}
         self.hw_monitor = None
 
     def get_params(self, param_source='params.json'):
@@ -142,15 +143,22 @@ class Experiment:
 
 
 class with_experiment:
-    def __init__(self, experiment, overwrite=False):
+    def __init__(self, experiment, overwrite=False, logging_level=logging.DEBUG, logging_mode='a'):
         self.experiment = experiment
         self.overwrite = overwrite
+        self.logging_level = logging_level
+        self.logging_mode = logging_mode
 
     def __enter__(self):
+        logging.basicConfig(level=self.logging_level, filename=f'{self.experiment.root}/experiment.log',
+                            filemode= self.logging_mode,
+                            format='[%(asctime)s] - [%(levelname)s] - (%(name)s): %(message)s')
         self.experiment.start(self.overwrite)
+        return logging.getLogger()
 
     def __exit__(self, *args):
         self.experiment.finish()
+        logging.shutdown()
         return False
 
 
