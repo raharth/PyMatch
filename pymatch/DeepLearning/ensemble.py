@@ -116,7 +116,7 @@ class Ensemble(EnsemblePredictor):
                          train=train,
                          *args,
                          **kwargs)
-        self.epochs_run = 0
+        # self.epochs_run = 0     # @todo deprecated remove this shit
         self.callbacks = callbacks
         self.save_memory = save_memory
         self.save_memory = save_memory
@@ -145,7 +145,6 @@ class Ensemble(EnsemblePredictor):
 
         self.start_callbacks()
 
-        # @todo use the fucking itertools
         for run_epochs in epoch_iter:
             for learner in self.learners:
                 if verbose >= 1:

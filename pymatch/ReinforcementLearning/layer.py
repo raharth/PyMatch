@@ -71,17 +71,64 @@ class DuelingLayer(torch.nn.Module):
             return advantage_estimation + value_estimation
         return advantage_estimation, value_estimation
 
-
     def extra_repr(self):
         return f'in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}, ' \
             f'stream_features={self.stream_features}, adjust={self.adjust}, return_Q={self.return_Q}'
 
 
+class with_value_function:
+    def __init__(self, agent, value_function=False):
+        """
+        This is only meant to make the use of the value function feature easy. It should typically be used with the
+        `ValueFunctionWrapper`, to wrap around any object that needs to have access to the split value- and advantage-
+        function or the combined Q-function.
+        Args:
+            agent:
+            value_function:
+        """
+        self.agent = agent
+        self.value_function = value_function
+        for var_name, obj in vars(self.agent).items():
+
+            if isinstance(obj, DuelingLayer):
+                self.layer = obj
+        self.prev_state = self.layer.return_Q
+
+    def __enter__(self):
+        self.layer.return_Q = self.value_function
+
+    def __exit__(self, *args):
+        self.layer.return_Q = self.prev_state
+        return False
+
+
+class ValueFunctionWrapper:
+    def __init__(self, module):
+        """
+        Just a wrapper around any object that needs either access to the Q-function or the split value- and advantage-
+        function of the DuelingLayer. The only requirement for the object is that is has a `__call__` method which is
+        used here.
+
+        Args:
+            module: the module one wants to wrap around
+        """
+        self.module = module
+
+    def __call__(self, agent, value_function=False, *args, **kwargs):
+        with with_value_function(agent, value_function=value_function):
+            res = self.module(agent, *args, **kwargs)
+        return res
+
+
 if __name__ == '__main__':
-    duel_layer = DuelingLayer(in_features=4, out_features=3, stream_features=5, return_Q=False)
+    class Model:
+        def __init__(self, layer):
+            self.layer = layer
+
 
     test_in = torch.normal(2, 3, size=(10, 4))
+    duel_layer = DuelingLayer(in_features=4, out_features=3, stream_features=5, return_Q=True)
+    duel_layer(test_in)
 
-    duel_layer(test_in)
-    duel_layer.return_Q = False
-    duel_layer(test_in)
+    with with_value_function(Model(duel_layer), value_function=False):
+        print(duel_layer(test_in))
