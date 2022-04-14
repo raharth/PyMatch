@@ -287,6 +287,7 @@ class EfficientDQNEnsemble(DQNEnsemble):
 
 
 class DuelingDQNEnsemble(DQNEnsemble):
+    # @todo this is not just for dueling but all ensembles that output two tensors instead of one
     def predict(self, x, device='cpu'):
         """
         Predicting a data tensor.

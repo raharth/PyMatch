@@ -153,37 +153,37 @@ class QActionSelectionCertainty(SelectionPolicy):
         action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
         return action, stds
 
-
-class DuelingQActionSelection(SelectionPolicy):
-    def __init__(self, temperature=1., return_full=False, *args, **kwargs):
-        """
-        Temperature based exponential selection strategy
-
-        Args:
-            temperature:    Temperature, which controls the degree of randomness.
-        """
-        super().__init__(*args, **kwargs)
-        self.temperature = temperature
-        self.return_full = return_full
-
-    def post_pipe(self, val_q, adv_q):
-        for pipe in self.post_pipeline:
-            val_q, adv_q = pipe(val_q, adv_q)
-        return val_q, adv_q
-
-    def __call__(self, agent, observation):
-        agent.to(agent.device)
-        observation = self.pre_pipe(observation)
-        val_q, adv_q = agent(observation.to(agent.device))
-        val_q, adv_q = self.post_pipe(val_q, adv_q)
-        probs = F.softmax(adv_q / self.temperature, dim=-1)
-        dist = Categorical(probs.squeeze())
-        action = dist.sample()
-        action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
-        if self.return_full:
-            return action, val_q, adv_q
-        else:
-            return action
+#
+# class DuelingQActionSelection(SelectionPolicy):
+#     def __init__(self, temperature=1., return_full=False, *args, **kwargs):
+#         """
+#         Temperature based exponential selection strategy
+#
+#         Args:
+#             temperature:    Temperature, which controls the degree of randomness.
+#         """
+#         super().__init__(*args, **kwargs)
+#         self.temperature = temperature
+#         self.return_full = return_full
+#
+#     # def post_pipe(self, val_q, adv_q):
+#     #     for pipe in self.post_pipeline:
+#     #         val_q, adv_q = pipe(val_q, adv_q)
+#     #     return val_q, adv_q
+#
+#     def __call__(self, agent, observation):
+#         agent.to(agent.device)
+#         observation = self.pre_pipe(observation)
+#         val_q, adv_q = agent(observation.to(agent.device))
+#         val_q, adv_q = self.post_pipe(val_q, adv_q)
+#         probs = F.softmax(adv_q / self.temperature, dim=-1)
+#         dist = Categorical(probs.squeeze())
+#         action = dist.sample()
+#         action = action.view(-1, 1) if len(action.shape) > 0 else action.view(-1)
+#         if self.return_full:
+#             return action, val_q, adv_q
+#         else:
+#             return action
 
 
 class AdaptiveQActionSelectionStd(SelectionPolicy):

@@ -44,6 +44,7 @@ class ReinforcementLearner(Learner):
             callbacks:          list of callbacks to use
             dump_path:          dump path for the model and callbacks
             device:             device to run the model on
+            store_memory:       determines if the memory is added to the model dump
         """
         super().__init__(model,
                          optimizer,
@@ -323,8 +324,9 @@ class QLearner(ReinforcementLearner):
         for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
             action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
                 self.device), new_state.to(self.device)
-            prediction = self.model(state.squeeze(1))
-            target = prediction.clone().detach()
+            # prediction = self.model(state.squeeze(1))
+            # target = prediction.clone().detach()
+            prediction, target = self.get_prediction_target(state=state)
             max_next = self.get_max_Q_for_states(new_state)
 
             mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
@@ -356,6 +358,11 @@ class QLearner(ReinforcementLearner):
                   f'last loss: {self.train_dict["train_losses"][-1]:.2f}',
                   f'latest average reward: {self.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
         return loss
+
+    def get_prediction_target(self, state):
+        prediction = self.model(state.squeeze(1))
+        target = prediction.clone().detach()
+        return prediction, target
 
     def get_max_Q_for_states(self, states):
         with eval_mode(self):  # @todo we might have trouble with the MC Dropout here
@@ -395,37 +402,42 @@ class QLearner(ReinforcementLearner):
 
 class DuelingLearner(QLearner):
 
-    def fit_epoch(self, device, verbose=1):
-        self.model.train()
-        self.model.to(device)
+    # def fit_epoch(self, device, verbose=1):
+    #     self.model.train()
+    #     self.model.to(device)
+    #
+    #     losses = []
+    #
+    #     for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
+    #         action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
+    #             self.device), new_state.to(self.device)
+    #
+    #         prediction, target = self.get_prediction_target(state=state)
+    #         max_next = self.get_max_Q_for_states(new_state)
+    #
+    #         mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
+    #         target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
+    #                 reward.view(-1) + self.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(
+    #             self.device))
+    #
+    #         loss = self.crit(prediction, target)
+    #         losses += [loss.item()]
+    #         self._backward(loss)
+    #
+    #     self.train_dict['train_losses'] += [np.mean(losses).item()]
+    #
+    #     if verbose == 1:
+    #         print(f'epoch: {self.train_dict["epochs_run"]}\t'
+    #               f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t',
+    #               f'last loss: {self.train_dict["train_losses"][-1]:.2f}',
+    #               f'latest average reward: {self.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
+    #     return loss
 
-        losses = []
-
-        for batch, (action, state, reward, new_state, terminal) in tqdm(enumerate(self.train_loader)):
-            action, state, reward, new_state = action.to(self.device), state.to(self.device), reward.to(
-                self.device), new_state.to(self.device)
-            values, advantage = self.model(state.squeeze(1))
-            prediction = values + advantage
-            target = prediction.clone().detach()
-            max_next = self.get_max_Q_for_states(new_state)
-
-            mask = one_hot_encoding(action, n_categories=self.env.action_space.n).type(torch.BoolTensor).to(self.device)
-            target[mask] = (1 - self.alpha) * target[mask] + self.alpha * (
-                    reward.view(-1) + self.gamma * max_next * (1 - terminal.view(-1).type(torch.FloatTensor)).to(
-                self.device))
-
-            loss = self.crit(prediction, target)
-            losses += [loss.item()]
-            self._backward(loss)
-
-        self.train_dict['train_losses'] += [np.mean(losses).item()]
-
-        if verbose == 1:
-            print(f'epoch: {self.train_dict["epochs_run"]}\t'
-                  f'average reward: {np.mean(self.train_dict["rewards"]):.2f}\t',
-                  f'last loss: {self.train_dict["train_losses"][-1]:.2f}',
-                  f'latest average reward: {self.train_dict.get("avg_reward", [np.nan])[-1]:.2f}')
-        return loss
+    def get_prediction_target(self, state):
+        values, advantage = self.model(state.squeeze(1))
+        prediction = values + advantage
+        target = prediction.clone().detach()
+        return prediction, target
 
     def get_max_Q_for_states(self, states):
         with eval_mode(self):  # @todo we might have trouble with the MC Dropout here

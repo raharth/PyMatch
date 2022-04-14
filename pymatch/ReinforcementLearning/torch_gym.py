@@ -45,27 +45,6 @@ class TorchGym:
         self.env.close()
 
 
-# @todo depricated should not be used anymore
-# class CartPole(TorchGym):
-#
-#     def __init__(self):
-#         super().__init__('CartPole-v1')
-#         self.steps = 0
-#
-#     def reset(self):
-#         self.steps = 0
-#         return torch.tensor(self.env.reset()).float().unsqueeze(0)
-#
-#     def step(self, action):
-#         self.steps += 1
-#         observation, reward, done, info = super().step(action.item())
-#         if done:  # and self.steps < 500:
-#             reward = -10
-#         if self.steps == 500:
-#             reward = 0
-#         return observation, reward, done, info
-
-
 class MultiInstanceGym:
     def __init__(self, env_name, n_instances):
         """
