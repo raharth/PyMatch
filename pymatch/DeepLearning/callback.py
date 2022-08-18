@@ -210,8 +210,7 @@ class RegressionCurvePlotter(Callback):
 
         if return_fig:
             return fig, ax
-        img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
-        fig.savefig(img_path)
+        fig.savefig(f'{self.img_path}/learning_curve_{model.name}.png')
         plt.close(fig)
 
 

@@ -29,7 +29,6 @@ train_loader = torch.utils.data.DataLoader(train_data, batch_size=train_batch_si
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=True)
 
 crit = nn.CrossEntropyLoss()
-crit_test = nn.CrossEntropyLoss(reduction='sum')
 
 model = Model(len(train_data.classes)).to(device)
 
