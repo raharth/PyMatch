@@ -54,10 +54,11 @@ class Checkpointer(Callback):
 
 
 class RegressionValidator(Callback):
-    def __init__(self, data_loader, verbose=1, *args, **kwargs):
+    def __init__(self, data_loader, crit, verbose=1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_loader = data_loader
         self.verbose = verbose
+        self.crit = crit
 
     def forward(self, model):
         with eval_mode(model):
@@ -66,8 +67,8 @@ class RegressionValidator(Callback):
             for data, y in self.data_loader:
                 data = data.to(model.device)
                 y = y.to(model.device)
-                y_pred = model.model(data)
-                loss += [model.crit(y_pred, y)]
+                y_pred = model(data)
+                loss += [self.crit(y_pred, y)]
 
             loss = torch.stack(loss).mean().item()
             model.train_dict['val_losses'] = model.train_dict.get('val_losses', []) + [loss]
@@ -210,7 +211,8 @@ class RegressionCurvePlotter(Callback):
 
         if return_fig:
             return fig, ax
-        fig.savefig(f'{self.img_path}/learning_curve_{model.name}.png')
+        img_path = '{}/learning_curve_{}.png'.format(self.img_path, model.name)
+        fig.savefig(img_path)
         plt.close(fig)
 
 
@@ -293,9 +295,9 @@ class EnsembleLearningCurvePlotter(Callback):
     def __init__(self, target_folder_path='tmp', *args, **kwargs):
         """
         Plotting the learning curves of an entire ensemble
-         
+
         Args:
-            target_folder_path:   path to dump the resulting image to 
+            target_folder_path:   path to dump the resulting image to
         """
         super(EnsembleLearningCurvePlotter, self).__init__(*args, **kwargs)
         self.img_path = target_folder_path
@@ -347,7 +349,8 @@ class ConfusionMatrixPlotter(Callback):
         self.img_path = '{}/{}.png'.format(img_path, img_name)
 
     def forward(self, model, classes, device='cpu', return_fig=False, title='Confusion Matrix'):
-        y_pred, y_true = DataHandler.predict_data_loader(model=model, data_loader=self.data_loader, device=device, return_true=True)
+        y_pred, y_true = DataHandler.predict_data_loader(model=model, data_loader=self.data_loader, device=device,
+                                                         return_true=True)
 
         cm = scale_confusion_matrix(confusion_matrix(y_true, y_pred))
         fig, ax = self.plot_confusion_matrix(cm, figsize=(10, 10), class_names=classes)
