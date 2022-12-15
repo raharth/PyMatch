@@ -54,11 +54,12 @@ class Checkpointer(Callback):
 
 
 class RegressionValidator(Callback):
-    def __init__(self, data_loader, crit, verbose=1, *args, **kwargs):
+    def __init__(self, data_loader, crit, verbose=1, hat=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_loader = data_loader
         self.verbose = verbose
         self.crit = crit
+        self.hat = hat
 
     def forward(self, model):
         with eval_mode(model):
@@ -68,6 +69,8 @@ class RegressionValidator(Callback):
                 data = data.to(model.device)
                 y = y.to(model.device)
                 y_pred = model(data)
+                if self.hat is not None:
+                    y_pred = self.hat(y_pred)
                 loss += [self.crit(y_pred, y)]
 
             loss = torch.stack(loss).mean().item()
@@ -446,3 +449,15 @@ class WandbExperiment(Callback):
             if isinstance(v, (int, float)):
                 log_dict[k] = v
         wandb.log(log_dict)
+
+
+class EnsembleTrainLossAggregator(Callback):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, model: Ensemble):
+        model.train_dict['train_losses'] = np.mean(
+            [learner.train_dict['train_losses'] for learner in model.learners], axis=0)
+
+
+

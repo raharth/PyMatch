@@ -9,9 +9,16 @@ import pandas as pd
 import threading
 import json
 import warnings
+import os.path
 
-with open("pymatch_config", "r") as f:
-    config = json.load(f)
+
+if os.path.exists("pymatch_config"):
+    with open("pymatch_config", "r") as f:
+        config = json.load(f)
+else:
+    warnings.warn('No pymatch config was found')
+    config = {}
+
 
 if config.get("hardware_monitor", None) is not None:
     import clr  # package pythonnet, not clr

@@ -2,7 +2,11 @@ import time
 
 import torch
 import torch.nn as nn
-from gym.envs.classic_control import rendering
+try:
+    from gym.envs.classic_control import rendering
+except ImportError as e:
+    print('gym wasn`t imported')
+    rendering = None
 
 
 class Environment:
